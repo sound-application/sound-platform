@@ -1,0 +1,20 @@
+{
+  "compilerOptions": {
+    "target": "ES2022",
+    "module": "CommonJS",
+    "moduleResolution": "node",
+    "strict": true,
+    "noImplicitAny": true,
+    "noUncheckedIndexedAccess": true,
+    "esModuleInterop": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sound/shared/*": ["packages/shared/src/*"],
+      "@sound/config/*": ["packages/config/src/*"],
+      "@sound/validation/*": ["packages/validation/src/*"],
+      "@sound/ui/*": ["packages/ui/src/*"]
+    }
+  }
+}

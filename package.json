@@ -1,0 +1,19 @@
+{
+  "name": "sound-platform",
+  "private": true,
+  "workspaces": [
+    "apps/*",
+    "packages/*",
+    "functions"
+  ],
+  "scripts": {
+    "check": "npm run lint && npm run typecheck",
+    "typecheck": "tsc --build",
+    "lint": "eslint .",
+    "format": "prettier --write .",
+    "emulators": "firebase emulators:start",
+    "functions:build": "npm run build --workspace=functions",
+    "functions:serve": "npm run serve --workspace=functions",
+    "seed": "node scripts/seed.js"
+  }
+}

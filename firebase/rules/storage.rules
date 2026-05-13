@@ -1,0 +1,12 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    match /{allPaths=**} {
+      // Secure by default: deny all
+      // sensitive writes go through server functions
+      // rules will expand per module
+      // wallet/payment/payout/audit writes must never be client-writable
+      allow read, write: if false;
+    }
+  }
+}
