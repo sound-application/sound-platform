@@ -1,18 +1,17 @@
 /**
  * Sound Platform — Privacy Settings Page Styles
  * ===============================================
- * Phase:   5-C-2 (Dedicated Privacy Settings UI)
+ * Phase:   5-C-3 (Privacy Audience Model Upgrade)
  * Updated: 2026-05-14
  *
- * Design system: dark-mode (#171309 base), RTL-first, matches the rest of
- * the settings and edit-profile pages in layout and token usage.
+ * Design system: dark-mode (#171309 base), RTL-first.
  *
- * Layout:
- *   - Header with back button
- *   - Sync notice bar
- *   - Privacy level legend
- *   - Grouped section rows (each with segmented control)
- *   - Action bar (save + view public)
+ * Key additions over 5-C-2:
+ *   - Audience chip grid (replaces 3-way segmented control)
+ *   - Per-chip color tokens for 6 audiences
+ *   - Public projection dot indicator
+ *   - Section summary label
+ *   - Legend badge for exclusive audiences
  */
 
 /* ── Page container ──────────────────────────────────────────────────────────*/
@@ -76,7 +75,7 @@
 
 .privacy-settings__sync-notice {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.6rem;
   background: rgba(139, 92, 246, 0.08);
   border: 1px solid rgba(139, 92, 246, 0.2);
@@ -85,6 +84,7 @@
   font-size: 0.8rem;
   color: var(--color-text-muted, #a8a29e);
   margin-bottom: 1.25rem;
+  line-height: 1.5;
 }
 .privacy-settings__sync-notice strong {
   color: #c4b5fd;
@@ -92,13 +92,14 @@
 .privacy-settings__sync-icon {
   font-size: 1rem;
   flex-shrink: 0;
+  margin-top: 0.1rem;
 }
 
 /* ── Legend ──────────────────────────────────────────────────────────────────*/
 
 .privacy-settings__legend {
   display: flex;
-  gap: 0.5rem;
+  gap: 0.4rem;
   margin-bottom: 1.5rem;
   flex-wrap: wrap;
 }
@@ -106,33 +107,33 @@
 .privacy-settings__legend-item {
   display: flex;
   align-items: center;
-  gap: 0.35rem;
-  padding: 0.3rem 0.65rem;
+  gap: 0.3rem;
+  padding: 0.28rem 0.55rem;
   border-radius: 20px;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
   font-weight: 500;
   border: 1px solid transparent;
 }
 
-.privacy-settings__legend-item--public {
-  background: rgba(52, 211, 153, 0.1);
-  border-color: rgba(52, 211, 153, 0.25);
-  color: #6ee7b7;
-}
-.privacy-settings__legend-item--followers {
-  background: rgba(251, 191, 36, 0.1);
-  border-color: rgba(251, 191, 36, 0.25);
-  color: #fcd34d;
-}
-.privacy-settings__legend-item--private {
-  background: rgba(239, 68, 68, 0.1);
-  border-color: rgba(239, 68, 68, 0.25);
-  color: #fca5a5;
+.privacy-settings__legend-badge {
+  background: rgba(255,255,255,0.12);
+  color: rgba(255,255,255,0.6);
+  font-size: 0.62rem;
+  padding: 0.1rem 0.35rem;
+  border-radius: 10px;
+  font-weight: 600;
 }
 
-.privacy-settings__legend-icon {
-  font-size: 0.8rem;
-}
+.privacy-settings__legend-icon { font-size: 0.8rem; }
+.privacy-settings__legend-label { white-space: nowrap; }
+
+/* Legend color variants matching chip colors */
+.aud--public    { background: rgba(52,211,153,0.1);  border-color: rgba(52,211,153,0.25);  color: #6ee7b7; }
+.aud--friends   { background: rgba(96,165,250,0.1);  border-color: rgba(96,165,250,0.25);  color: #93c5fd; }
+.aud--followers { background: rgba(251,191,36,0.1);  border-color: rgba(251,191,36,0.25);  color: #fcd34d; }
+.aud--following { background: rgba(251,146,60,0.1);  border-color: rgba(251,146,60,0.25);  color: #fdba74; }
+.aud--custom    { background: rgba(167,139,250,0.1); border-color: rgba(167,139,250,0.25); color: #c4b5fd; }
+.aud--onlyme    { background: rgba(239,68,68,0.1);   border-color: rgba(239,68,68,0.25);   color: #fca5a5; }
 
 /* ── Groups ──────────────────────────────────────────────────────────────────*/
 
@@ -160,24 +161,19 @@
 .privacy-settings__section-list {
   display: flex;
   flex-direction: column;
-  gap: 0.75rem;
+  gap: 1rem;
 }
 
 .privacy-settings__section-row {
   display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 0.75rem;
-  flex-wrap: wrap;
+  flex-direction: column;
+  gap: 0.6rem;
 }
 
-/* Label side */
 .privacy-settings__section-label {
   display: flex;
-  align-items: center;
+  align-items: flex-start;
   gap: 0.55rem;
-  flex: 1;
-  min-width: 0;
 }
 
 .privacy-settings__section-icon {
@@ -185,6 +181,7 @@
   flex-shrink: 0;
   width: 1.5rem;
   text-align: center;
+  margin-top: 0.1rem;
 }
 
 .privacy-settings__section-text {
@@ -192,86 +189,109 @@
   flex-direction: column;
   gap: 0.1rem;
   min-width: 0;
+  flex: 1;
+}
+
+.privacy-settings__section-name-row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
 }
 
 .privacy-settings__section-name {
   font-size: 0.88rem;
   font-weight: 600;
   color: #e7e5e4;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
+
+.privacy-settings__always-public-badge {
+  font-size: 0.65rem;
+  font-weight: 600;
+  background: rgba(52,211,153,0.15);
+  color: #6ee7b7;
+  border-radius: 8px;
+  padding: 0.1rem 0.4rem;
+  white-space: nowrap;
+}
+
+/* Public projection dot */
+.privacy-settings__projection-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  flex-shrink: 0;
+}
+.dot--public  { background: #6ee7b7; box-shadow: 0 0 6px rgba(52,211,153,0.6); }
+.dot--hidden  { background: rgba(255,255,255,0.2); }
 
 .privacy-settings__section-desc {
   font-size: 0.73rem;
   color: var(--color-text-muted, #a8a29e);
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-/* ── Segmented control ───────────────────────────────────────────────────────*/
+.privacy-settings__section-summary {
+  font-size: 0.72rem;
+  color: #c4b5fd;
+  font-weight: 500;
+  margin-top: 0.15rem;
+}
 
-.privacy-seg {
+/* ── Audience Chips ───────────────────────────────────────────────────────────*/
+
+.audience-chips {
   display: flex;
-  border: 1px solid rgba(255, 255, 255, 0.1);
-  border-radius: 10px;
-  overflow: hidden;
-  flex-shrink: 0;
+  flex-wrap: wrap;
+  gap: 0.4rem;
+  padding-right: 2rem; /* indent to align with label text */
 }
 
-.privacy-seg--disabled {
-  opacity: 0.45;
-}
-
-.privacy-seg__btn {
+.audience-chip {
   display: flex;
   align-items: center;
-  gap: 0.25rem;
-  padding: 0.35rem 0.65rem;
-  background: transparent;
-  border: none;
-  border-left: 1px solid rgba(255, 255, 255, 0.1);
-  color: var(--color-text-muted, #a8a29e);
-  font-size: 0.72rem;
+  gap: 0.3rem;
+  padding: 0.32rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.76rem;
   font-weight: 500;
   cursor: pointer;
-  transition: background 0.15s, color 0.15s;
-  white-space: nowrap;
+  border: 1px solid rgba(255,255,255,0.1);
+  background: rgba(255,255,255,0.04);
+  color: var(--color-text-muted, #a8a29e);
+  transition: background 0.15s, border-color 0.15s, color 0.15s, transform 0.1s;
   font-family: inherit;
+  position: relative;
 }
 
-.privacy-seg__btn:first-child {
-  border-left: none;
-}
-
-.privacy-seg__btn:not(:disabled):hover {
-  background: rgba(255, 255, 255, 0.06);
+.audience-chip:hover {
+  background: rgba(255,255,255,0.08);
   color: #fff;
+  transform: scale(1.03);
 }
 
-.privacy-seg__btn:disabled {
-  cursor: not-allowed;
+.audience-chip:active {
+  transform: scale(0.97);
 }
 
-/* Active states */
-.privacy-seg__btn--public.privacy-seg__btn--active {
-  background: rgba(52, 211, 153, 0.15);
-  color: #6ee7b7;
-}
-.privacy-seg__btn--followers.privacy-seg__btn--active {
-  background: rgba(251, 191, 36, 0.15);
-  color: #fcd34d;
-}
-.privacy-seg__btn--private.privacy-seg__btn--active {
-  background: rgba(239, 68, 68, 0.15);
-  color: #fca5a5;
+/* Exclusive marker dot */
+.audience-chip__dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+  opacity: 0.6;
+  margin-right: 0.1rem;
 }
 
-.privacy-seg__icon {
-  font-size: 0.75rem;
-}
+.audience-chip__icon { font-size: 0.8rem; }
+.audience-chip__label { white-space: nowrap; }
+
+/* Active chip variants */
+.audience-chip.aud--public.audience-chip--active    { background: rgba(52,211,153,0.18);  border-color: rgba(52,211,153,0.5);  color: #6ee7b7; }
+.audience-chip.aud--friends.audience-chip--active   { background: rgba(96,165,250,0.18);  border-color: rgba(96,165,250,0.5);  color: #93c5fd; }
+.audience-chip.aud--followers.audience-chip--active { background: rgba(251,191,36,0.18);  border-color: rgba(251,191,36,0.5);  color: #fcd34d; }
+.audience-chip.aud--following.audience-chip--active { background: rgba(251,146,60,0.18);  border-color: rgba(251,146,60,0.5);  color: #fdba74; }
+.audience-chip.aud--custom.audience-chip--active    { background: rgba(167,139,250,0.18); border-color: rgba(167,139,250,0.5); color: #c4b5fd; }
+.audience-chip.aud--onlyme.audience-chip--active    { background: rgba(239,68,68,0.18);   border-color: rgba(239,68,68,0.5);   color: #fca5a5; }
 
 /* ── Banners ──────────────────────────────────────────────────────────────────*/
 
@@ -339,13 +359,8 @@
   justify-content: center;
   min-width: 140px;
 }
-.privacy-settings__btn--primary:hover:not(:disabled) {
-  opacity: 0.9;
-}
-.privacy-settings__btn--primary:disabled {
-  opacity: 0.65;
-  cursor: not-allowed;
-}
+.privacy-settings__btn--primary:hover:not(:disabled) { opacity: 0.9; }
+.privacy-settings__btn--primary:disabled { opacity: 0.65; cursor: not-allowed; }
 
 .privacy-settings__btn--secondary {
   background: rgba(255, 255, 255, 0.07);
@@ -385,9 +400,7 @@
   }
 
   .privacy-settings__section-row {
-    flex-direction: column;
-    align-items: flex-start;
-    padding-bottom: 0.75rem;
+    padding-bottom: 0.85rem;
     border-bottom: 1px solid rgba(255, 255, 255, 0.05);
   }
 
@@ -396,13 +409,8 @@
     border-bottom: none;
   }
 
-  .privacy-seg {
-    width: 100%;
-  }
-
-  .privacy-seg__btn {
-    flex: 1;
-    justify-content: center;
+  .audience-chips {
+    padding-right: 0;
   }
 
   .privacy-settings__actions {
@@ -415,6 +423,11 @@
   }
 
   .privacy-settings__legend {
-    gap: 0.4rem;
+    gap: 0.35rem;
+  }
+
+  .privacy-settings__legend-item {
+    font-size: 0.68rem;
+    padding: 0.22rem 0.45rem;
   }
 }

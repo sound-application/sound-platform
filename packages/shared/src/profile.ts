@@ -1,7 +1,7 @@
 /**
  * Sound Platform — Modular Profile Schema
  * =========================================
- * Phase:   4-H-2 (Privacy Correction)
+ * Phase:   5-C-3 (Privacy Audience Model Upgrade)
  * Updated: 2026-05-14
  *
  * DOCUMENT SPLIT (Phase 4-H-2):
@@ -18,11 +18,11 @@
  *   Both are individually privacy-controlled sections in the public projection.
  */
 
-// ─── Privacy Control ─────────────────────────────────────────────────────────
+// ─── Privacy Control (Phase 5-C-3: Multi-select Audience Model) ──────────────────
 
 /**
  * PrivacySection — identifies each independently privacy-controlled section
- * of a public profile. Each section has its own PrivacyLevel.
+ * of a public profile. Each section has its own SectionPrivacy config.
  */
 export type PrivacySection =
   | 'generalProfile'           // username, bio, avatar, social counters
@@ -43,11 +43,77 @@ export type PrivacySection =
   | 'musicCreatorContent'      // Music world content (songs, albums)
   | 'radioCreatorContent';     // Radio stations / shows owned
 
-/** Controls who can see a specific profile section. */
+/**
+ * PrivacyAudience — the atomic audience token (Phase 5-C-3).
+ *
+ * - 'public'   : visible to everyone (exclusive — clears all others)
+ * - 'friends'  : mutual followers (future gate)
+ * - 'followers': users that follow me
+ * - 'following': users I follow
+ * - 'custom'   : a custom named list (IDs stored in customListIds)
+ * - 'onlyMe'   : only the owner — fully private (exclusive — clears all others)
+ */
+export type PrivacyAudience =
+  | 'public'
+  | 'friends'
+  | 'followers'
+  | 'following'
+  | 'custom'
+  | 'onlyMe';
+
+/**
+ * SectionPrivacy — per-section audience configuration (Phase 5-C-3).
+ *
+ * audiences is an ordered array of PrivacyAudience tokens.
+ * Exclusive tokens ('public', 'onlyMe') are always stored alone.
+ * Non-exclusive tokens can be combined freely.
+ *
+ * Examples:
+ *   { audiences: ['public'] }                              → everyone
+ *   { audiences: ['onlyMe'] }                              → only owner
+ *   { audiences: ['friends', 'followers'] }                → combined
+ *   { audiences: ['custom'], customListIds: ['listA'] }    → named list
+ */
+export interface SectionPrivacy {
+  audiences: PrivacyAudience[];
+  /** IDs of custom audience lists (used when 'custom' is selected). */
+  customListIds?: string[];
+}
+
+/** Full privacy settings map — one SectionPrivacy per PrivacySection. */
+export type PrivacySettings = { [K in PrivacySection]: SectionPrivacy };
+
+/**
+ * @deprecated Legacy single-string privacy level (Phase ≤5-C-2).
+ * Only used for migration. New code must use SectionPrivacy.
+ */
 export type PrivacyLevel = 'public' | 'followers' | 'private';
 
-/** Full privacy settings map — one PrivacyLevel per PrivacySection. */
-export type PrivacySettings = { [K in PrivacySection]: PrivacyLevel };
+/**
+ * migratePrivacyLevel — normalizes a stored value (old string OR new object)
+ * into a canonical SectionPrivacy object (Phase 5-C-3).
+ *
+ * Use this when reading from Firestore documents that may have been written
+ * before the Phase 5-C-3 upgrade.
+ */
+export function migratePrivacyLevel(
+  raw: PrivacyLevel | SectionPrivacy | undefined,
+  fallback: SectionPrivacy = { audiences: ['public'] },
+): SectionPrivacy {
+  if (!raw) return fallback;
+  if (typeof raw === 'object' && 'audiences' in raw) return raw as SectionPrivacy;
+  // Legacy string migration
+  if (raw === 'public')    return { audiences: ['public'] };
+  if (raw === 'followers') return { audiences: ['followers'] };
+  if (raw === 'private')   return { audiences: ['onlyMe'] };
+  return fallback;
+}
+
+/** Returns true if a SectionPrivacy config allows public projection. */
+export function isPubliclyVisible(sp: SectionPrivacy | undefined): boolean {
+  if (!sp) return false;
+  return sp.audiences.includes('public');
+}
 
 // ─── Listening & Consumer Activity ───────────────────────────────────────────
 

@@ -1,8 +1,8 @@
 /**
  * Sound Platform — onUserCreate Cloud Function
  * ===============================================
- * Phase:   5-B (User Lifecycle & Public Profile Projection)
- * Updated: 2026-05-14 (5-C: refactored to use shared buildPublicProfileFromUser)
+ * Phase:   5-C-3 (Privacy Audience Model Upgrade)
+ * Updated: 2026-05-14 (5-C-3: upgraded to multi-select audience model)
  *
  * Trigger: Firebase Auth user.onCreate (Gen 1 API — works with firebase-functions v5)
  *
@@ -32,6 +32,7 @@ import type { UserRecord } from 'firebase-admin/auth';
 import type {
   UserPrivateDoc,
   PrivacySettings,
+  SectionPrivacy,
   ConsumerActivity,
 } from '@sound/shared';
 import { buildPublicProfileFromUser } from '../helpers/buildPublicProfile';
@@ -42,24 +43,31 @@ const db = admin.firestore();
 
 // ─── Default Privacy Settings ────────────────────────────────────────────────
 
+// ─── Default Privacy Settings (Phase 5-C-3: SectionPrivacy object format) ───────
+
+/** Shorthand constructors for common audience configs. */
+const PUB:  SectionPrivacy = { audiences: ['public'] };
+const FOL:  SectionPrivacy = { audiences: ['followers'] };
+const PRIV: SectionPrivacy = { audiences: ['onlyMe'] };
+
 const DEFAULT_PRIVACY: PrivacySettings = {
-  generalProfile:            'public',
-  mood:                      'public',
-  listeningActivity:         'public',
-  followedRadioStations:     'public',
-  followedRadioStationLists: 'public',
-  musicPlaylists:            'public',
-  savedItems:                'private',
-  storyViews:                'private',
-  activityStatus:            'public',
-  pinnedContent:             'public',
-  achievements:              'public',
-  following:                 'public',
-  followers:                 'public',
-  directMessages:            'followers',
-  plusCreatorContent:        'public',
-  musicCreatorContent:       'public',
-  radioCreatorContent:       'public',
+  generalProfile:            PUB,
+  mood:                      PUB,
+  listeningActivity:         PUB,
+  followedRadioStations:     PUB,
+  followedRadioStationLists: PUB,
+  musicPlaylists:            PUB,
+  savedItems:                PRIV,
+  storyViews:                PRIV,
+  activityStatus:            PUB,
+  pinnedContent:             PUB,
+  achievements:              PUB,
+  following:                 PUB,
+  followers:                 PUB,
+  directMessages:            FOL,
+  plusCreatorContent:        PUB,
+  musicCreatorContent:       PUB,
+  radioCreatorContent:       PUB,
 };
 
 // ─── Default Consumer Activity ────────────────────────────────────────────────

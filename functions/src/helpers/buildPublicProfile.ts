@@ -1,19 +1,22 @@
 /**
  * Sound Platform — Public Profile Projection Builder
  * ====================================================
- * Phase:   5-C (Profile Update Sync)
+ * Phase:   5-C-3 (Privacy Audience Model Upgrade)
  * Updated: 2026-05-14
  *
  * Shared helper used by:
  *   - onUserCreate      (builds initial projection on signup)
  *   - onUserProfileUpdate (rebuilds projection on users/{uid} write)
  *
- * PRIVACY MODEL (Phase 4-H-2):
+ * PRIVACY MODEL (Phase 5-C-3):
  *
  *   publicProfiles/{uid} is built section-by-section from users/{uid}.
- *   Each section is included ONLY if its PrivacyLevel is 'public'.
- *   'followers' and 'private' sections are ABSENT from the projection
- *   (follower-gated reads are not yet implemented — Phase 5-D+).
+ *   Each section is included ONLY if its audiences array includes 'public'.
+ *   All other audience combos (onlyMe, followers, friends, following, custom)
+ *   are ABSENT from the projection (no partial/gated reads yet — Phase 5-D+).
+ *
+ *   Legacy string values ('public' / 'followers' / 'private') written before
+ *   Phase 5-C-3 are normalized via migratePrivacyLevel() before gating.
  *
  *   Fields NEVER included in publicProfiles regardless of privacy:
  *     - email, role, capabilities, restrictions
@@ -48,22 +51,26 @@ import type {
   MusicCreatorContentSection,
   RadioCreatorContentSection,
   PrivacySettings,
-  PrivacyLevel,
+  SectionPrivacy,
 } from '@sound/shared';
+import { migratePrivacyLevel, isPubliclyVisible } from '@sound/shared';
 
 // ─── Privacy Gate ─────────────────────────────────────────────────────────────
 
 /**
- * Returns true if the privacy level permits public projection inclusion.
- * Phase 5-C: only 'public' sections are included.
- * 'followers' support is a Phase 5-D+ concern.
+ * Returns true if the section's SectionPrivacy config permits public
+ * projection inclusion (audiences includes 'public').
+ *
+ * Phase 5-C-3: migrates legacy string values on the fly so documents
+ * written before the audience-model upgrade continue to work correctly.
  */
 export function isSectionPublic(
   privacy: PrivacySettings,
   section: keyof PrivacySettings,
 ): boolean {
-  const level: PrivacyLevel = privacy[section] ?? 'private';
-  return level === 'public';
+  const raw = privacy[section] as SectionPrivacy | string | undefined;
+  const sp = migratePrivacyLevel(raw as Parameters<typeof migratePrivacyLevel>[0]);
+  return isPubliclyVisible(sp);
 }
 
 // ─── Main Builder ─────────────────────────────────────────────────────────────
