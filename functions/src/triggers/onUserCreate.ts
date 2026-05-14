@@ -2,7 +2,7 @@
  * Sound Platform — onUserCreate Cloud Function
  * ===============================================
  * Phase:   5-B (User Lifecycle & Public Profile Projection)
- * Updated: 2026-05-14
+ * Updated: 2026-05-14 (5-B-1 fix: ignoreUndefinedProperties hoisted to index.ts)
  *
  * Trigger: Firebase Auth user.onCreate (Gen 1 API — works with firebase-functions v5)
  *
@@ -32,10 +32,8 @@ import type {
   ConsumerActivity,
 } from '@sound/shared';
 
-// ─── Admin SDK initialisation (idempotent — initializeApp called in index.ts) ─
-if (admin.apps.length === 0) {
-  admin.initializeApp();
-}
+// ─── Firestore reference (Admin SDK initialised + settings applied in index.ts) ────
+// ignoreUndefinedProperties is set in index.ts — do NOT re-set here.
 const db = admin.firestore();
 
 // ─── Default Privacy Settings ────────────────────────────────────────────────
