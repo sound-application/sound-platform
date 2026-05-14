@@ -2,10 +2,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     match /{document=**} {
-      // Secure by default: deny all
-      // sensitive writes go through server functions
-      // rules will expand per module
-      // wallet/payment/payout/audit writes must never be client-writable
       allow read, write: if false;
     }
   }

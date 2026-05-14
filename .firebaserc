@@ -1,0 +1,8 @@
+{
+  "projects": {
+    "default": "sound-platform-dev",
+    "dev": "sound-platform-dev"
+  },
+  "targets": {},
+  "etags": {}
+}
