@@ -52,29 +52,22 @@
 |---------|--------|-------|
 | Firebase Authentication | ✅ Enabled | Email/Password provider configured |
 | Cloud Firestore | ✅ Initialized | Region: `europe-west1`, rules: deny-all |
-| Cloud Storage | ⚠️ Partial | Rules file exists locally; bucket requires manual step (see below) |
+| Cloud Storage | ✅ Active | Bucket activated via Firebase Console. Storage API enabled. Rules ready locally (not yet deployed). |
 | Cloud Functions | 🚫 Not enabled | Dev only — will be enabled when backend work begins |
 | Firebase Hosting | 🚫 Not deployed | Config present but no production deployment |
 | Google Analytics | 🚫 Not enabled | Not needed for dev phase |
 
 ---
 
-## Manual Steps Required
+## Completed Manual Steps
 
-### 1. Cloud Storage Bucket Activation
-Storage rules are ready locally but the GCS bucket must be activated once via the Firebase Console:
-1. Go to: https://console.firebase.google.com/project/sound-platform-dev/storage
-2. Click **Get Started**
-3. Select **europe-west1** as the region
-4. Keep default rules (will be overridden by our deny-all rules on next deploy)
+### 1. Cloud Storage Bucket Activation — ✅ COMPLETE
+Storage bucket was activated via the Firebase Console during Phase 4-G-1.
+- Verification method: `firebase deploy --only storage --dry-run` confirmed `firebasestorage.googleapis.com` API is enabled and rules compile successfully.
+- Activation date: 2026-05-14 (Phase 4-G-1).
 
-> This is a one-time console action. No billing is required for Spark plan storage quotas.
-
-### 2. Firestore Database Initialization
-The Firestore database was initialized via CLI. If the Console shows it pending:
-1. Go to: https://console.firebase.google.com/project/sound-platform-dev/firestore
-2. Confirm database exists in `europe-west1`
-3. Confirm it is in **production mode** (not test mode)
+### 2. Firestore Database Initialization — ✅ COMPLETE
+Firestore database initialized in `europe-west1` production mode via Firebase CLI during Phase 4-F.
 
 ---
 
@@ -95,11 +88,6 @@ The Firestore database was initialized via CLI. If the Console shows it pending:
 
 ## Next Steps
 
-**Next phase: Phase 4-G — Firebase Security Rules and Initial Dev Seed Plan**
+**Phase 4-G — COMPLETE.** Security rules drafted locally, seed plan created.
 
-Goals for Phase 4-G:
-- Define Firestore security rules for all top-level collections
-- Define Storage security rules per content type
-- Create initial Firestore seed data structure for dev environment
-- Define auth claims structure for user roles (creator, listener, admin, moderator)
-- Document the rules rationale per collection
+**Next phase: Phase 4-H — Dev Seed Execution and Rules Deployment Decision.**

@@ -13,7 +13,7 @@
 | Firebase Project | ✅ Active | `sound-platform-dev` (Project #176645260774) |
 | Firebase Authentication | ✅ Enabled | Email/Password provider configured |
 | Cloud Firestore | ✅ Initialized | Region: `europe-west1`, deny-all rules |
-| Cloud Storage | ⚠️ Pending manual step | Rules ready locally. Bucket requires one-time console activation at https://console.firebase.google.com/project/sound-platform-dev/storage |
+| Cloud Storage | ✅ Active | Bucket activated via Firebase Console (Phase 4-G-1). Verified via deploy dry-run: `firebasestorage.googleapis.com` API enabled and rules compile successfully. Rules are local only — not yet deployed. |
 | Billing | ❌ Not enabled | Spark free plan — confirmed |
 | Production project | ❌ Does not exist | Dev only |
 
@@ -268,9 +268,9 @@ Default permissions for child accounts (before guardian approval):
 
 ## Next Steps — Phase 4-H
 
-1. Activate Cloud Storage bucket via Firebase Console (manual step, one-time).
+1. ✅ ~~Activate Cloud Storage bucket via Firebase Console~~ — **COMPLETE (Phase 4-G-1)**.
 2. Validate Firestore rules locally using Firebase Rules Playground or emulator.
-3. Deploy rules to `sound-platform-dev` after validation.
+3. Deploy rules to `sound-platform-dev` after validation (explicit approval required).
 4. Implement seed scripts in `firebase/seed/`.
 5. Run seed scripts against local emulator first, then optionally against dev project.
 6. Add composite Firestore indexes for known query patterns.
