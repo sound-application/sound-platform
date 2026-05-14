@@ -39,6 +39,8 @@ import { LivePage }          from '../pages/LivePage';
 import { ProfilePage }       from '../pages/ProfilePage';
 import { CreatePage }        from '../pages/CreatePage';
 import { SettingsPage }      from '../pages/SettingsPage';
+import { EditProfilePage }      from '../pages/EditProfilePage';
+import { PrivacySettingsPage }  from '../pages/PrivacySettingsPage';
 import { WorldPage }         from '../pages/WorldPage';
 import { LoginPage }         from '../pages/LoginPage';
 import { SignUpPage }        from '../pages/SignUpPage';
@@ -84,9 +86,11 @@ export function AppRouter() {
           <Route path="live"              element={<LivePage />} />
           <Route path="profile/:uid"      element={<ProfilePage />} />
           <Route path="me"                element={<ProfilePage isSelf />} />
-          <Route path="create"            element={<CreatePage />} />
-          <Route path="settings"          element={<SettingsPage />} />
-          <Route path="world/:worldId"    element={<WorldPage />} />
+          <Route path="create"                    element={<CreatePage />} />
+          <Route path="settings"                  element={<SettingsPage />} />
+          <Route path="settings/edit-profile"     element={<EditProfilePage />} />
+          <Route path="settings/privacy"           element={<PrivacySettingsPage />} />
+          <Route path="world/:worldId"            element={<WorldPage />} />
         </Route>
 
         {/* ── Fallback ───────────────────────────────────────────────── */}

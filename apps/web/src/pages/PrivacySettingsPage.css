@@ -1,0 +1,420 @@
+/**
+ * Sound Platform — Privacy Settings Page Styles
+ * ===============================================
+ * Phase:   5-C-2 (Dedicated Privacy Settings UI)
+ * Updated: 2026-05-14
+ *
+ * Design system: dark-mode (#171309 base), RTL-first, matches the rest of
+ * the settings and edit-profile pages in layout and token usage.
+ *
+ * Layout:
+ *   - Header with back button
+ *   - Sync notice bar
+ *   - Privacy level legend
+ *   - Grouped section rows (each with segmented control)
+ *   - Action bar (save + view public)
+ */
+
+/* ── Page container ──────────────────────────────────────────────────────────*/
+
+.privacy-settings-page {
+  max-width: 720px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 5rem;
+  direction: rtl;
+  text-align: right;
+}
+
+/* ── Header ──────────────────────────────────────────────────────────────────*/
+
+.privacy-settings__header {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  margin-bottom: 1.25rem;
+}
+
+.privacy-settings__back-btn {
+  background: none;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  color: var(--color-text-muted, #a8a29e);
+  font-size: 1.25rem;
+  line-height: 1;
+  padding: 0.45rem 0.65rem;
+  border-radius: 8px;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  flex-shrink: 0;
+  margin-top: 0.2rem;
+}
+.privacy-settings__back-btn:hover {
+  background: rgba(255, 255, 255, 0.07);
+  color: #fff;
+}
+
+.privacy-settings__header-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.privacy-settings__title {
+  font-size: 1.4rem;
+  font-weight: 700;
+  color: #fff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.privacy-settings__subtitle {
+  font-size: 0.82rem;
+  color: var(--color-text-muted, #a8a29e);
+  margin: 0;
+}
+
+/* ── Sync notice ─────────────────────────────────────────────────────────────*/
+
+.privacy-settings__sync-notice {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  background: rgba(139, 92, 246, 0.08);
+  border: 1px solid rgba(139, 92, 246, 0.2);
+  border-radius: 10px;
+  padding: 0.65rem 0.9rem;
+  font-size: 0.8rem;
+  color: var(--color-text-muted, #a8a29e);
+  margin-bottom: 1.25rem;
+}
+.privacy-settings__sync-notice strong {
+  color: #c4b5fd;
+}
+.privacy-settings__sync-icon {
+  font-size: 1rem;
+  flex-shrink: 0;
+}
+
+/* ── Legend ──────────────────────────────────────────────────────────────────*/
+
+.privacy-settings__legend {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+  flex-wrap: wrap;
+}
+
+.privacy-settings__legend-item {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  padding: 0.3rem 0.65rem;
+  border-radius: 20px;
+  font-size: 0.75rem;
+  font-weight: 500;
+  border: 1px solid transparent;
+}
+
+.privacy-settings__legend-item--public {
+  background: rgba(52, 211, 153, 0.1);
+  border-color: rgba(52, 211, 153, 0.25);
+  color: #6ee7b7;
+}
+.privacy-settings__legend-item--followers {
+  background: rgba(251, 191, 36, 0.1);
+  border-color: rgba(251, 191, 36, 0.25);
+  color: #fcd34d;
+}
+.privacy-settings__legend-item--private {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+}
+
+.privacy-settings__legend-icon {
+  font-size: 0.8rem;
+}
+
+/* ── Groups ──────────────────────────────────────────────────────────────────*/
+
+.privacy-settings__group {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 14px;
+  padding: 1rem;
+  margin-bottom: 1rem;
+}
+
+.privacy-settings__group-title {
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--color-text-muted, #a8a29e);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin: 0 0 0.85rem 0;
+  padding-bottom: 0.6rem;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+
+/* ── Section rows ────────────────────────────────────────────────────────────*/
+
+.privacy-settings__section-list {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.privacy-settings__section-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+/* Label side */
+.privacy-settings__section-label {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  flex: 1;
+  min-width: 0;
+}
+
+.privacy-settings__section-icon {
+  font-size: 1.1rem;
+  flex-shrink: 0;
+  width: 1.5rem;
+  text-align: center;
+}
+
+.privacy-settings__section-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  min-width: 0;
+}
+
+.privacy-settings__section-name {
+  font-size: 0.88rem;
+  font-weight: 600;
+  color: #e7e5e4;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.privacy-settings__section-desc {
+  font-size: 0.73rem;
+  color: var(--color-text-muted, #a8a29e);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ── Segmented control ───────────────────────────────────────────────────────*/
+
+.privacy-seg {
+  display: flex;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  overflow: hidden;
+  flex-shrink: 0;
+}
+
+.privacy-seg--disabled {
+  opacity: 0.45;
+}
+
+.privacy-seg__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  padding: 0.35rem 0.65rem;
+  background: transparent;
+  border: none;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+  color: var(--color-text-muted, #a8a29e);
+  font-size: 0.72rem;
+  font-weight: 500;
+  cursor: pointer;
+  transition: background 0.15s, color 0.15s;
+  white-space: nowrap;
+  font-family: inherit;
+}
+
+.privacy-seg__btn:first-child {
+  border-left: none;
+}
+
+.privacy-seg__btn:not(:disabled):hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+.privacy-seg__btn:disabled {
+  cursor: not-allowed;
+}
+
+/* Active states */
+.privacy-seg__btn--public.privacy-seg__btn--active {
+  background: rgba(52, 211, 153, 0.15);
+  color: #6ee7b7;
+}
+.privacy-seg__btn--followers.privacy-seg__btn--active {
+  background: rgba(251, 191, 36, 0.15);
+  color: #fcd34d;
+}
+.privacy-seg__btn--private.privacy-seg__btn--active {
+  background: rgba(239, 68, 68, 0.15);
+  color: #fca5a5;
+}
+
+.privacy-seg__icon {
+  font-size: 0.75rem;
+}
+
+/* ── Banners ──────────────────────────────────────────────────────────────────*/
+
+.privacy-settings__banner {
+  border-radius: 10px;
+  padding: 0.75rem 1rem;
+  font-size: 0.85rem;
+  margin-bottom: 1rem;
+  font-weight: 500;
+}
+
+.privacy-settings__banner--success {
+  background: rgba(52, 211, 153, 0.12);
+  border: 1px solid rgba(52, 211, 153, 0.3);
+  color: #6ee7b7;
+}
+
+.privacy-settings__banner--error {
+  background: rgba(239, 68, 68, 0.12);
+  border: 1px solid rgba(239, 68, 68, 0.3);
+  color: #fca5a5;
+}
+
+.privacy-settings__error-banner {
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid rgba(239, 68, 68, 0.25);
+  color: #fca5a5;
+  border-radius: 10px;
+  padding: 1rem;
+  margin-top: 2rem;
+  font-size: 0.9rem;
+}
+
+/* ── Actions ──────────────────────────────────────────────────────────────────*/
+
+.privacy-settings__actions {
+  display: flex;
+  gap: 0.75rem;
+  margin-top: 1.25rem;
+  flex-wrap: wrap;
+}
+
+.privacy-settings__btn {
+  padding: 0.65rem 1.25rem;
+  border-radius: 10px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  font-family: inherit;
+  transition: opacity 0.15s, transform 0.1s;
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+}
+
+.privacy-settings__btn:active {
+  transform: scale(0.97);
+}
+
+.privacy-settings__btn--primary {
+  background: linear-gradient(135deg, #7c3aed, #6d28d9);
+  color: #fff;
+  flex: 1;
+  justify-content: center;
+  min-width: 140px;
+}
+.privacy-settings__btn--primary:hover:not(:disabled) {
+  opacity: 0.9;
+}
+.privacy-settings__btn--primary:disabled {
+  opacity: 0.65;
+  cursor: not-allowed;
+}
+
+.privacy-settings__btn--secondary {
+  background: rgba(255, 255, 255, 0.07);
+  color: var(--color-text-muted, #a8a29e);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.privacy-settings__btn--secondary:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+.privacy-settings__btn--loading {
+  background: rgba(124, 58, 237, 0.5);
+}
+
+/* ── Spinner ──────────────────────────────────────────────────────────────────*/
+
+.privacy-settings__spinner {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border: 2px solid rgba(255, 255, 255, 0.3);
+  border-top-color: #fff;
+  border-radius: 50%;
+  animation: privacy-spin 0.7s linear infinite;
+}
+
+@keyframes privacy-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Mobile ───────────────────────────────────────────────────────────────────*/
+
+@media (max-width: 600px) {
+  .privacy-settings-page {
+    padding: 1rem 0.75rem 5rem;
+  }
+
+  .privacy-settings__section-row {
+    flex-direction: column;
+    align-items: flex-start;
+    padding-bottom: 0.75rem;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.05);
+  }
+
+  .privacy-settings__section-row:last-child {
+    padding-bottom: 0;
+    border-bottom: none;
+  }
+
+  .privacy-seg {
+    width: 100%;
+  }
+
+  .privacy-seg__btn {
+    flex: 1;
+    justify-content: center;
+  }
+
+  .privacy-settings__actions {
+    flex-direction: column;
+  }
+
+  .privacy-settings__btn {
+    width: 100%;
+    justify-content: center;
+  }
+
+  .privacy-settings__legend {
+    gap: 0.4rem;
+  }
+}
