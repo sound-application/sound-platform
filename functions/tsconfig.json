@@ -2,10 +2,16 @@
   "extends": "../tsconfig.base.json",
   "compilerOptions": {
     "outDir": "lib",
-    "sourceMap": true
+    "sourceMap": true,
+    "baseUrl": ".",
+    "paths": {
+      "@sound/shared": ["../packages/shared/src/index.ts"],
+      "@sound/shared/*": ["../packages/shared/src/*"]
+    }
   },
   "compileOnSave": true,
   "include": [
-    "src"
+    "src",
+    "../packages/shared/src"
   ]
 }
