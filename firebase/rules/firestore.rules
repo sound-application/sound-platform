@@ -4,36 +4,60 @@ rules_version = '2';
 // Sound Platform — Cloud Firestore Security Rules
 // Project:  sound-platform-dev
 // Region:   europe-west1
-// Phase:    4-H-1 (Development Draft — NOT yet deployed to production)
+// Phase:    4-H-2 (Development Draft — NOT yet deployed to production)
 // Updated:  2026-05-14
 //
-// PERMISSION MODEL CORRECTION (Phase 4-H-1):
-//   - VIEWING is broadly available to any authenticated user.
-//     Plus is NOT a viewer gate. Published content in ANY world
-//     (General, Plus, Music, Radio, Live) is readable by any
-//     authenticated user. The only read gates are:
-//       * status == 'published'
-//       * privacy settings (enforced via Cloud Function projection)
-//       * moderation / block state (enforced server-side)
-//   - CREATION / PUBLISHING is capability-gated:
-//       * General world: open by default (restricted by bans/violations)
-//       * Plus world publishing: requires plus_creator capability (CF check)
-//       * Music: requires music_creator (CF check)
-//       * Radio: requires radio_creator (CF check)
-//     All capability checks are enforced by Cloud Functions.
-//     These rules do NOT attempt to check capabilities client-side.
+// PERMISSION MODEL (Phase 4-H-2 — Privacy Correction):
 //
-// ORIGINAL STRATEGY:
-//   - Default deny everything unless explicitly permitted.
+//   PROFILE PRIVACY:
+//   - users/{uid}        → PRIVATE. Readable only by owner, admin, or server.
+//                          Contains: settings, capabilities, restrictions,
+//                          privacy config, internal flags, consumer activity.
+//                          Raw document NEVER accessible to other users.
+//   - publicProfiles/{uid} → PUBLIC PROJECTION. Readable by any auth user.
+//                          Built section-by-section from users/{uid} by a
+//                          Cloud Function, respecting privacy settings.
+//                          Contains only what the owner has made visible.
+//
+//   PUBLIC PROFILE SECTIONS (all independently privacy-controlled):
+//     - general profile (username, bio, avatar, counters)
+//     - mood
+//     - listening activity (latest listened item)
+//     - followed radio stations
+//     - followed radio station lists
+//     - music playlists
+//     - Plus creator content section
+//     - Music creator content section
+//     - Radio creator content section
+//
+//   VIEWING CONTENT:
+//   - Plus is NOT a viewer gate. Published content in ANY world is readable
+//     by any authenticated user. Read gates: published status, moderation.
+//   - Privacy and block enforcement is done by Cloud Function projection.
+//
+//   CREATION / PUBLISHING:
+//   - General world: open by default (restricted by bans/violations/admin action)
+//   - General live: any user unless account is restricted
+//   - Plus world publishing: requires plus_creator capability (CF check)
+//   - Plus live: requires plus_creator capability
+//   - Music uploading: requires music_creator capability
+//   - Radio stations: requires radio_creator capability
+//   All capability checks are enforced by Cloud Functions only.
+//
+//   RADIO SPECIFICS:
+//   - Radio station has ownerProfileId + contact page/config
+//   - Radio comments live inside the radio player collection
+//   - Live broadcast messages route to the inbox of the station owner profile
+//
+// GENERAL STRATEGY:
+//   - Default deny everything unless explicitly matched below.
 //   - Sensitive collections (wallet, payment, payout, audit,
-//     adminConfig, moderationQueue) are SERVER-ONLY: no client
-//     read or write is ever permitted from these rules.
-//   - Cloud Functions enforce all writes to server-only
-//     collections via the Admin SDK (bypasses these rules).
-//   - Child-safety and guardian-approval flows are always
-//     server-only; no client bypass is permitted.
-//   - Admin claims are set by Cloud Functions only and
-//     checked via request.auth.token.role.
+//     adminConfig, moderationQueue, kycDocuments, childGuardianLinks)
+//     are SERVER-ONLY: no client read or write permitted.
+//   - Cloud Functions enforce all writes to server-only collections
+//     via the Admin SDK (bypasses these rules).
+//   - Admin claims are set by Cloud Functions only, checked via
+//     request.auth.token.role.
 // ============================================================
 
 service cloud.firestore {
@@ -94,26 +118,27 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------
-    // users/{uid}
-    // Profile and account info.
-    // Owner: full read/write of own document.
-    // Others: read public projection only (enforce via subcollection
-    //         or field mask — full doc read kept server-side).
-    // Children accounts: writes gated by guardian approval
-    //   (enforced in Cloud Function, not client rules).
+    // users/{uid}  — PRIVATE internal profile document
+    //
+    // Contains: settings, capabilities, restrictions, privacy config,
+    // internal flags, consumer activity raw data.
+    //
+    // NEVER readable by other users via client SDK.
+    // Other users access profile data ONLY through publicProfiles/{uid}.
+    // Cloud Functions read this doc to build the public projection.
+    // Children accounts: writes gated by guardian approval (CF only).
     // ----------------------------------------------------------
     match /users/{uid} {
-      // Owner: full read. Admin: full read.
-      // Any authenticated user: read allowed — Cloud Function projection
-      // endpoint filters to PublicProfileProjection, so raw doc fields
-      // never leak to non-owners through the Cloud Function layer.
-      // Privacy settings (listening activity, followers, etc.) are
-      // enforced by the Cloud Function, not by these rules.
-      allow read: if isAuth();
-      // Owner can update own non-sensitive fields.
-      // Sensitive fields (role, accountType, walletId, kycStatus,
-      // guardianUid, isMinor, bannedAt, capability modules) must only
-      // be written via Cloud Functions using Admin SDK.
+      // Owner: full read of own private document.
+      // Admin: full read (moderation, support).
+      // ALL OTHER USERS: denied — must use publicProfiles/{uid} instead.
+      allow read: if isOwner(uid) || isAdmin();
+
+      // Owner can update own non-sensitive profile fields.
+      // The following fields are permanently server-only:
+      //   role, accountType, walletId, kycStatus, guardianUid, isMinor,
+      //   bannedAt, suspendedAt, deletedAt, createdAt,
+      //   capabilities, restrictions, isBanned
       allow update: if isOwner(uid)
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['role', 'accountType', 'walletId', 'kycStatus',
@@ -122,6 +147,34 @@ service cloud.firestore {
                      'capabilities', 'restrictions', 'isBanned']);
       allow create: if false; // Cloud Function (onUserCreate trigger) only
       allow delete: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // publicProfiles/{uid}  — Public profile projection
+    //
+    // This collection holds section-based public projections built
+    // by Cloud Functions from users/{uid}, respecting privacy settings.
+    //
+    // Each document contains only sections the owner has made visible.
+    // Privacy-hidden sections are entirely absent (not null/empty).
+    //
+    // Sections (each independently privacy-controlled):
+    //   - generalProfile   (username, bio, avatar, social counters)
+    //   - mood             (current mood string)
+    //   - listeningActivity (latest listened item)
+    //   - followedRadioStations
+    //   - followedRadioStationLists
+    //   - musicPlaylists
+    //   - plusCreatorContent (Plus world content list — visibility only)
+    //   - musicCreatorContent (Music world content list)
+    //   - radioCreatorContent (Radio stations/shows list)
+    //
+    // Read: any authenticated user.
+    // Write: Cloud Function only (onUserUpdate, onPrivacyChange triggers).
+    // ----------------------------------------------------------
+    match /publicProfiles/{uid} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function only — never client-writable
     }
 
     // ----------------------------------------------------------
@@ -337,11 +390,41 @@ service cloud.firestore {
     }
 
     // radioStations/{stationId} — Platform radio station registry
-    // Read: authenticated users can read (stations are public info).
-    // Write: Cloud Function / admin panel only.
+    //
+    // Schema fields include:
+    //   ownerProfileId  — uid of the profile that created/owns the station
+    //   contactConfig   — contact page fields (social links, email, etc.)
+    //
+    // Read: any authenticated user (station info is public).
+    // Write: Cloud Function only (radio_creator capability enforced there).
+    //
+    // Radio comments live inside the radio player (playerComments subcollection).
+    // Live broadcast messages are routed to the inbox of the ownerProfileId
+    //   profile's notifications — handled by Cloud Function, not client rules.
     match /radioStations/{stationId} {
       allow read: if isAuth();
-      allow write: if false; // Cloud Function / Admin SDK only
+      allow write: if false; // Cloud Function only (radio_creator capability check enforced there)
+
+      // Radio player comments subcollection
+      // Comments display inside the radio player UI (not the general comment feed).
+      // Read: any authenticated user.
+      // Create: authenticated user (Cloud Function validates restrictions).
+      // Update/Delete: Cloud Function only (moderation / owner management).
+      match /playerComments/{commentId} {
+        allow read: if isAuth();
+        allow create: if isAuth()
+          && request.resource.data.authorUid == request.auth.uid;
+        allow update, delete: if false; // Cloud Function / moderation only
+      }
+
+      // Radio station contact page configuration
+      // Contains: contact form config, social links, station email, etc.
+      // Readable by any authenticated user (same as the station itself).
+      // Writable by Cloud Function only.
+      match /contactPage/{docId} {
+        allow read: if isAuth();
+        allow write: if false; // Cloud Function only
+      }
     }
 
     // packages/{packageId} — Subscription package definitions

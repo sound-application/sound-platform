@@ -1,50 +1,53 @@
 /**
  * Sound Platform — Modular Profile Schema
  * =========================================
- * Phase:   4-H-1
+ * Phase:   4-H-2 (Privacy Correction)
  * Updated: 2026-05-14
  *
- * ARCHITECTURE:
- *   A profile is NOT a fixed user type. Every profile starts from
- *   a normal audio-first base profile (BaseProfile). Capability
- *   modules are then added on top, making the profile Plus-capable,
- *   Music-capable, Radio-capable, etc.
- *
- *   There is NO separate "creator account" type — capabilities are
- *   additive modules, checked server-side against the user's
- *   active entitlements and permissions.
+ * DOCUMENT SPLIT (Phase 4-H-2):
+ *   users/{uid}          → PRIVATE. Owner + admin readable only.
+ *                           Contains raw profile data, settings, capabilities,
+ *                           restrictions, consumer activity, privacy config.
+ *   publicProfiles/{uid} → PUBLIC PROJECTION. Any authenticated user can read.
+ *                           Built section-by-section by Cloud Function.
+ *                           Only contains what owner has made visible.
  *
  * SEPARATION:
- *   - Consumer activity  → what the user has listened to / saved / followed
- *   - Creator ownership → what the user has published / owns / manages
- *   Both are always privacy-controlled individually.
+ *   - Consumer activity  → what the user listened to / saved / followed
+ *   - Creator ownership  → what the user published / owns / manages
+ *   Both are individually privacy-controlled sections in the public projection.
  */
 
 // ─── Privacy Control ─────────────────────────────────────────────────────────
 
+/**
+ * PrivacySection — identifies each independently privacy-controlled section
+ * of a public profile. Each section has its own PrivacyLevel.
+ */
+export type PrivacySection =
+  | 'generalProfile'           // username, bio, avatar, social counters
+  | 'mood'                     // current mood string
+  | 'listeningActivity'        // latest listened item / total time
+  | 'followedRadioStations'    // followed radio stations list
+  | 'followedRadioStationLists'// followed radio station lists
+  | 'musicPlaylists'           // music playlists owned/followed
+  | 'savedItems'               // bookmarked/saved items
+  | 'storyViews'               // story view activity
+  | 'activityStatus'           // online / offline / hidden
+  | 'pinnedContent'            // pinned item on profile
+  | 'achievements'             // badges / gamification
+  | 'following'                // who the user follows
+  | 'followers'                // follower list
+  | 'directMessages'           // DM permission
+  | 'plusCreatorContent'       // Plus world published content
+  | 'musicCreatorContent'      // Music world content (songs, albums)
+  | 'radioCreatorContent';     // Radio stations / shows owned
+
 /** Controls who can see a specific profile section. */
 export type PrivacyLevel = 'public' | 'followers' | 'private';
 
-export interface PrivacySettings {
-  /** Who can see listening activity (songs, playlists, stations) */
-  listeningActivity: PrivacyLevel;
-  /** Who can see followed accounts / channels */
-  following: PrivacyLevel;
-  /** Who can see followers list */
-  followers: PrivacyLevel;
-  /** Who can see saved items */
-  savedItems: PrivacyLevel;
-  /** Who can see story views */
-  storyViews: PrivacyLevel;
-  /** Who can see online/activity status */
-  activityStatus: PrivacyLevel;
-  /** Who can see pinned content */
-  pinnedContent: PrivacyLevel;
-  /** Who can see points / achievements */
-  achievements: PrivacyLevel;
-  /** Allow direct messages from */
-  directMessages: PrivacyLevel;
-}
+/** Full privacy settings map — one PrivacyLevel per PrivacySection. */
+export type PrivacySettings = { [K in PrivacySection]: PrivacyLevel };
 
 // ─── Listening & Consumer Activity ───────────────────────────────────────────
 
@@ -96,13 +99,18 @@ export interface ConsumerActivity {
 
 // ─── Base Profile (Audio-First, Normal User) ─────────────────────────────────
 
+// ─── Private User Document (users/{uid}) ─────────────────────────────────────
+
 /**
- * BaseProfile — the foundation every Sound account starts from.
+ * UserPrivateDoc — the internal document stored at users/{uid}.
  *
- * This is a normal, audio-first, privacy-aware profile.
- * All capability modules (Plus, Music, Radio) extend this.
+ * NEVER readable by other users via client SDK.
+ * Readable only by: owner, admin, Cloud Functions (Admin SDK).
+ *
+ * Capability modules are stored as a flat capabilities map.
+ * Restrictions are stored as an array of ActiveRestriction objects.
  */
-export interface BaseProfile {
+export interface UserPrivateDoc {
   // Identity
   uid: string;
   username: string;
@@ -110,75 +118,80 @@ export interface BaseProfile {
   avatarUrl?: string;
   coverUrl?: string;
 
-  // Verification & trust
+  // Verification
   isVerified: boolean;
   verificationBadgeType?: 'creator' | 'artist' | 'radio' | 'company' | 'official';
 
-  // Bio
+  // Bio (owner-editable)
   bio?: string;
   location?: string;
   websiteUrl?: string;
   mood?: string;
+  socialLinks: Record<string, string>;
 
-  // Social links
-  socialLinks: {
-    instagram?: string;
-    twitter?: string;
-    youtube?: string;
-    tiktok?: string;
-    [key: string]: string | undefined;
-  };
-
-  // Social counters
+  // Counters (updated by Cloud Function aggregation)
   followersCount: number;
   followingCount: number;
   likesCount: number;
   postsCount: number;
   listensCount: number;
 
-  // Activity
-  latestActivity?: string; // ISO timestamp
-  joinedAt: string;        // ISO timestamp
+  // Timestamps
+  joinedAt: string;
+  latestActivity?: string;
+
+  // Status
   activityStatus: 'online' | 'offline' | 'hidden';
 
-  // Published content (creator-owned items — always visible to owner, privacy-gated for others)
-  posts: string[];        // IDs of published posts
-  stories: string[];      // IDs of active stories
-  audioContent: string[]; // IDs of published audio content
-  liveSessions: string[]; // IDs of past live sessions (public if published)
-  reposts: string[];      // IDs of reposted content
-  replies: string[];      // IDs of replies/comments
-  comments: string[];     // IDs of comments on others' content
-  pinnedContent?: string; // ID of pinned item
+  // Creator-owned content IDs (per capability module)
+  posts: string[];
+  stories: string[];
+  audioContent: string[];
+  liveSessions: string[];
+  reposts: string[];
+  replies: string[];
+  comments: string[];
+  pinnedContent?: string;
 
-  // Consumer activity (all privacy-controlled)
+  // Consumer activity (raw, privacy-controlled in public projection)
   consumerActivity: ConsumerActivity;
 
   // Gamification
-  badges: string[];       // Badge/achievement IDs
-  achievements: string[]; // Achievement IDs
-  points: number;         // Current points balance
-  gifts: string[];        // Gift IDs received
+  badges: string[];
+  achievements: string[];
+  points: number;
+  gifts: string[];
 
   // Subscriptions
-  subscriptions: string[]; // Active package subscription IDs
+  subscriptions: string[];
 
-  // Privacy controls
+  // Privacy settings — one level per section
   privacy: PrivacySettings;
 
-  // System
-  isMinor: boolean;
-  guardianUid?: string;  // Set by Cloud Function only if isMinor
-  isBlocked: boolean;    // Computed — true if viewer has blocked this profile
-  isMuted: boolean;      // Computed — true if viewer has muted this profile
-  isBanned: boolean;     // Set by Cloud Function only
+  // Capability modules (granted by CF only)
+  capabilities: {
+    plus_creator?: true;
+    music_creator?: true;
+    radio_creator?: true;
+    competition_jury?: true;
+    ads_creator?: true;
+    promoter?: true;
+  };
 
-  // UI action state (computed at read-time, not stored)
-  canFollow?: boolean;
-  canMessage?: boolean;
-  canReport?: boolean;
-  canBlock?: boolean;
-  canMute?: boolean;
+  // System fields (all set by Cloud Function / Admin SDK only)
+  isMinor: boolean;
+  guardianUid?: string;
+  isBanned: boolean;
+  bannedAt?: string;
+  suspendedAt?: string;
+  deletedAt?: string;
+  createdAt: string;
+
+  // Role (set by Cloud Function / Admin SDK only)
+  role: 'superAdmin' | 'admin' | 'moderator' | 'creator' | 'listener';
+  accountType: 'normal' | 'plus' | 'music' | 'radio'; // legacy field — use capabilities instead
+  walletId?: string; // server-only reference
+  kycStatus?: 'pending' | 'approved' | 'rejected'; // server-only
 }
 
 // ─── Capability Modules ───────────────────────────────────────────────────────
@@ -224,6 +237,15 @@ export interface MusicCreatorModule {
  *
  * Adding radio stations requires radio capability entitlement.
  * Radio profiles can publish content into General or Plus depending on capabilities.
+ *
+ * Radio station schema note:
+ *   - Each radioStation document has an ownerProfileId field
+ *     pointing to the uid of the profile that created/owns it.
+ *   - Each radioStation has a contactPage subcollection with
+ *     contact config (social links, station email, form config).
+ *   - Radio player comments are stored in radioStations/{id}/playerComments.
+ *   - Live broadcast messages route to the notifications inbox of
+ *     the ownerProfileId profile (handled by Cloud Function).
  */
 export interface RadioCreatorModule {
   radioEnabled: true;
@@ -237,32 +259,55 @@ export interface RadioCreatorModule {
   radioLists: string[];
 }
 
-// ─── Composed Profile Types ───────────────────────────────────────────────────
 
-/** 1. Normal profile — base audio-first profile only. */
-export type NormalProfile = BaseProfile;
 
-/** 2. Plus-capable profile — normal + Plus creator module. */
-export type PlusCapableProfile = BaseProfile & PlusCreatorModule;
 
-/** 3. Music-capable profile — normal + Music creator module. */
-export type MusicCapableProfile = BaseProfile & MusicCreatorModule;
-
-/** 4. Radio-capable profile — normal + Radio creator module. */
-export type RadioCapableProfile = BaseProfile & RadioCreatorModule;
+// ─── BaseProfile type alias (capability composition base) ────────────────────
 
 /**
- * 5. Super profile — all modules enabled simultaneously.
- *    A user can hold multiple capability modules at once.
+ * BaseProfile — the base set of fields common to all profile capability views.
+ * Used as the foundation for capability module intersection types.
+ * Represents the public-facing identity portion (does NOT include private fields).
  */
+export interface BaseProfile {
+  uid: string; // present in API responses as the lookup key only
+  username: string;
+  displayName: string;
+  avatarUrl?: string;
+  coverUrl?: string;
+  isVerified: boolean;
+  verificationBadgeType?: 'creator' | 'artist' | 'radio' | 'company' | 'official';
+  bio?: string;
+  location?: string;
+  websiteUrl?: string;
+  mood?: string;
+  socialLinks: Record<string, string>;
+  followersCount: number;
+  followingCount: number;
+  likesCount: number;
+  postsCount: number;
+  listensCount: number;
+  joinedAt: string;
+  activityStatus: 'online' | 'offline' | 'hidden';
+  badges: string[];
+  pinnedContent?: string;
+  // Computed viewer-relative flags (not stored, set by CF at read time)
+  isBlocked?: boolean;
+  isMuted?: boolean;
+  canFollow?: boolean;
+  canMessage?: boolean;
+  canReport?: boolean;
+  canBlock?: boolean;
+  canMute?: boolean;
+}
+
+/** Composed profile types (capability intersection) */
+export type NormalProfile = BaseProfile;
+export type PlusCapableProfile = BaseProfile & PlusCreatorModule;
+export type MusicCapableProfile = BaseProfile & MusicCreatorModule;
+export type RadioCapableProfile = BaseProfile & RadioCreatorModule;
 export type SuperProfile = BaseProfile & PlusCreatorModule & MusicCreatorModule & RadioCreatorModule;
 
-/**
- * Profile — the discriminated union of all possible profile states.
- * The active capabilities are determined by the user's entitlements,
- * resolved server-side only. The UI renders sections conditionally
- * based on the capabilities present in the API response.
- */
 export type Profile =
   | NormalProfile
   | PlusCapableProfile
@@ -270,31 +315,31 @@ export type Profile =
   | RadioCapableProfile
   | SuperProfile;
 
-// ─── Profile Capability Guards ────────────────────────────────────────────────
+// ─── Capability Guards ────────────────────────────────────────────────────────
 
 export function hasPlusCapability(p: Profile): p is PlusCapableProfile | SuperProfile {
-  return 'plusEnabled' in p && p.plusEnabled === true;
+  return 'plusEnabled' in p && (p as PlusCreatorModule).plusEnabled === true;
 }
 
 export function hasMusicCapability(p: Profile): p is MusicCapableProfile | SuperProfile {
-  return 'musicEnabled' in p && p.musicEnabled === true;
+  return 'musicEnabled' in p && (p as MusicCreatorModule).musicEnabled === true;
 }
 
 export function hasRadioCapability(p: Profile): p is RadioCapableProfile | SuperProfile {
-  return 'radioEnabled' in p && p.radioEnabled === true;
+  return 'radioEnabled' in p && (p as RadioCreatorModule).radioEnabled === true;
 }
 
-// ─── Public Profile Projection ────────────────────────────────────────────────
+// ─── Public Profile Document (publicProfiles/{uid}) ──────────────────────────
 
 /**
- * PublicProfileProjection — the safe public-facing subset of a profile.
- * Returned by the Cloud Function /profile endpoint when the viewer
- * is NOT the owner. Privacy settings determine which fields are included.
- *
- * NEVER expose: uid (raw), isMinor, guardianUid, isBanned, wallet data,
- * private playlists, billing info, device sessions.
+ * PublicProfileSection — each independently privacy-controlled block
+ * that may appear in a publicProfiles/{uid} document.
+ * The Cloud Function includes a section only if its PrivacyLevel permits
+ * the viewing user. Privacy-hidden sections are ABSENT (not null/empty).
  */
-export interface PublicProfileProjection {
+
+/** General section — always present if profile is not fully private. */
+export interface GeneralProfileSection {
   username: string;
   displayName: string;
   avatarUrl?: string;
@@ -304,16 +349,120 @@ export interface PublicProfileProjection {
   bio?: string;
   location?: string;
   websiteUrl?: string;
-  mood?: string;
+  socialLinks: Record<string, string>;
   followersCount: number;
   followingCount: number;
   postsCount: number;
   listensCount: number;
   joinedAt: string;
-  activityStatus: 'online' | 'offline' | 'hidden';
   badges: string[];
-  // Capability flags (no sensitive data)
   isPlusCreator: boolean;
   isMusicCreator: boolean;
   isRadioCreator: boolean;
+  // Viewer-relative computed flags
+  isBlocked?: boolean;
+  isMuted?: boolean;
+  canFollow?: boolean;
+  canMessage?: boolean;
+  canReport?: boolean;
+  canBlock?: boolean;
+  canMute?: boolean;
+}
+
+/** Mood section (privacy-controlled). */
+export interface MoodSection {
+  mood: string;
+}
+
+/** Activity status section (privacy-controlled). */
+export interface ActivityStatusSection {
+  activityStatus: 'online' | 'offline' | 'hidden';
+}
+
+/** Listening activity section (privacy-controlled). */
+export interface ListeningActivitySection {
+  latestListenedItem?: ListenedItemRef;
+  latestListenedSong?: ListenedItemRef;
+  latestListenedRadioStation?: ListenedItemRef;
+  latestListenedList?: ListenedItemRef;
+  totalListeningTimeSecs?: number;
+}
+
+/** Followed radio stations section (privacy-controlled). */
+export interface FollowedRadioStationsSection {
+  followedRadioStations: FollowedRef[];
+}
+
+/** Followed radio station lists section (privacy-controlled). */
+export interface FollowedRadioStationListsSection {
+  followedRadioStationLists: FollowedRef[];
+}
+
+/** Music playlists section (privacy-controlled). */
+export interface MusicPlaylistsSection {
+  songPlaylists: FollowedRef[];
+  publicPlaylists: FollowedRef[];
+}
+
+/** Pinned content section (privacy-controlled). */
+export interface PinnedContentSection {
+  pinnedContent: string;
+}
+
+/** Achievements section (privacy-controlled). */
+export interface AchievementsSection {
+  badges: string[];
+  achievements: string[];
+}
+
+/** Plus creator content section (privacy-controlled, only if has plus_creator capability). */
+export interface PlusCreatorContentSection {
+  plusContent: string[];       // Content IDs published in Plus world
+  plusLiveSessions: string[];  // Live session IDs in Plus world
+  plusLists: string[];         // Plus-world playlist IDs
+}
+
+/** Music creator content section (privacy-controlled, only if has music_creator capability). */
+export interface MusicCreatorContentSection {
+  uploadedSongs: string[];
+  albums: string[];
+  musicPlaylists: string[];
+  musicLists: string[];
+}
+
+/** Radio creator content section (privacy-controlled, only if has radio_creator capability). */
+export interface RadioCreatorContentSection {
+  ownedRadioStations: string[];
+  radioShows: string[];
+  radioEpisodes: string[];
+  radioLists: string[];
+}
+
+/**
+ * PublicProfileDoc — the document stored at publicProfiles/{uid}.
+ *
+ * Built section-by-section by Cloud Function.
+ * Each optional section is included ONLY if the viewer's relationship
+ * satisfies the owner's PrivacyLevel for that section.
+ * Privacy-hidden sections are absent from the document entirely.
+ */
+export interface PublicProfileDoc {
+  uid: string;
+  // generalProfile is always present (else the profile is fully private / not found)
+  generalProfile: GeneralProfileSection;
+  // Optional sections — present only when privacy allows
+  mood?: MoodSection;
+  activityStatus?: ActivityStatusSection;
+  listeningActivity?: ListeningActivitySection;
+  followedRadioStations?: FollowedRadioStationsSection;
+  followedRadioStationLists?: FollowedRadioStationListsSection;
+  musicPlaylists?: MusicPlaylistsSection;
+  pinnedContent?: PinnedContentSection;
+  achievements?: AchievementsSection;
+  // Creator content sections — present only if capability active AND privacy allows
+  plusCreatorContent?: PlusCreatorContentSection;
+  musicCreatorContent?: MusicCreatorContentSection;
+  radioCreatorContent?: RadioCreatorContentSection;
+  // Meta
+  lastUpdatedAt: string; // ISO — when the CF last rebuilt this projection
 }
