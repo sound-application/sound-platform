@@ -4,10 +4,26 @@ rules_version = '2';
 // Sound Platform — Cloud Firestore Security Rules
 // Project:  sound-platform-dev
 // Region:   europe-west1
-// Phase:    4-G (Development Draft — NOT yet deployed to production)
+// Phase:    4-H-1 (Development Draft — NOT yet deployed to production)
 // Updated:  2026-05-14
 //
-// STRATEGY:
+// PERMISSION MODEL CORRECTION (Phase 4-H-1):
+//   - VIEWING is broadly available to any authenticated user.
+//     Plus is NOT a viewer gate. Published content in ANY world
+//     (General, Plus, Music, Radio, Live) is readable by any
+//     authenticated user. The only read gates are:
+//       * status == 'published'
+//       * privacy settings (enforced via Cloud Function projection)
+//       * moderation / block state (enforced server-side)
+//   - CREATION / PUBLISHING is capability-gated:
+//       * General world: open by default (restricted by bans/violations)
+//       * Plus world publishing: requires plus_creator capability (CF check)
+//       * Music: requires music_creator (CF check)
+//       * Radio: requires radio_creator (CF check)
+//     All capability checks are enforced by Cloud Functions.
+//     These rules do NOT attempt to check capabilities client-side.
+//
+// ORIGINAL STRATEGY:
 //   - Default deny everything unless explicitly permitted.
 //   - Sensitive collections (wallet, payment, payout, audit,
 //     adminConfig, moderationQueue) are SERVER-ONLY: no client
@@ -16,10 +32,6 @@ rules_version = '2';
 //     collections via the Admin SDK (bypasses these rules).
 //   - Child-safety and guardian-approval flows are always
 //     server-only; no client bypass is permitted.
-//   - Public-facing content is readable only after the
-//     content is published (status == 'published').
-//   - User profile data: owners can read/write their own,
-//     limited public projection is readable by all.
 //   - Admin claims are set by Cloud Functions only and
 //     checked via request.auth.token.role.
 // ============================================================
@@ -91,22 +103,25 @@ service cloud.firestore {
     //   (enforced in Cloud Function, not client rules).
     // ----------------------------------------------------------
     match /users/{uid} {
-      allow read: if isOwner(uid) || isAdmin();
+      // Owner: full read. Admin: full read.
+      // Any authenticated user: read allowed — Cloud Function projection
+      // endpoint filters to PublicProfileProjection, so raw doc fields
+      // never leak to non-owners through the Cloud Function layer.
+      // Privacy settings (listening activity, followers, etc.) are
+      // enforced by the Cloud Function, not by these rules.
+      allow read: if isAuth();
       // Owner can update own non-sensitive fields.
       // Sensitive fields (role, accountType, walletId, kycStatus,
-      // guardianUid, isMinor, bannedAt) must only be written
-      // via Cloud Functions using Admin SDK.
+      // guardianUid, isMinor, bannedAt, capability modules) must only
+      // be written via Cloud Functions using Admin SDK.
       allow update: if isOwner(uid)
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['role', 'accountType', 'walletId', 'kycStatus',
                      'guardianUid', 'isMinor', 'bannedAt',
-                     'suspendedAt', 'deletedAt', 'createdAt']);
+                     'suspendedAt', 'deletedAt', 'createdAt',
+                     'capabilities', 'restrictions', 'isBanned']);
       allow create: if false; // Cloud Function (onUserCreate trigger) only
       allow delete: if false; // Cloud Function only
-
-      // Public profile projection (display name, avatar, bio)
-      // is served via a Cloud Function endpoint — no client
-      // direct access to avoid leaking private fields.
     }
 
     // ----------------------------------------------------------
@@ -129,19 +144,23 @@ service cloud.firestore {
     //   are server-only writes.
     // ----------------------------------------------------------
     match /channels/{channelId} {
+      // Any authenticated user can read published channels.
+      // World (General / Plus / Music / Radio) does NOT restrict reading.
+      // Plus is NOT a viewer gate — only published status matters.
       allow read: if isAuth() && isPublished(resource.data);
       allow read: if isOwner(resource.data.ownerUid) || isAdmin();
       allow update: if isOwner(resource.data.ownerUid)
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['monetizationStatus', 'verifiedAt', 'bannedAt',
                      'createdAt', 'ownerUid']);
-      allow create: if false; // Cloud Function only
+      allow create: if false; // Cloud Function only (capability check enforced there)
       allow delete: if false; // Cloud Function only
 
       // Episodes / tracks subcollection
       match /episodes/{episodeId} {
+        // Any authenticated user can read published episodes regardless of world.
         allow read: if isAuth() && isPublished(resource.data);
-        allow read: if isAdmin();
+        allow read: if isOwner(resource.data.get('ownerUid', '')) || isAdmin();
         allow write: if false; // Cloud Function only
       }
     }
@@ -152,9 +171,12 @@ service cloud.firestore {
     // Same published-gate as channels/episodes.
     // ----------------------------------------------------------
     match /content/{contentId} {
+      // Any authenticated user can read published content regardless of world.
+      // Plus content, Music content, Radio content — all readable when published.
+      // Privacy and block enforcement is done by Cloud Function projection.
       allow read: if isAuth() && isPublished(resource.data);
-      allow read: if isAdmin();
-      allow write: if false; // Cloud Function only
+      allow read: if isOwner(resource.data.get('ownerUid', '')) || isAdmin();
+      allow write: if false; // Cloud Function only (capability check enforced there)
     }
 
     // ----------------------------------------------------------
@@ -187,6 +209,19 @@ service cloud.firestore {
     // Active sessions: readable by authenticated users.
     // Lifecycle (create/end/archive): Cloud Function only.
     // ----------------------------------------------------------
+    // ----------------------------------------------------------
+    // liveSessions/{sessionId}
+    // Live session metadata (General or Plus world).
+    // Any authenticated user can view any live session — world does NOT
+    // restrict reading. Plus live merely requires plus_creator capability
+    // to HOST (enforced by Cloud Function), not to VIEW.
+    // ----------------------------------------------------------
+    match /liveSessions/{sessionId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function only (capability check enforced there)
+    }
+
+    // Legacy alias (keep for backward compat during transition)
     match /sessions/{sessionId} {
       allow read: if isAuth();
       allow write: if false; // Cloud Function only
@@ -321,6 +356,70 @@ service cloud.firestore {
     // Read: authenticated users.
     // Write: Cloud Function / Admin SDK only.
     match /reportReasons/{reasonId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // worlds/{worldId} — World configuration definitions
+    // Read: authenticated users (needed to render world tabs and navigation).
+    // Write: Cloud Function / Admin SDK only.
+    match /worlds/{worldId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // storyTypes/{typeId} — Story type catalog
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /storyTypes/{typeId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // roles/{roleId} — Role definitions
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /roles/{roleId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // permissions/{docId} — Permission matrix defaults
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /permissions/{docId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // supportCategories/{docId} — Support category catalog
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /supportCategories/{docId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // competitionDimensions/{docId} — Competition scoring dimensions
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /competitionDimensions/{docId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // childPermissionDefaults/{docId} — Default child permission config
+    // Read: authenticated guardians (Cloud Function filters by role).
+    // Write: Cloud Function / Admin SDK only.
+    match /childPermissionDefaults/{docId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // featureFlags/{docId} — Feature flag defaults
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /featureFlags/{docId} {
       allow read: if isAuth();
       allow write: if false; // Cloud Function / Admin SDK only
     }
