@@ -1,0 +1,15 @@
+/* App Layout */
+.app-layout {
+  display: flex;
+  flex-direction: column;
+  min-height: 100dvh;
+  background: var(--color-bg);
+}
+
+.app-layout__main {
+  flex: 1;
+  padding-top: var(--header-height);
+  padding-bottom: var(--bottom-nav-height);
+  overflow-y: auto;
+  -webkit-overflow-scrolling: touch;
+}

@@ -1,0 +1,100 @@
+/* Profile Page */
+.profile-page__header {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  padding: var(--space-6) var(--space-4) var(--space-4);
+}
+
+.profile-page__avatar {
+  width: 72px;
+  height: 72px;
+  border-radius: 50%;
+  overflow: hidden;
+  flex-shrink: 0;
+  background: var(--color-brand-dim);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 2px solid var(--color-border);
+}
+
+.profile-page__avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.profile-page__avatar-initial {
+  font-size: var(--font-size-2xl);
+  font-weight: 700;
+  color: var(--color-brand-light);
+}
+
+.profile-page__info {
+  flex: 1;
+  min-width: 0;
+}
+
+.profile-page__display-name {
+  font-size: var(--font-size-xl);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+}
+
+.profile-page__bio {
+  font-size: var(--font-size-sm);
+  color: var(--color-text-secondary);
+  line-height: 1.5;
+}
+
+/* Tabs */
+.profile-page__tabs {
+  display: flex;
+  gap: 0;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid var(--color-border-subtle);
+  padding: 0 var(--space-4);
+}
+.profile-page__tabs::-webkit-scrollbar { display: none; }
+
+.profile-page__tab {
+  padding: var(--space-3) var(--space-4);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  color: var(--color-text-muted);
+  white-space: nowrap;
+  border-bottom: 2px solid transparent;
+  transition: color var(--transition-fast), border-color var(--transition-fast);
+}
+
+.profile-page__tab:hover { color: var(--color-text-secondary); }
+
+.profile-page__tab--active {
+  color: var(--color-brand-light);
+  border-bottom-color: var(--color-brand);
+}
+
+/* Panel */
+.profile-page__panel {
+  padding: var(--space-4);
+  min-height: 200px;
+}
+
+.profile-page__section {
+  padding: var(--space-4) 0;
+}
+
+.profile-page__section--hidden {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: var(--space-2);
+  padding: var(--space-10) var(--space-4);
+  text-align: center;
+}
+
+.profile-page__privacy-icon { font-size: 1.5rem; }
