@@ -2,23 +2,28 @@
  * Sound Platform — onUserCreate Cloud Function
  * ===============================================
  * Phase:   5-B (User Lifecycle & Public Profile Projection)
- * Updated: 2026-05-14 (5-B-1 fix: ignoreUndefinedProperties hoisted to index.ts)
+ * Updated: 2026-05-14 (5-C: refactored to use shared buildPublicProfileFromUser)
  *
  * Trigger: Firebase Auth user.onCreate (Gen 1 API — works with firebase-functions v5)
  *
  * On each new Firebase Auth user creation:
  *   1. Creates users/{uid}          — private internal document (owner/admin/CF only)
- *   2. Creates publicProfiles/{uid} — public-safe projection (any authenticated user)
+ *   2. Creates publicProfiles/{uid} — public-safe projection via shared builder
  *
  * PRIVACY RULES (Phase 4-H-2):
  *   users/{uid}:
  *     - NEVER readable by other users via Firestore client SDK.
  *     - Contains: role, capabilities, restrictions, email, kycStatus, walletId, etc.
  *   publicProfiles/{uid}:
- *     - Contains ONLY: uid, generalProfile section, meta timestamps.
+ *     - Built by buildPublicProfileFromUser() — full section-level privacy filtering.
  *     - NO email, role, capabilities, restrictions, wallet, internal flags.
  *
  * Both documents are written atomically in a single Firestore batch.
+ *
+ * Phase 5-C note:
+ *   publicProfiles/{uid} is now also rebuilt on every users/{uid} write by
+ *   onUserProfileUpdate. onUserCreate seeds the initial state; subsequent
+ *   profile edits flow through onUserProfileUpdate.
  */
 
 import * as functions from 'firebase-functions';
@@ -26,11 +31,10 @@ import * as admin from 'firebase-admin';
 import type { UserRecord } from 'firebase-admin/auth';
 import type {
   UserPrivateDoc,
-  PublicProfileDoc,
-  GeneralProfileSection,
   PrivacySettings,
   ConsumerActivity,
 } from '@sound/shared';
+import { buildPublicProfileFromUser } from '../helpers/buildPublicProfile';
 
 // ─── Firestore reference (Admin SDK initialised + settings applied in index.ts) ────
 // ignoreUndefinedProperties is set in index.ts — do NOT re-set here.
@@ -200,34 +204,11 @@ export const onUserCreate = functions.auth.user().onCreate(
 
     // ── 2. Public profile projection (publicProfiles/{uid}) ───────────────────
     //
-    // Contains ONLY public-safe fields.
-    // NO email, role, capabilities, restrictions, wallet, internal flags.
+    // Uses the shared buildPublicProfileFromUser helper (Phase 5-C).
+    // Full section-level privacy filtering applied automatically.
+    // Contains ONLY public-safe fields — NO email, role, capabilities, etc.
     //
-    const generalSection: GeneralProfileSection = {
-      username:     resolvedUsername,
-      displayName:  resolvedDisplayName,
-      avatarUrl:    resolvedAvatarUrl,
-      isVerified:   false,
-      socialLinks:  {},
-      followersCount: 0,
-      followingCount: 0,
-      postsCount:     0,
-      listensCount:   0,
-      joinedAt:       now,
-      badges:         [],
-      // Capability flags (all false for new users)
-      isPlusCreator:  false,
-      isMusicCreator: false,
-      isRadioCreator: false,
-    };
-
-    const publicDoc: PublicProfileDoc = {
-      uid,
-      generalProfile: generalSection,
-      // Optional sections start absent (privacy 'public' means they'll be added
-      // by future profile update trigger as data accumulates).
-      lastUpdatedAt: now,
-    };
+    const publicDoc = buildPublicProfileFromUser(privateDoc, now);
 
     // ── 3. Atomic batch write ─────────────────────────────────────────────────
     const batch = db.batch();
