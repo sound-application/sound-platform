@@ -1,12 +1,158 @@
 rules_version = '2';
+
+// ============================================================
+// Sound Platform — Cloud Storage Security Rules
+// Project:  sound-platform-dev
+// Region:   europe-west1
+// Phase:    4-G (Development Draft — NOT yet deployed to production)
+// Updated:  2026-05-14
+//
+// STRATEGY:
+//   - Default deny all reads and writes.
+//   - Authenticated users may upload ONLY to their own
+//     temporary staging path under uploads/{uid}/temp/.
+//   - Published media is served via signed URLs generated
+//     by Cloud Functions — no direct public read is permitted
+//     for most paths.
+//   - KYC / identity verification documents are never
+//     client-readable. Only Cloud Function / Admin SDK
+//     via service account can read/write these.
+//   - Payment and payout receipts are server-only paths.
+//   - All uploaded files go through a Cloud Function scan
+//     pipeline (malware, format validation, moderation)
+//     before being moved to the canonical media path.
+//   - File size limits are enforced at the upload path level.
+// ============================================================
+
 service firebase.storage {
   match /b/{bucket}/o {
+
+    // ----------------------------------------------------------
+    // DEFAULT DENY — catch-all
+    // Any path not explicitly matched below is DENIED.
+    // ----------------------------------------------------------
     match /{allPaths=**} {
-      // Secure by default: deny all
-      // sensitive writes go through server functions
-      // rules will expand per module
-      // wallet/payment/payout/audit writes must never be client-writable
       allow read, write: if false;
     }
+
+    // ----------------------------------------------------------
+    // uploads/{uid}/temp/{filename}
+    // Temporary staging area for user uploads.
+    // Users may upload their own files here only.
+    // Cloud Function moves validated files to canonical paths.
+    // Files here are auto-deleted after 24h by a scheduled
+    // Cloud Function (cleanup job).
+    //
+    // Size limit: 50MB (audio), 10MB (image), 5MB (document)
+    //   — enforced by client SDK + Cloud Function validation.
+    // Content type: Cloud Function validates MIME type.
+    // ----------------------------------------------------------
+    match /uploads/{uid}/temp/{filename} {
+      // Owner can write to own temp staging area only
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.size < 50 * 1024 * 1024; // 50MB max
+      // No client read — Cloud Function reads via Admin SDK
+      allow read: if false;
+    }
+
+    // ----------------------------------------------------------
+    // media/channels/{channelId}/{filename}
+    // Published channel artwork and banner images.
+    // Read: any authenticated user (artwork is public-facing).
+    // Write: Cloud Function only (after validation pipeline).
+    // ----------------------------------------------------------
+    match /media/channels/{channelId}/{filename} {
+      allow read: if request.auth != null;
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // media/episodes/{channelId}/{episodeId}/{filename}
+    // Published episode audio files.
+    // Read: served via signed URL from Cloud Function.
+    //   Direct client read is DENIED to enforce access control
+    //   (Plus gating, geographic restrictions, etc.).
+    // Write: Cloud Function only.
+    // ----------------------------------------------------------
+    match /media/episodes/{channelId}/{episodeId}/{filename} {
+      allow read: if false;  // Signed URL via Cloud Function only
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // media/content/{contentId}/{filename}
+    // Shorts and clip audio/video files.
+    // Same signed-URL policy as episodes.
+    // ----------------------------------------------------------
+    match /media/content/{contentId}/{filename} {
+      allow read: if false;  // Signed URL via Cloud Function only
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // avatars/{uid}/{filename}
+    // User profile avatar images.
+    // Read: any authenticated user (avatars are public-facing).
+    // Write: Cloud Function only (after resize + moderation scan).
+    // ----------------------------------------------------------
+    match /avatars/{uid}/{filename} {
+      allow read: if request.auth != null;
+      allow write: if false; // Cloud Function only (post-moderation)
+    }
+
+    // ----------------------------------------------------------
+    // media/competitions/{competitionId}/{filename}
+    // Competition cover images and promo assets.
+    // Read: authenticated users.
+    // Write: Cloud Function only.
+    // ----------------------------------------------------------
+    match /media/competitions/{competitionId}/{filename} {
+      allow read: if request.auth != null;
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // SERVER-ONLY STORAGE PATHS
+    // The following paths are completely inaccessible from client
+    // SDKs under any circumstances. Only Cloud Functions using
+    // a service account can access these paths.
+    // ----------------------------------------------------------
+
+    // kyc/{uid}/{filename}
+    // Identity verification documents (national ID, passport, etc.)
+    // NEVER client-readable. Admin/KYC review via Cloud Function only.
+    match /kyc/{uid}/{filename} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // payment-receipts/{orderId}/{filename}
+    // PSP payment receipt documents.
+    // Server-only. No client access under any circumstances.
+    match /payment-receipts/{orderId}/{filename} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // payout-docs/{requestId}/{filename}
+    // Payout confirmation documents.
+    // Server-only. No client access under any circumstances.
+    match /payout-docs/{requestId}/{filename} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // admin-exports/{filename}
+    // Platform data exports generated by admin tools.
+    // Server-only.
+    match /admin-exports/{filename} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // moderation-captures/{itemId}/{filename}
+    // Screenshots/captures taken by the moderation system.
+    // Moderation system access via Cloud Function only.
+    match /moderation-captures/{itemId}/{filename} {
+      allow read, write: if false; // Cloud Function / moderation system only
+    }
+
   }
 }

@@ -1,8 +1,338 @@
 rules_version = '2';
+
+// ============================================================
+// Sound Platform — Cloud Firestore Security Rules
+// Project:  sound-platform-dev
+// Region:   europe-west1
+// Phase:    4-G (Development Draft — NOT yet deployed to production)
+// Updated:  2026-05-14
+//
+// STRATEGY:
+//   - Default deny everything unless explicitly permitted.
+//   - Sensitive collections (wallet, payment, payout, audit,
+//     adminConfig, moderationQueue) are SERVER-ONLY: no client
+//     read or write is ever permitted from these rules.
+//   - Cloud Functions enforce all writes to server-only
+//     collections via the Admin SDK (bypasses these rules).
+//   - Child-safety and guardian-approval flows are always
+//     server-only; no client bypass is permitted.
+//   - Public-facing content is readable only after the
+//     content is published (status == 'published').
+//   - User profile data: owners can read/write their own,
+//     limited public projection is readable by all.
+//   - Admin claims are set by Cloud Functions only and
+//     checked via request.auth.token.role.
+// ============================================================
+
 service cloud.firestore {
   match /databases/{database}/documents {
+
+    // ----------------------------------------------------------
+    // HELPER FUNCTIONS
+    // ----------------------------------------------------------
+
+    // Is the request from a signed-in user?
+    function isAuth() {
+      return request.auth != null;
+    }
+
+    // Is the requester the owner of this document?
+    function isOwner(uid) {
+      return isAuth() && request.auth.uid == uid;
+    }
+
+    // Has the user a specific custom claim role?
+    // Roles: 'superAdmin' | 'admin' | 'moderator' | 'creator' | 'listener'
+    function hasRole(role) {
+      return isAuth() && request.auth.token.get('role', '') == role;
+    }
+
+    // Is the requester a platform admin or superAdmin?
+    function isAdmin() {
+      return isAuth() && (
+        request.auth.token.get('role', '') == 'admin' ||
+        request.auth.token.get('role', '') == 'superAdmin'
+      );
+    }
+
+    // Is the requester a moderator or higher?
+    function isModerator() {
+      return isAuth() && (
+        request.auth.token.get('role', '') == 'moderator' ||
+        isAdmin()
+      );
+    }
+
+    // Is account not disabled/suspended?
+    function isActive() {
+      return isAuth() && request.auth.token.get('disabled', false) == false;
+    }
+
+    // Is the content marked as published?
+    function isPublished(data) {
+      return data.get('status', '') == 'published';
+    }
+
+    // ----------------------------------------------------------
+    // DEFAULT DENY — catch-all at the root level
+    // Any collection not explicitly matched below is DENIED.
+    // ----------------------------------------------------------
     match /{document=**} {
       allow read, write: if false;
     }
+
+    // ----------------------------------------------------------
+    // users/{uid}
+    // Profile and account info.
+    // Owner: full read/write of own document.
+    // Others: read public projection only (enforce via subcollection
+    //         or field mask — full doc read kept server-side).
+    // Children accounts: writes gated by guardian approval
+    //   (enforced in Cloud Function, not client rules).
+    // ----------------------------------------------------------
+    match /users/{uid} {
+      allow read: if isOwner(uid) || isAdmin();
+      // Owner can update own non-sensitive fields.
+      // Sensitive fields (role, accountType, walletId, kycStatus,
+      // guardianUid, isMinor, bannedAt) must only be written
+      // via Cloud Functions using Admin SDK.
+      allow update: if isOwner(uid)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['role', 'accountType', 'walletId', 'kycStatus',
+                     'guardianUid', 'isMinor', 'bannedAt',
+                     'suspendedAt', 'deletedAt', 'createdAt']);
+      allow create: if false; // Cloud Function (onUserCreate trigger) only
+      allow delete: if false; // Cloud Function only
+
+      // Public profile projection (display name, avatar, bio)
+      // is served via a Cloud Function endpoint — no client
+      // direct access to avoid leaking private fields.
+    }
+
+    // ----------------------------------------------------------
+    // usernames/{username}
+    // Username uniqueness registry.
+    // Read: any authenticated user (for availability check).
+    // Write: Cloud Function only (atomic with user creation).
+    // ----------------------------------------------------------
+    match /usernames/{username} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // channels/{channelId}
+    // Creator channels / podcast channels / radio channels.
+    // Published channels: readable by any authenticated user.
+    // Owner: can update own channel metadata (non-sensitive).
+    // Sensitive fields (monetizationStatus, verifiedAt, bannedAt)
+    //   are server-only writes.
+    // ----------------------------------------------------------
+    match /channels/{channelId} {
+      allow read: if isAuth() && isPublished(resource.data);
+      allow read: if isOwner(resource.data.ownerUid) || isAdmin();
+      allow update: if isOwner(resource.data.ownerUid)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['monetizationStatus', 'verifiedAt', 'bannedAt',
+                     'createdAt', 'ownerUid']);
+      allow create: if false; // Cloud Function only
+      allow delete: if false; // Cloud Function only
+
+      // Episodes / tracks subcollection
+      match /episodes/{episodeId} {
+        allow read: if isAuth() && isPublished(resource.data);
+        allow read: if isAdmin();
+        allow write: if false; // Cloud Function only
+      }
+    }
+
+    // ----------------------------------------------------------
+    // content/{contentId}
+    // Shorts, long-form audio, clips, etc.
+    // Same published-gate as channels/episodes.
+    // ----------------------------------------------------------
+    match /content/{contentId} {
+      allow read: if isAuth() && isPublished(resource.data);
+      allow read: if isAdmin();
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // competitions/{competitionId}
+    // Competition definitions and state.
+    // Published: readable by all authenticated users.
+    // Jury scoring and winner writes: Cloud Function only.
+    // ----------------------------------------------------------
+    match /competitions/{competitionId} {
+      allow read: if isAuth() && isPublished(resource.data);
+      allow read: if isAdmin();
+      allow write: if false; // Cloud Function only
+
+      // Entries subcollection
+      match /entries/{entryId} {
+        allow read: if isAuth() && isPublished(resource.data);
+        // Entry submission: Cloud Function validates eligibility
+        allow write: if false; // Cloud Function only
+      }
+
+      // Scores: server-only
+      match /scores/{scoreId} {
+        allow read, write: if false; // Cloud Function / jury system only
+      }
+    }
+
+    // ----------------------------------------------------------
+    // sessions/{sessionId}
+    // Live sessions (audio/voice room).
+    // Active sessions: readable by authenticated users.
+    // Lifecycle (create/end/archive): Cloud Function only.
+    // ----------------------------------------------------------
+    match /sessions/{sessionId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // notifications/{uid}/items/{notificationId}
+    // User notification inbox.
+    // Owner can read own notifications and mark as read.
+    // Write/create: Cloud Function only.
+    // ----------------------------------------------------------
+    match /notifications/{uid}/items/{notificationId} {
+      allow read: if isOwner(uid);
+      allow update: if isOwner(uid)
+        && request.resource.data.diff(resource.data).affectedKeys()
+            .hasOnly(['readAt', 'isRead']); // only mark-read is allowed
+      allow create, delete: if false; // Cloud Function only
+    }
+
+    // ----------------------------------------------------------
+    // follows/{followId}
+    // Follow relationships (user→user, user→channel).
+    // Owner can create/delete own follow records.
+    // ----------------------------------------------------------
+    match /follows/{followId} {
+      allow read: if isAuth();
+      allow create: if isAuth()
+        && request.resource.data.followerUid == request.auth.uid;
+      allow delete: if isAuth()
+        && resource.data.followerUid == request.auth.uid;
+      allow update: if false;
+    }
+
+    // ----------------------------------------------------------
+    // playlists/{playlistId}
+    // User-created playlists.
+    // Public playlists: any authenticated user can read.
+    // Private playlists: owner only.
+    // Write: owner only (non-sensitive fields).
+    // ----------------------------------------------------------
+    match /playlists/{playlistId} {
+      allow read: if isOwner(resource.data.ownerUid)
+        || (isAuth() && resource.data.get('isPublic', false) == true);
+      allow create: if isAuth()
+        && request.resource.data.ownerUid == request.auth.uid;
+      allow update: if isOwner(resource.data.ownerUid)
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['ownerUid', 'createdAt']);
+      allow delete: if isOwner(resource.data.ownerUid);
+    }
+
+    // ----------------------------------------------------------
+    // points/{uid}
+    // Gamification points balance per user.
+    // Read: owner only.
+    // Write: Cloud Function only — no client writes ever.
+    //   (Prevents point manipulation attacks.)
+    // ----------------------------------------------------------
+    match /points/{uid} {
+      allow read: if isOwner(uid);
+      allow write: if false; // Cloud Function only — NEVER client-writable
+    }
+
+    // ----------------------------------------------------------
+    // SERVER-ONLY COLLECTIONS
+    // The following collections are completely inaccessible
+    // from client SDKs. All operations go through Cloud Functions
+    // using the Admin SDK which bypasses these rules entirely.
+    // ----------------------------------------------------------
+
+    // wallet/{uid} — Earnings balance and transaction ledger
+    match /wallet/{uid} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // paymentOrders/{orderId} — PSP payment intents and receipts
+    match /paymentOrders/{orderId} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // payoutRequests/{requestId} — Creator withdrawal requests
+    match /payoutRequests/{requestId} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // auditLog/{logId} — Platform-wide immutable audit trail
+    match /auditLog/{logId} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // adminConfig/{docId} — Platform global configuration
+    // (feature flags, world config, package definitions, roles)
+    match /adminConfig/{docId} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+      // Future: allow admin read via Admin SDK panel endpoint
+    }
+
+    // kycDocuments/{uid} — Identity verification documents
+    // (never client-readable; only Cloud Function / Admin review)
+    match /kycDocuments/{uid} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // moderationQueue/{itemId} — Flagged content for moderation
+    match /moderationQueue/{itemId} {
+      allow read, write: if false; // Cloud Function / moderation system only
+    }
+
+    // childGuardianLinks/{linkId} — Guardian approval state
+    // (no client bypass ever; guardian approval via Cloud Function)
+    match /childGuardianLinks/{linkId} {
+      allow read, write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // radioStations/{stationId} — Platform radio station registry
+    // Read: authenticated users can read (stations are public info).
+    // Write: Cloud Function / admin panel only.
+    match /radioStations/{stationId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // packages/{packageId} — Subscription package definitions
+    // Read: authenticated users (needed to render pricing screens).
+    // Write: Cloud Function / Admin SDK only.
+    match /packages/{packageId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // reportReasons/{reasonId} — Report reason catalog
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /reportReasons/{reasonId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
+    // reports/{reportId} — User-submitted content/user reports
+    // Create: authenticated user can submit report for own uid.
+    // Read/Update/Delete: moderation system only.
+    match /reports/{reportId} {
+      allow create: if isAuth()
+        && request.resource.data.reporterUid == request.auth.uid;
+      allow read, update, delete: if false; // moderation system only
+    }
+
   }
 }
