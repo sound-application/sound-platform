@@ -17,4 +17,16 @@ export default defineConfig({
     port: 3000,
     strictPort: false,
   },
+  build: {
+    // Split Firebase SDK into its own chunk for better caching
+    rollupOptions: {
+      output: {
+        manualChunks: {
+          'vendor-firebase': ['firebase/app', 'firebase/auth', 'firebase/firestore', 'firebase/storage'],
+          'vendor-react':    ['react', 'react-dom', 'react-router-dom'],
+        },
+      },
+    },
+    chunkSizeWarningLimit: 600,
+  },
 });
