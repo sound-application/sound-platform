@@ -4,7 +4,7 @@ rules_version = '2';
 // Sound Platform — Cloud Firestore Security Rules
 // Project:  sound-platform-dev
 // Region:   europe-west1
-// Phase:    4-H-2 (Development Draft — NOT yet deployed to production)
+// Phase:    4-H-3 (Online Rules Deployed — sound-platform-dev)
 // Updated:  2026-05-14
 //
 // PERMISSION MODEL (Phase 4-H-2 — Privacy Correction):
@@ -77,13 +77,11 @@ service cloud.firestore {
       return isAuth() && request.auth.uid == uid;
     }
 
-    // Has the user a specific custom claim role?
-    // Roles: 'superAdmin' | 'admin' | 'moderator' | 'creator' | 'listener'
-    function hasRole(role) {
-      return isAuth() && request.auth.token.get('role', '') == role;
-    }
-
     // Is the requester a platform admin or superAdmin?
+    // Roles are set as custom claims by Cloud Functions (Admin SDK) only.
+    // superAdmin and admin roles are the only roles that bypass data-layer
+    // restrictions at the rules level; all other role checks (moderator,
+    // creator, listener) are enforced in Cloud Functions, not rules.
     function isAdmin() {
       return isAuth() && (
         request.auth.token.get('role', '') == 'admin' ||
@@ -91,20 +89,7 @@ service cloud.firestore {
       );
     }
 
-    // Is the requester a moderator or higher?
-    function isModerator() {
-      return isAuth() && (
-        request.auth.token.get('role', '') == 'moderator' ||
-        isAdmin()
-      );
-    }
-
-    // Is account not disabled/suspended?
-    function isActive() {
-      return isAuth() && request.auth.token.get('disabled', false) == false;
-    }
-
-    // Is the content marked as published?
+    // isPublished — checks published status on the incoming/existing document.
     function isPublished(data) {
       return data.get('status', '') == 'published';
     }
