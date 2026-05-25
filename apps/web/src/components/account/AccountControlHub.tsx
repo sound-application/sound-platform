@@ -20,10 +20,11 @@
 import React, { useEffect, useCallback, useState } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { signOut as firebaseSignOut } from 'firebase/auth';
+import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
 import { useWorldNav } from '../../contexts/WorldNavContext';
 import { LOCKED_WORLDS } from '../../constants/lockedLabels';
-import { auth } from '../../lib/firebase';
+import { auth, db } from '../../lib/firebase';
 import './AccountControlHub.css';
 
 // ═══ Types ═══════════════════════════════════════════════════════════════════
@@ -232,7 +233,11 @@ const PRIVACY_GROUPS: PrivacyGroup[] = [
 
 // ═══ Privacy Center Panel ════════════════════════════════════════════════════
 
-function PrivacyCenterPanel({ onBack }: { onBack: () => void }) {
+type PrivacySaveState = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
+
+function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string | null }) {
+  // Local state initialised from PRIVACY_GROUPS defaults.
+  // Overwritten once Firestore data loads.
   const [values, setValues] = useState<Record<string, string>>(() => {
     return PRIVACY_GROUPS.reduce<Record<string, string>>((acc, group) => {
       group.rows.forEach((row) => {
@@ -242,9 +247,70 @@ function PrivacyCenterPanel({ onBack }: { onBack: () => void }) {
     }, {});
   });
 
+  const [saveState, setSaveState] = useState<PrivacySaveState>('loading');
+  const [errorMsg, setErrorMsg] = useState('');
+
+  // ── Load from privacySettings/{uid} ─────────────────────────────────────
+  useEffect(() => {
+    if (!uid) { setSaveState('idle'); return; }
+
+    const ref = doc(db, 'privacySettings', uid);
+    const unsub = onSnapshot(
+      ref,
+      (snap) => {
+        if (snap.exists()) {
+          const data = snap.data() as Record<string, string>;
+          // Merge Firestore values over defaults — unknown keys are ignored
+          setValues((prev) => {
+            const merged = { ...prev };
+            Object.keys(prev).forEach((k) => {
+              if (typeof data[k] === 'string') {
+                merged[k] = data[k];
+              }
+            });
+            return merged;
+          });
+        }
+        // If doc doesn't exist yet, keep defaults — it will be created on first save
+        setSaveState('idle');
+      },
+      (err) => {
+        console.error('[PrivacyCenterPanel] Firestore load error:', err);
+        setSaveState('error');
+        setErrorMsg('فشل تحميل الإعدادات — ' + err.message);
+      },
+    );
+    return unsub;
+  }, [uid]);
+
+  // ── Set a single row value ───────────────────────────────────────────────
   const setPrivacyValue = (rowId: string, value: string) => {
     setValues((current) => ({ ...current, [rowId]: value }));
+    // Clear saved state when user edits
+    if (saveState === 'saved') setSaveState('idle');
   };
+
+  // ── Save to privacySettings/{uid} ───────────────────────────────────────
+  const handleSave = useCallback(async () => {
+    if (!uid) return;
+    setSaveState('saving');
+    setErrorMsg('');
+    try {
+      const ref = doc(db, 'privacySettings', uid);
+      await setDoc(ref, {
+        ...values,
+        uid,
+        updatedAt: new Date().toISOString(),
+      }, { merge: true }); // merge: true so createdAt is not overwritten
+      setSaveState('saved');
+    } catch (err: unknown) {
+      console.error('[PrivacyCenterPanel] Firestore save error:', err);
+      const msg = err instanceof Error ? err.message : 'حدث خطأ';
+      setErrorMsg(msg);
+      setSaveState('error');
+    }
+  }, [uid, values]);
+
 
   return (
     <div className="ach-privacy-panel" role="region" aria-label="مركز الخصوصية">
@@ -260,20 +326,35 @@ function PrivacyCenterPanel({ onBack }: { onBack: () => void }) {
         </button>
         <div>
           <p className="ach-privacy-panel__title">مركز الخصوصية</p>
-          <p className="ach-privacy-panel__subtitle">إعدادات أولية — الحفظ يتطلب اتصال الخادم</p>
+          <p className="ach-privacy-panel__subtitle">
+            {saveState === 'loading' && 'جاري التحميل...'}
+            {saveState === 'saving' && 'جاري الحفظ...'}
+            {saveState === 'saved'  && '✅ تم الحفظ'}
+            {saveState === 'error'  && `⚠️ ${errorMsg}`}
+            {saveState === 'idle'   && 'تحكم في من يرى ماذا'}
+          </p>
         </div>
+        {/* Save button in header */}
+        <button
+          type="button"
+          className="ach-privacy-save-btn"
+          onClick={handleSave}
+          disabled={saveState === 'saving' || saveState === 'loading' || !uid}
+          aria-label="حفظ إعدادات الخصوصية"
+        >
+          {saveState === 'saving' ? '...' : 'حفظ'}
+        </button>
       </div>
 
       {/* Body */}
       <div className="ach-privacy-panel__body">
-        {/* Foundation note */}
-        <div className="ach-privacy-note">
-          <span className="material-symbols-outlined" aria-hidden="true">info</span>
-          <span>
-            هذه إعدادات أولية — القيم المعروضة هي حالة مرجعية للواجهة.
-            التحديثات الفعلية ستُحفظ في قاعدة البيانات بعد تفعيل مرحلة الخصوصية.
-          </span>
-        </div>
+        {/* Foundation note — shown while loading or on first use */}
+        {saveState === 'loading' && (
+          <div className="ach-privacy-note">
+            <span className="material-symbols-outlined" aria-hidden="true">sync</span>
+            <span>جاري تحميل إعداداتك المحفوظة...</span>
+          </div>
+        )}
 
         {/* Privacy groups */}
         {PRIVACY_GROUPS.map((group) => (
@@ -673,7 +754,7 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
 
           {/* ── Privacy Center nested panel ── */}
           {privacyOpen && (
-            <PrivacyCenterPanel onBack={() => setPrivacyOpen(false)} />
+            <PrivacyCenterPanel onBack={() => setPrivacyOpen(false)} uid={currentUser?.uid ?? null} />
           )}
 
         </div>

@@ -4,8 +4,14 @@ rules_version = '2';
 // Sound Platform — Cloud Firestore Security Rules
 // Project:  sound-platform-dev
 // Region:   europe-west1
-// Phase:    4-H-3 (Online Rules Deployed — sound-platform-dev)
-// Updated:  2026-05-14
+// Phase:    6-A (Profile + PublicProfile + Privacy schema foundation)
+// Updated:  2026-05-25
+//
+// CHANGELOG (Phase 6-A):
+//   - Added privacySettings/{uid} rule — owner read/write, no client delete.
+//   - uid and createdAt are immutable fields in privacySettings.
+//
+// Previous Phase: 4-H-3 (Online Rules Deployed — 2026-05-14)
 //
 // PERMISSION MODEL (Phase 4-H-2 — Privacy Correction):
 //
@@ -160,6 +166,45 @@ service cloud.firestore {
     match /publicProfiles/{uid} {
       allow read: if isAuth();
       allow write: if false; // Cloud Function only — never client-writable
+    }
+
+    // ----------------------------------------------------------
+    // privacySettings/{uid}  — AccountControlHub Privacy Center state
+    //
+    // Stores the user's 13 privacy group settings from the AccountControlHub
+    // Privacy Center UI. Separate from users/{uid}.privacy which drives the
+    // publicProfiles projection.
+    //
+    // Read:   owner only (private configuration — not shared with other users).
+    // Write:  owner can create/update. Cloud Functions read to sync back to
+    //         users/{uid}.privacy for publicProfiles projection.
+    // Delete: not permitted from client — admin/CF only.
+    //
+    // Immutable fields:
+    //   uid       — must match document owner and must not change.
+    //   createdAt — set on creation, must not change on update.
+    //
+    // Phase 6-A: uid validation and createdAt immutability enforced.
+    // Phase 7: Cloud Function trigger onPrivacySettingsUpdate will sync
+    //   selected fields back to users/{uid}.privacy for projection rebuild.
+    // ----------------------------------------------------------
+    match /privacySettings/{uid} {
+      // Owner can read own privacy settings
+      allow read: if isOwner(uid);
+
+      // Owner can create the document (fallback if onUserCreate missed it)
+      // uid field must match the authenticated user
+      allow create: if isOwner(uid)
+        && request.resource.data.uid == uid;
+
+      // Owner can update — uid and createdAt must not change
+      allow update: if isOwner(uid)
+        && request.resource.data.uid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['uid', 'createdAt']);
+
+      // No client delete
+      allow delete: if false;
     }
 
     // ----------------------------------------------------------

@@ -1,14 +1,18 @@
 /**
  * Sound Platform — onUserCreate Cloud Function
  * ===============================================
- * Phase:   5-C-3 (Privacy Audience Model Upgrade)
- * Updated: 2026-05-14 (5-C-3: upgraded to multi-select audience model)
+ * Phase:   6-A (Profile + PublicProfile + Privacy schema foundation)
+ * Updated: 2026-05-25
+ *   - Now initializes privacySettings/{uid} on signup (3-document atomic batch).
+ *
+ * Previous Phase: 5-C-3 (Privacy Audience Model Upgrade — 2026-05-14)
  *
  * Trigger: Firebase Auth user.onCreate (Gen 1 API — works with firebase-functions v5)
  *
  * On each new Firebase Auth user creation:
  *   1. Creates users/{uid}          — private internal document (owner/admin/CF only)
  *   2. Creates publicProfiles/{uid} — public-safe projection via shared builder
+ *   3. Creates privacySettings/{uid} — AccountControlHub Privacy Center state (owner r/w)
  *
  * PRIVACY RULES (Phase 4-H-2):
  *   users/{uid}:
@@ -36,6 +40,7 @@ import type {
   ConsumerActivity,
 } from '@sound/shared';
 import { buildPublicProfileFromUser } from '../helpers/buildPublicProfile';
+import { createDefaultPrivacySettingsDoc } from '@sound/shared';
 
 // ─── Firestore reference (Admin SDK initialised + settings applied in index.ts) ────
 // ignoreUndefinedProperties is set in index.ts — do NOT re-set here.
@@ -230,7 +235,15 @@ export const onUserCreate = functions.auth.user().onCreate(
     //
     const publicDoc = buildPublicProfileFromUser(privateDoc, now);
 
-    // ── 3. Atomic batch write ─────────────────────────────────────────────────
+    // ── 3. Privacy settings document (privacySettings/{uid}) ──────────────────
+    //
+    // Stores the AccountControlHub Privacy Center state.
+    // Separate from users/{uid}.privacy which drives publicProfiles projection.
+    // Owner can read/write. Cloud Functions read to sync back to users/{uid}.privacy.
+    //
+    const privacySettingsDoc = createDefaultPrivacySettingsDoc(uid, now);
+
+    // ── 4. Atomic batch write (3 documents) ───────────────────────────────────
     const batch = db.batch();
 
     batch.set(
@@ -245,8 +258,17 @@ export const onUserCreate = functions.auth.user().onCreate(
       { merge: false },
     );
 
+    batch.set(
+      db.collection('privacySettings').doc(uid),
+      privacySettingsDoc,
+      { merge: false },
+    );
+
     await batch.commit();
 
-    functions.logger.info(`[onUserCreate] Created users/${uid} and publicProfiles/${uid}`, { uid });
+    functions.logger.info(
+      `[onUserCreate] Created users/${uid}, publicProfiles/${uid}, privacySettings/${uid}`,
+      { uid },
+    );
   }
 );

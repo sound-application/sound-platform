@@ -1,8 +1,13 @@
 /**
  * Sound Platform — Public Profile Projection Builder
  * ====================================================
- * Phase:   5-C-3 (Privacy Audience Model Upgrade)
- * Updated: 2026-05-14
+ * Phase:   6-A (Profile + PublicProfile + Privacy schema foundation)
+ * Updated: 2026-05-25
+ *   - Added isSectionVisibleToPublic() audience-aware gate.
+ *   - Builder now uses isSectionVisibleToPublic() — blocks onlyMe, passes
+ *     deferred tokens (followers/friends/custom) permissively until Phase 7/9.
+ *
+ * Previous Phase: 5-C-3 (Privacy Audience Model Upgrade — 2026-05-14)
  *
  * Shared helper used by:
  *   - onUserCreate      (builds initial projection on signup)
@@ -63,11 +68,79 @@ import { migratePrivacyLevel, isPubliclyVisible } from '@sound/shared';
 // ─── Privacy Gate ─────────────────────────────────────────────────────────────
 
 /**
+ * AUDIENCE ENFORCEMENT (Phase 6-A):
+ *
+ *   'public'   → ENFORCED. Section IS included in publicProfiles.
+ *   'onlyMe'   → ENFORCED. Section is NEVER included in publicProfiles.
+ *
+ *   'followers' → STORED but NOT YET ENFORCED.
+ *                 Social graph (follows collection) does not exist yet.
+ *                 Safe fallback: treat as 'public' (permissive) until Phase 7.
+ *                 // PHASE 7: enforce when follows/{uid}/following collection exists.
+ *
+ *   'friends'   → STORED but NOT YET ENFORCED.
+ *                 No mutual-follow graph. Fallback: treat as 'followers' (permissive).
+ *                 // PHASE 7: enforce when follows module and mutual-follow flag exist.
+ *
+ *   'following' → STORED but NOT YET ENFORCED.
+ *                 No outgoing-follow graph. Fallback: treat as 'followers'.
+ *                 // PHASE 7: same as 'followers'.
+ *
+ *   'custom'    → STORED but NOT YET ENFORCED.
+ *                 No custom audience lists collection. Fallback: treat as 'followers'.
+ *                 // PHASE 9: enforce when audienceLists collection exists.
+ *
+ * WHY PERMISSIVE FALLBACK?
+ *   The social graph does not exist yet. Making unenforceable audience tokens
+ *   behave as 'onlyMe' would hide content that users explicitly set to
+ *   'followers' or 'friends'. That is a worse user experience than showing
+ *   content until enforcement is ready. Each deferred token is marked with
+ *   a PHASE comment so enforcement can be dropped in without schema changes.
+ *
+ * NEVER invent fake social graph data to simulate enforcement.
+ */
+
+/**
+ * isSectionVisibleToPublic — audience-aware gate for Phase 6-A.
+ *
+ * Returns true if the section should appear in publicProfiles/{uid}.
+ * Handles 'onlyMe' as a hard block, 'public' as a hard allow,
+ * and deferred audience tokens as permissive (see enforcement comments above).
+ *
+ * Replaces the simple `isSectionPublic()` binary check for new call sites.
+ * The old `isSectionPublic()` is still exported for backward compatibility.
+ */
+export function isSectionVisibleToPublic(
+  privacy: PrivacySettings,
+  section: keyof PrivacySettings,
+): boolean {
+  const raw = privacy[section] as SectionPrivacy | string | undefined;
+  const sp = migratePrivacyLevel(raw as Parameters<typeof migratePrivacyLevel>[0]);
+
+  // Hard block — onlyMe is always enforced
+  if (sp.audiences.includes('onlyMe')) return false;
+
+  // Hard allow — public is always enforced
+  if (sp.audiences.includes('public')) return true;
+
+  // Deferred audience tokens (followers, friends, following, custom):
+  // Social graph enforcement is not yet implemented (Phase 6-A).
+  // Permissive fallback — show section until enforcement is ready.
+  // PHASE 7: replace this return with graph-based check for 'followers'/'friends'.
+  // PHASE 9: replace this return with list-based check for 'custom'.
+  return true; // permissive fallback — PHASE 7/9 will restrict this
+}
+
+/**
  * Returns true if the section's SectionPrivacy config permits public
  * projection inclusion (audiences includes 'public').
  *
  * Phase 5-C-3: migrates legacy string values on the fly so documents
  * written before the audience-model upgrade continue to work correctly.
+ *
+ * @deprecated Prefer isSectionVisibleToPublic() for new call sites.
+ *   This function only checks for exact 'public' membership — it does not
+ *   apply the deferred-audience permissive fallback. Kept for compatibility.
  */
 export function isSectionPublic(
   privacy: PrivacySettings,
@@ -77,6 +150,7 @@ export function isSectionPublic(
   const sp = migratePrivacyLevel(raw as Parameters<typeof migratePrivacyLevel>[0]);
   return isPubliclyVisible(sp);
 }
+
 
 // ─── Main Builder ─────────────────────────────────────────────────────────────
 
@@ -92,7 +166,8 @@ export function isSectionPublic(
  *   - Never include email, role, capabilities, wallet, kycStatus, restrictions.
  *   - Never include privacy settings object itself.
  *   - Never include savedItems or storyViews.
- *   - Only include optional sections if privacy === 'public'.
+ *   - Only include optional sections if isSectionVisibleToPublic() returns true.
+ *     Phase 6-A: 'public'=include, 'onlyMe'=exclude, others=include (permissive).
  */
 export function buildPublicProfileFromUser(
   user: UserPrivateDoc,
@@ -134,13 +209,13 @@ export function buildPublicProfileFromUser(
   };
 
   // ── 2. Mood section ──────────────────────────────────────────────────────────
-  if (isSectionPublic(privacy, 'mood') && user.mood) {
+  if (isSectionVisibleToPublic(privacy, 'mood') && user.mood) {
     const moodSection: MoodSection = { mood: user.mood };
     publicDoc.mood = moodSection;
   }
 
   // ── 3. Activity status section ───────────────────────────────────────────────
-  if (isSectionPublic(privacy, 'activityStatus')) {
+  if (isSectionVisibleToPublic(privacy, 'activityStatus')) {
     const activitySection: ActivityStatusSection = {
       activityStatus: user.activityStatus,
     };
@@ -150,7 +225,7 @@ export function buildPublicProfileFromUser(
   // ── 4. Listening activity section ────────────────────────────────────────────
   // Subset of consumerActivity — only safe, non-private listening refs.
   // savedItems and storyViews are NEVER included regardless of privacy.
-  if (isSectionPublic(privacy, 'listeningActivity')) {
+  if (isSectionVisibleToPublic(privacy, 'listeningActivity')) {
     const ca = user.consumerActivity;
     const listeningSection: ListeningActivitySection = {
       latestListenedItem:        ca.latestListenedItem,
@@ -163,7 +238,7 @@ export function buildPublicProfileFromUser(
   }
 
   // ── 5. Followed radio stations section ───────────────────────────────────────
-  if (isSectionPublic(privacy, 'followedRadioStations')) {
+  if (isSectionVisibleToPublic(privacy, 'followedRadioStations')) {
     const section: FollowedRadioStationsSection = {
       followedRadioStations: user.consumerActivity.followedRadioStations ?? [],
     };
@@ -171,7 +246,7 @@ export function buildPublicProfileFromUser(
   }
 
   // ── 6. Followed radio station lists section ──────────────────────────────────
-  if (isSectionPublic(privacy, 'followedRadioStationLists')) {
+  if (isSectionVisibleToPublic(privacy, 'followedRadioStationLists')) {
     const section: FollowedRadioStationListsSection = {
       followedRadioStationLists: user.consumerActivity.followedRadioStationLists ?? [],
     };
@@ -180,7 +255,7 @@ export function buildPublicProfileFromUser(
 
   // ── 7. Music playlists section ───────────────────────────────────────────────
   // Only public playlists and song playlists — privatePlaylists NEVER included.
-  if (isSectionPublic(privacy, 'musicPlaylists')) {
+  if (isSectionVisibleToPublic(privacy, 'musicPlaylists')) {
     const section: MusicPlaylistsSection = {
       songPlaylists:   user.consumerActivity.songPlaylists   ?? [],
       publicPlaylists: user.consumerActivity.publicPlaylists ?? [],
@@ -189,13 +264,13 @@ export function buildPublicProfileFromUser(
   }
 
   // ── 8. Pinned content section ─────────────────────────────────────────────────
-  if (isSectionPublic(privacy, 'pinnedContent') && user.pinnedContent) {
+  if (isSectionVisibleToPublic(privacy, 'pinnedContent') && user.pinnedContent) {
     const section: PinnedContentSection = { pinnedContent: user.pinnedContent };
     publicDoc.pinnedContent = section;
   }
 
   // ── 9. Achievements section ───────────────────────────────────────────────────
-  if (isSectionPublic(privacy, 'achievements')) {
+  if (isSectionVisibleToPublic(privacy, 'achievements')) {
     const section: AchievementsSection = {
       badges:       user.badges       ?? [],
       achievements: user.achievements ?? [],
@@ -209,7 +284,7 @@ export function buildPublicProfileFromUser(
   // whether the creator's Plus content list is shown on their profile.
   if (
     capabilities?.plus_creator === true &&
-    isSectionPublic(privacy, 'plusCreatorContent')
+    isSectionVisibleToPublic(privacy, 'plusCreatorContent')
   ) {
     // Content IDs come from the private doc (plus module data).
     // Phase 5-C: The plus module content fields are not yet on UserPrivateDoc
@@ -226,7 +301,7 @@ export function buildPublicProfileFromUser(
   // ── 11. Music creator content section ────────────────────────────────────────
   if (
     capabilities?.music_creator === true &&
-    isSectionPublic(privacy, 'musicCreatorContent')
+    isSectionVisibleToPublic(privacy, 'musicCreatorContent')
   ) {
     const section: MusicCreatorContentSection = {
       uploadedSongs:  [],
@@ -240,7 +315,7 @@ export function buildPublicProfileFromUser(
   // ── 12. Radio creator content section ────────────────────────────────────────
   if (
     capabilities?.radio_creator === true &&
-    isSectionPublic(privacy, 'radioCreatorContent')
+    isSectionVisibleToPublic(privacy, 'radioCreatorContent')
   ) {
     const section: RadioCreatorContentSection = {
       ownedRadioStations: [],
@@ -257,7 +332,7 @@ export function buildPublicProfileFromUser(
   // tournaments collection. Empty arrays on first projection are correct.
   if (
     capabilities?.tournament_organizer === true &&
-    isSectionPublic(privacy, 'tournamentsOrganizerContent')
+    isSectionVisibleToPublic(privacy, 'tournamentsOrganizerContent')
   ) {
     const u = user as unknown as Record<string, unknown>;
     const section: TournamentsOrganizerContentSection = {
@@ -274,7 +349,7 @@ export function buildPublicProfileFromUser(
   {
     const joinedIds = (user as unknown as Record<string, unknown>)['joinedTournamentIds'] as string[] | undefined;
     if (
-      isSectionPublic(privacy, 'joinedTournaments') &&
+      isSectionVisibleToPublic(privacy, 'joinedTournaments') &&
       Array.isArray(joinedIds) && joinedIds.length > 0
     ) {
       publicDoc.joinedTournaments = { joinedTournamentIds: joinedIds };
@@ -286,7 +361,7 @@ export function buildPublicProfileFromUser(
   {
     const submissionIds = (user as unknown as Record<string, unknown>)['submissionIds'] as string[] | undefined;
     if (
-      isSectionPublic(privacy, 'tournamentSubmissions') &&
+      isSectionVisibleToPublic(privacy, 'tournamentSubmissions') &&
       Array.isArray(submissionIds) && submissionIds.length > 0
     ) {
       publicDoc.tournamentSubmissions = { submissionIds };
@@ -298,7 +373,7 @@ export function buildPublicProfileFromUser(
   {
     const voteCount = (user as unknown as Record<string, unknown>)['publicVoteCount'] as number | undefined;
     if (
-      isSectionPublic(privacy, 'votingActivity') &&
+      isSectionVisibleToPublic(privacy, 'votingActivity') &&
       typeof voteCount === 'number' && voteCount > 0
     ) {
       publicDoc.votingActivity = { publicVoteCount: voteCount };
@@ -310,7 +385,7 @@ export function buildPublicProfileFromUser(
   {
     const awardIds = (user as unknown as Record<string, unknown>)['awardIds'] as string[] | undefined;
     if (
-      isSectionPublic(privacy, 'awardsAndMedals') &&
+      isSectionVisibleToPublic(privacy, 'awardsAndMedals') &&
       Array.isArray(awardIds) && awardIds.length > 0
     ) {
       publicDoc.awardsAndMedals = { awardIds };

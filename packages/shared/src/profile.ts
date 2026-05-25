@@ -1,8 +1,17 @@
 /**
  * Sound Platform — Modular Profile Schema
  * =========================================
- * Phase:   5-D (World Model + Tournaments Privacy Alignment)
- * Updated: 2026-05-17
+ * Phase:   6-A (Profile + PublicProfile + Privacy schema foundation)
+ * Updated: 2026-05-25
+ *
+ * CHANGELOG (Phase 6-A):
+ *   - Added PrivacySettingsDoc — dedicated document at privacySettings/{uid}
+ *     for the AccountControlHub Privacy Center persistence layer.
+ *   - Added createDefaultPrivacySettingsDoc() factory (used by onUserCreate).
+ *   - Audience model comments clarified — server-side enforcement roadmap noted.
+ *
+ * Original Phase:   5-D (World Model + Tournaments Privacy Alignment)
+ * Originally:       2026-05-17
  *
  * WORLD MODEL (authoritative):
  *   Five worlds: general | plus | music | radio | tournaments
@@ -590,3 +599,165 @@ export interface PublicProfileDoc {
   // Meta
   lastUpdatedAt: string; // ISO — when the CF last rebuilt this projection
 }
+
+// ─── Privacy Settings Document (privacySettings/{uid}) ───────────────────────
+
+/**
+ * PrivacySettingsDoc — the document stored at privacySettings/{uid}.
+ *
+ * SEPARATION OF CONCERNS:
+ *   users/{uid}.privacy        → drives publicProfiles projection (PrivacySettings map).
+ *   privacySettings/{uid}      → stores the full AccountControlHub Privacy Center state.
+ *
+ * Why two documents?
+ *   - users/{uid} is owner-only. Embedding 30+ UI privacy fields there would
+ *     bloat every profile read and Cloud Function trigger.
+ *   - privacySettings/{uid} is a separate, focused document: owner reads/writes,
+ *     admin reads. Cloud Functions sync selected fields back to users/{uid}.privacy
+ *     for publicProfiles projection.
+ *
+ * AUDIENCE ENFORCEMENT (Phase 6-A status):
+ *   - 'public'    → fully enforced (publicProfiles projection gate).
+ *   - 'only-me'   → fully enforced (section absent from publicProfiles).
+ *   - 'followers' → STORED but NOT yet enforced. Social graph (follows collection)
+ *                   does not exist. Treated as 'public' until follows module is built.
+ *                   Comment: // PHASE 7: enforce after follows module
+ *   - 'friends'   → STORED but NOT yet enforced. Treated as 'followers' fallback.
+ *                   Comment: // PHASE 7: enforce after follows module
+ *   - 'following' → STORED but NOT yet enforced. Same as 'friends'.
+ *   - 'custom'    → STORED but NOT yet enforced. No custom lists collection yet.
+ *                   Comment: // PHASE 9: enforce after lists module
+ *   Enforcement is done in buildPublicProfile.ts — see comments there.
+ *
+ * UI row IDs match AccountControlHub PRIVACY_GROUPS row.id values exactly.
+ * Values are string tokens matching the option IDs in PrivacyOption arrays.
+ *
+ * serverEnforced rows (الأطفال والوصي) are NOT stored here — they are
+ * server-only and never written by the client.
+ */
+export interface PrivacySettingsDoc {
+  uid: string;
+
+  // ── الملف والهوية ─────────────────────────────────────────────────────────
+  'profile-visibility':  string; // audience
+  'profile-stats':       string; // audience
+  'social-links':        string; // audience
+  'badges':              string; // audience
+
+  // ── القصص ودائرة الصورة ──────────────────────────────────────────────────
+  'stories-visibility':  string; // audience
+  'story-ring':          string; // audience
+  'story-replies':       string; // contact
+
+  // ── الاستماع الآن ─────────────────────────────────────────────────────────
+  'listening-now':              string; // audience
+  'listening-world-switch':     string; // toggle
+
+  // ── مزاجي ────────────────────────────────────────────────────────────────
+  'mood-visibility': string; // audience
+  'mood-source':     string; // toggle
+
+  // ── المحفوظات ─────────────────────────────────────────────────────────────
+  'saved-visibility': string; // audience
+  'saved-lists':      string; // audience
+
+  // ── الإعادات ──────────────────────────────────────────────────────────────
+  'reposts-visibility': string; // audience
+
+  // ── الاشتراكات ────────────────────────────────────────────────────────────
+  'subscriptions-visibility': string; // audience
+
+  // ── الرحلات / الجلسات ────────────────────────────────────────────────────
+  'sessions-visibility': string; // audience
+  'sessions-location':   string; // location-precision
+
+  // ── الرسائل والتواصل ─────────────────────────────────────────────────────
+  'messages':       string; // contact
+  'follow-requests': string; // approval
+  'group-invites':  string; // contact
+
+  // ── الهدايا والنقاط ───────────────────────────────────────────────────────
+  'receive-gifts':   string; // contact
+  'receive-points':  string; // contact
+  'points-balance':  string; // audience
+
+  // ── الظهور في اكتشف ──────────────────────────────────────────────────────
+  'discover-profile':   string; // toggle
+  'follow-suggestions': string; // toggle
+
+  // ── الحظر والكتم ─────────────────────────────────────────────────────────
+  'blocked-accounts': string; // management
+  'muted-accounts':   string; // management
+
+  // ── Meta ──────────────────────────────────────────────────────────────────
+  updatedAt: string; // ISO — when the owner last saved their privacy settings
+  createdAt: string; // ISO — when this document was first created (onUserCreate)
+}
+
+/**
+ * createDefaultPrivacySettingsDoc — builds the safe default PrivacySettingsDoc.
+ *
+ * Called by onUserCreate to initialize privacySettings/{uid}.
+ * Defaults match the PRIVACY_GROUPS constant in AccountControlHub.tsx.
+ */
+export function createDefaultPrivacySettingsDoc(uid: string, now: string): PrivacySettingsDoc {
+  return {
+    uid,
+
+    // الملف والهوية
+    'profile-visibility': 'public',
+    'profile-stats':      'followers',
+    'social-links':       'public',
+    'badges':             'public',
+
+    // القصص ودائرة الصورة
+    'stories-visibility': 'followers',
+    'story-ring':         'followers',
+    'story-replies':      'friends',
+
+    // الاستماع الآن
+    'listening-now':           'followers',
+    'listening-world-switch':  'on',
+
+    // مزاجي
+    'mood-visibility': 'followers',
+    'mood-source':     'on',
+
+    // المحفوظات
+    'saved-visibility': 'only-me',
+    'saved-lists':      'only-me',
+
+    // الإعادات
+    'reposts-visibility': 'public',
+
+    // الاشتراكات
+    'subscriptions-visibility': 'followers',
+
+    // الرحلات / الجلسات
+    'sessions-visibility': 'friends',
+    'sessions-location':   'city',
+
+    // الرسائل والتواصل
+    'messages':        'followers',
+    'follow-requests': 'auto',
+    'group-invites':   'friends',
+
+    // الهدايا والنقاط
+    'receive-gifts':  'followers',
+    'receive-points': 'followers',
+    'points-balance': 'only-me',
+
+    // الظهور في اكتشف
+    'discover-profile':   'on',
+    'follow-suggestions': 'on',
+
+    // الحظر والكتم
+    'blocked-accounts': 'manage',
+    'muted-accounts':   'manage',
+
+    // Meta
+    createdAt: now,
+    updatedAt: now,
+  };
+}
+

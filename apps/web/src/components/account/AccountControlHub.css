@@ -348,12 +348,39 @@
   font-size: var(--font-size-base);
   font-weight: 700;
   color: var(--color-text-primary);
-  flex: 1;
 }
 .ach-privacy-panel__subtitle {
   font-size: 0.7rem;
   color: var(--color-text-muted);
+  min-height: 1em; /* prevent layout shift on state changes */
 }
+
+/* Title+subtitle block grows to push save btn to the end */
+.ach-privacy-panel__header > div {
+  flex: 1;
+  min-width: 0;
+}
+
+/* Save button — compact, accent-colored, in the header */
+.ach-privacy-save-btn {
+  flex-shrink: 0;
+  padding: 6px 14px;
+  border-radius: var(--radius-full);
+  background: var(--color-brand, #7c5cfc);
+  color: #fff;
+  font-size: 0.78rem;
+  font-weight: 600;
+  transition: opacity var(--transition-fast), background var(--transition-fast);
+  white-space: nowrap;
+}
+.ach-privacy-save-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+.ach-privacy-save-btn:not(:disabled):hover {
+  opacity: 0.88;
+}
+
 
 .ach-privacy-panel__body {
   flex: 1;
