@@ -1,15 +1,16 @@
 /**
  * Sound Platform — Public Profile Projection Builder
  * ====================================================
- * Phase:   6-B (Social Graph Foundation)
+ * Phase:   7 (Viewer-Aware Profile Privacy Resolver)
  * Updated: 2026-05-25
- *   - Updated audience enforcement comments to reflect social graph existence.
- *   - follows/{uid}/following/{targetUid} collection NOW EXISTS (Phase 6-B).
- *   - 'followers' audience enforcement is NOW POSSIBLE in a viewer-aware callable.
- *   - Static publicProfiles document remains permissive (no viewer context).
- *   - See Phase 7 roadmap in onFollowWrite.ts.
+ *   - getProfileForViewer callable NOW LIVE (Phase 7).
+ *   - ProfilePage now uses callable for non-self views.
+ *   - 'followers', 'friends', 'onlyMe', and block enforcement are active in callable.
+ *   - This static builder (publicProfiles document) remains permissive by design.
+ *   - Viewer-specific filtering lives in callables/getProfileForViewer.ts.
+ *   - See Phase 7 roadmap: isSectionVisibleForViewer() in callable.
  *
- * Previous Phase: 6-A (Privacy schema foundation — 2026-05-25)
+ * Previous Phase: 6-B (Social Graph Foundation — 2026-05-25)
  *
  * Shared helper used by:
  *   - onUserCreate      (builds initial projection on signup)
@@ -113,11 +114,29 @@ import { migratePrivacyLevel, isPubliclyVisible } from '@sound/shared';
  */
 
 /**
- * isSectionVisibleToPublic — audience-aware gate for Phase 6-A.
+ * isSectionVisibleToPublic — audience-aware gate for static publicProfiles doc.
  *
- * Returns true if the section should appear in publicProfiles/{uid}.
- * Handles 'onlyMe' as a hard block, 'public' as a hard allow,
- * and deferred audience tokens as permissive (see enforcement comments above).
+ * PHASE 7 STATUS:
+ *   This function continues to be used for building the STATIC publicProfiles/{uid}
+ *   document. It remains permissive for deferred audience tokens because:
+ *
+ *   1. publicProfiles is written once per profile change with NO viewer context.
+ *   2. Viewer-specific enforcement is now done in getProfileForViewer callable.
+ *   3. The callable reads this document and re-applies audience gates server-side.
+ *
+ *   DO NOT add viewer-specific logic here. That belongs in the callable.
+ *
+ * AUDIENCE HANDLING:
+ *   'public'   → ENFORCED — section IS included in publicProfiles.
+ *   'onlyMe'   → ENFORCED — section is NEVER included in publicProfiles.
+ *   'followers' → PERMISSIVE FALLBACK in this function.
+ *                  Enforced in getProfileForViewer (Phase 7) — LIVE.
+ *   'friends'   → PERMISSIVE FALLBACK in this function.
+ *                  Enforced in getProfileForViewer (Phase 7) — LIVE.
+ *   'following' → PERMISSIVE FALLBACK in this function.
+ *                  Enforced in getProfileForViewer (Phase 7) — LIVE.
+ *   'custom'    → PERMISSIVE FALLBACK in this function.
+ *                  // PHASE 9: enforce when audienceLists collection exists.
  *
  * Replaces the simple `isSectionPublic()` binary check for new call sites.
  * The old `isSectionPublic()` is still exported for backward compatibility.
@@ -136,11 +155,11 @@ export function isSectionVisibleToPublic(
   if (sp.audiences.includes('public')) return true;
 
   // Deferred audience tokens (followers, friends, following, custom):
-  // Social graph enforcement is not yet implemented (Phase 6-A).
-  // Permissive fallback — show section until enforcement is ready.
-  // PHASE 7: replace this return with graph-based check for 'followers'/'friends'.
-  // PHASE 9: replace this return with list-based check for 'custom'.
-  return true; // permissive fallback — PHASE 7/9 will restrict this
+  // Viewer-aware enforcement is done in getProfileForViewer callable (Phase 7).
+  // This static document uses a permissive fallback so content is not hidden
+  // permanently from users who set 'followers' audience.
+  // The callable will strip sections the viewer is not entitled to.
+  return true; // permissive fallback — callable enforces per-viewer (Phase 7)
 }
 
 /**

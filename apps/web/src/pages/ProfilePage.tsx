@@ -1,14 +1,19 @@
 /**
  * Sound Platform — Profile Page
  * ================================
+ * Phase:   7 (Viewer-Aware Privacy Resolver)
+ * Updated: 2026-05-25
+ *
  * Source material:
  *   - New Screens: music_me_profile_sound_authority/code.html (only usable export)
  *   - Old Screens: sound_artist_profile/code.html
  *   - Authority:   DESIGN.md + sound_takeover_report.md
  *
- * PRIVACY MODEL (mandatory — Phase 4-H-2):
- *   ✅ Reads from:  publicProfiles/{uid}  (public projection)
- *   ❌ NEVER reads: users/{uid}           (private — Firestore rules deny)
+ * PRIVACY MODEL (Phase 7 — mandatory):
+ *   Self view (✔):   usePublicProfile — onSnapshot on publicProfiles/{uid} (real-time).
+ *   Other view (✔):  useViewerProfile — callable getProfileForViewer (viewer-filtered).
+ *   NEVER reads users/{uid} (private — Firestore rules deny).
+ *   NEVER reads privacySettings/{uid} from client (owner-only — rules deny).
  *
  * Tab computation rules:
  *   - Viewer-facing tabs appear ONLY when the section is projected AND non-empty.
@@ -18,12 +23,13 @@
  *   - مسابقات is the correct label for the tournaments world and tab.
  */
 
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublicProfile } from '../hooks/usePublicProfile';
+import { useViewerProfile } from '../hooks/useViewerProfile';
 import { useFollowState } from '../hooks/useFollowState';
-import type { PublicProfileDoc } from '@sound/shared';
+import type { PublicProfileDoc, ViewerState } from '@sound/shared';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { EmptyState } from '../components/EmptyState';
 import './ProfilePage.css';
@@ -112,24 +118,43 @@ interface Props {
   isSelf?: boolean;
 }
 
-// ─── Component ────────────────────────────────────────────────────────────────
+// ─── Component ─────────────────────────────────────────────────────────────────
+//
+// ROUTING SPLIT (Phase 7):
+//   isSelf=true  → ProfilePageSelf  → usePublicProfile (onSnapshot, real-time)
+//   isSelf=false → ProfilePageOther → useViewerProfile (callable, viewer-filtered)
+//
+// WHY SPLIT?
+//   Self-view reads publicProfiles/{uid} directly (real-time, no CF roundtrip).
+//   Other-view uses the callable to apply viewer-aware audience gates.
+//   Keeping them separate preserves the Rules of Hooks constraint
+//   (both hooks are always called in their respective components).
 
 export function ProfilePage({ isSelf = false }: Props) {
   const { uid: routeUid } = useParams<{ uid: string }>();
   const { currentUser }   = useAuth();
-
-  // Determine whose profile to load.
   const targetUid = isSelf ? (currentUser?.uid ?? null) : (routeUid ?? null);
 
-  // ✅ Only ever read from publicProfiles — never users/{uid}
-  const profileState = usePublicProfile(targetUid);
+  if (isSelf) {
+    return <ProfilePageSelf selfUid={targetUid} currentUser={currentUser} />;
+  }
+  return <ProfilePageOther targetUid={targetUid} currentUid={currentUser?.uid ?? null} />;
+}
 
-  // ── Loading ──────────────────────────────────────────────────────────────────
+// ─── Self View (usePublicProfile — real-time) ──────────────────────────────────
+
+function ProfilePageSelf({
+  selfUid,
+  currentUser,
+}: {
+  selfUid: string | null;
+  currentUser: { uid: string } | null;
+}) {
+  const profileState = usePublicProfile(selfUid);
+
   if (profileState.status === 'loading') {
     return <LoadingScreen message="جاري تحميل الملف الشخصي..." />;
   }
-
-  // ── Error ────────────────────────────────────────────────────────────────────
   if (profileState.status === 'error') {
     return (
       <div className="page">
@@ -137,48 +162,110 @@ export function ProfilePage({ isSelf = false }: Props) {
       </div>
     );
   }
-
-  // ── Not found ────────────────────────────────────────────────────────────────
-  // publicProfiles/{uid} does not exist — CF not yet projected, or truly absent.
   if (profileState.status === 'not-found') {
     return (
       <div className="page">
         <EmptyState
           icon="👤"
-          title={isSelf ? 'ملفك الشخصي ليس جاهزاً بعد' : 'الملف الشخصي غير متاح'}
-          description={
-            isSelf
-              ? 'سيتم إنشاء ملفك الشخصي العام تلقائياً'
-              : 'لم يتم العثور على هذا الملف الشخصي أو أنه خاص'
-          }
+          title="ملفك الشخصي ليس جاهزاً بعد"
+          description="سيتم إنشاء ملفك الشخصي العام تلقائياً"
+        />
+      </div>
+    );
+  }
+  return (
+    <ProfileLoaded
+      profile={profileState.profile}
+      isSelf={true}
+      currentUid={currentUser?.uid ?? null}
+    />
+  );
+}
+
+// ─── Other-User View (useViewerProfile — caller-filtered) ─────────────────────
+
+function ProfilePageOther({
+  targetUid,
+  currentUid,
+}: {
+  targetUid: string | null;
+  currentUid: string | null;
+}) {
+  const { status, refetch, ...rest } = useViewerProfile(targetUid);
+
+  if (status === 'loading') {
+    return <LoadingScreen message="جاري تحميل الملف الشخصي..." />;
+  }
+
+  // ── Blocked state ────────────────────────────────────────────────────────────
+  // The target has blocked this viewer. Do not reveal any profile data.
+  if (status === 'blocked') {
+    return (
+      <div className="page">
+        <EmptyState
+          icon="🚫"
+          title="هذا الحساب غير متاح"
+          description="تعذر عرض هذا الملف الشخصي."
         />
       </div>
     );
   }
 
-  // ── Loaded ───────────────────────────────────────────────────────────────────
-  const profile = profileState.profile;
+  if (status === 'error') {
+    const errorState = rest as { message: string };
+    return (
+      <div className="page">
+        <EmptyState icon="⚠️" title="حدث خطأ" description={errorState.message} />
+      </div>
+    );
+  }
+
+  if (status === 'not-found') {
+    return (
+      <div className="page">
+        <EmptyState
+          icon="👤"
+          title="الملف الشخصي غير متاح"
+          description="لم يتم العثور على هذا الملف الشخصي أو أنه خاص"
+        />
+      </div>
+    );
+  }
+
+  // status === 'loaded'
+  const loadedState = rest as { result: import('@sound/shared').GetProfileForViewerResponse };
+  const { profile, viewerState } = loadedState.result;
 
   return (
     <ProfileLoaded
       profile={profile}
-      isSelf={isSelf}
-      currentUid={currentUser?.uid ?? null}
+      isSelf={false}
+      currentUid={currentUid}
+      viewerState={viewerState}
+      onFollowToggled={refetch}
     />
   );
 }
 
 // ─── Loaded View ──────────────────────────────────────────────────────────────
 // Separated to keep hook ordering clean.
+// Receives optional viewerState from getProfileForViewer (other-view)
+// and optional onFollowToggled callback to trigger refetch after follow change.
 
 function ProfileLoaded({
   profile,
   isSelf,
   currentUid,
+  viewerState,
+  onFollowToggled,
 }: {
   profile: PublicProfileDoc;
   isSelf: boolean;
   currentUid: string | null;
+  /** Viewer social state — provided by getProfileForViewer for other-view */
+  viewerState?: ViewerState;
+  /** Called after follow/unfollow to refresh viewer-filtered data */
+  onFollowToggled?: () => void;
 }) {
   // ── Follow state — real Firestore onSnapshot via useFollowState ─────────
   // Hook is always called (Rules of Hooks) but returns no-op when isSelf.
@@ -187,6 +274,20 @@ function ProfileLoaded({
     isSelf ? null : currentUid,  // null disables hook for self-view
     isSelf ? null : targetUid,
   );
+
+  // ── Refetch after follow toggle (Phase 7) ────────────────────────────────
+  // When the viewer follows/unfollows, the callable may return different sections
+  // (e.g. if 'followers' audience unlocks more content after following).
+  // We call onFollowToggled() which increments the version in useViewerProfile.
+  const handleFollowToggle = useCallback(async () => {
+    await followState.toggle();
+    if (onFollowToggled) {
+      // Small delay to let the CF mirror write complete before refetch.
+      // The onFollowWrite CF is near-instant but not synchronous.
+      setTimeout(onFollowToggled, 1500);
+    }
+  }, [followState, onFollowToggled]);
+  
   // Compute visible tabs from current projection data.
   const visibleTabs = useMemo(
     () => TAB_DEFS.filter((t) => t.visible(profile, isSelf)),
@@ -303,7 +404,7 @@ function ProfileLoaded({
               followState.isFollowing ? 'profile-page__action-btn--following' : '',
             ].join(' ').trim()}
             type="button"
-            onClick={followState.toggle}
+            onClick={handleFollowToggle}
             disabled={followState.isLoading || followState.isSaving}
             aria-label={followState.isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
             aria-pressed={followState.isFollowing}
