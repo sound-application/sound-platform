@@ -22,6 +22,7 @@ import React, { useState, useMemo } from 'react';
 import { useParams } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { usePublicProfile } from '../hooks/usePublicProfile';
+import { useFollowState } from '../hooks/useFollowState';
 import type { PublicProfileDoc } from '@sound/shared';
 import { LoadingScreen } from '../components/LoadingScreen';
 import { EmptyState } from '../components/EmptyState';
@@ -159,7 +160,11 @@ export function ProfilePage({ isSelf = false }: Props) {
   const profile = profileState.profile;
 
   return (
-    <ProfileLoaded profile={profile} isSelf={isSelf} />
+    <ProfileLoaded
+      profile={profile}
+      isSelf={isSelf}
+      currentUid={currentUser?.uid ?? null}
+    />
   );
 }
 
@@ -169,10 +174,19 @@ export function ProfilePage({ isSelf = false }: Props) {
 function ProfileLoaded({
   profile,
   isSelf,
+  currentUid,
 }: {
   profile: PublicProfileDoc;
   isSelf: boolean;
+  currentUid: string | null;
 }) {
+  // ── Follow state — real Firestore onSnapshot via useFollowState ─────────
+  // Hook is always called (Rules of Hooks) but returns no-op when isSelf.
+  const targetUid = profile.uid ?? null;
+  const followState = useFollowState(
+    isSelf ? null : currentUid,  // null disables hook for self-view
+    isSelf ? null : targetUid,
+  );
   // Compute visible tabs from current projection data.
   const visibleTabs = useMemo(
     () => TAB_DEFS.filter((t) => t.visible(profile, isSelf)),
@@ -284,11 +298,30 @@ function ProfileLoaded({
         <div className="profile-page__actions">
           <button
             id="profile-follow-btn"
-            className="profile-page__action-btn profile-page__action-btn--primary"
+            className={[
+              'profile-page__action-btn profile-page__action-btn--primary',
+              followState.isFollowing ? 'profile-page__action-btn--following' : '',
+            ].join(' ').trim()}
             type="button"
+            onClick={followState.toggle}
+            disabled={followState.isLoading || followState.isSaving}
+            aria-label={followState.isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
+            aria-pressed={followState.isFollowing}
           >
-            متابعة
+            {followState.isLoading
+              ? '...'
+              : followState.isSaving
+              ? '...'
+              : followState.isFollowing
+              ? 'إلغاء المتابعة'
+              : 'متابعة'}
           </button>
+          {/* Error toast — minimal, non-blocking */}
+          {followState.error && (
+            <span className="profile-page__follow-error" role="alert" aria-live="polite">
+              {followState.error}
+            </span>
+          )}
           <button
             id="profile-message-btn"
             className="profile-page__action-btn profile-page__action-btn--secondary"

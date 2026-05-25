@@ -1,13 +1,15 @@
 /**
  * Sound Platform — Public Profile Projection Builder
  * ====================================================
- * Phase:   6-A (Profile + PublicProfile + Privacy schema foundation)
+ * Phase:   6-B (Social Graph Foundation)
  * Updated: 2026-05-25
- *   - Added isSectionVisibleToPublic() audience-aware gate.
- *   - Builder now uses isSectionVisibleToPublic() — blocks onlyMe, passes
- *     deferred tokens (followers/friends/custom) permissively until Phase 7/9.
+ *   - Updated audience enforcement comments to reflect social graph existence.
+ *   - follows/{uid}/following/{targetUid} collection NOW EXISTS (Phase 6-B).
+ *   - 'followers' audience enforcement is NOW POSSIBLE in a viewer-aware callable.
+ *   - Static publicProfiles document remains permissive (no viewer context).
+ *   - See Phase 7 roadmap in onFollowWrite.ts.
  *
- * Previous Phase: 5-C-3 (Privacy Audience Model Upgrade — 2026-05-14)
+ * Previous Phase: 6-A (Privacy schema foundation — 2026-05-25)
  *
  * Shared helper used by:
  *   - onUserCreate      (builds initial projection on signup)
@@ -68,34 +70,44 @@ import { migratePrivacyLevel, isPubliclyVisible } from '@sound/shared';
 // ─── Privacy Gate ─────────────────────────────────────────────────────────────
 
 /**
- * AUDIENCE ENFORCEMENT (Phase 6-A):
+ * AUDIENCE ENFORCEMENT (Phase 6-B):
  *
  *   'public'   → ENFORCED. Section IS included in publicProfiles.
  *   'onlyMe'   → ENFORCED. Section is NEVER included in publicProfiles.
  *
- *   'followers' → STORED but NOT YET ENFORCED.
- *                 Social graph (follows collection) does not exist yet.
- *                 Safe fallback: treat as 'public' (permissive) until Phase 7.
- *                 // PHASE 7: enforce when follows/{uid}/following collection exists.
+ *   'followers' → SOCIAL GRAPH NOW EXISTS (Phase 6-B). Data is available at
+ *                  follows/{uid}/following/{targetUid}.
+ *                  HOWEVER: publicProfiles/{uid} is a STATIC document — it has
+ *                  no viewer context. Enforcing 'followers' requires knowing
+ *                  whether the viewer follows the profile owner, which cannot
+ *                  be done in a document write triggered by profile changes.
  *
- *   'friends'   → STORED but NOT YET ENFORCED.
- *                 No mutual-follow graph. Fallback: treat as 'followers' (permissive).
- *                 // PHASE 7: enforce when follows module and mutual-follow flag exist.
+ *                  PHASE 7 PLAN:
+ *                    Implement a Cloud Function callable getProfileForViewer(targetUid)
+ *                    that:
+ *                      1. Reads publicProfiles/{targetUid}
+ *                      2. Checks follows/{viewerUid}/following/{targetUid} exists
+ *                      3. Returns sections gated on 'followers' ONLY if viewer follows
+ *                    Until then: permissive fallback (show section to all authenticated).
  *
- *   'following' → STORED but NOT YET ENFORCED.
- *                 No outgoing-follow graph. Fallback: treat as 'followers'.
- *                 // PHASE 7: same as 'followers'.
+ *   'friends'   → Requires mutual-follow check (A follows B AND B follows A).
+ *                  Social graph exists but mutual-follow flag is not yet computed.
+ *                  PHASE 7: compute mutual-follow flag in onFollowWrite CF.
+ *                  Permissive fallback until then.
  *
- *   'custom'    → STORED but NOT YET ENFORCED.
- *                 No custom audience lists collection. Fallback: treat as 'followers'.
- *                 // PHASE 9: enforce when audienceLists collection exists.
+ *   'following' → Requires outgoing-follow graph. Same graph as above but reversed.
+ *                  PHASE 7: same resolver as 'followers'.
+ *                  Permissive fallback until then.
  *
- * WHY PERMISSIVE FALLBACK?
- *   The social graph does not exist yet. Making unenforceable audience tokens
- *   behave as 'onlyMe' would hide content that users explicitly set to
- *   'followers' or 'friends'. That is a worse user experience than showing
- *   content until enforcement is ready. Each deferred token is marked with
- *   a PHASE comment so enforcement can be dropped in without schema changes.
+ *   'custom'    → Requires audienceLists collection (not yet created).
+ *                  // PHASE 9: enforce when audienceLists collection exists.
+ *                  Permissive fallback until then.
+ *
+ * WHY PERMISSIVE FALLBACK FOR STATIC DOCUMENTS?
+ *   publicProfiles/{uid} is written once per profile change, with no viewer context.
+ *   Making unenforceable audience tokens behave as 'onlyMe' would permanently hide
+ *   content from users who set 'followers' audience but have no followers yet.
+ *   The correct enforcement is via a viewer-aware callable (Phase 7), not a static doc.
  *
  * NEVER invent fake social graph data to simulate enforcement.
  */

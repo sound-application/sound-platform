@@ -1,10 +1,11 @@
 /**
  * Sound Platform — Shared Package
  * ==================================
- * Phase:   4-H-1
- * Updated: 2026-05-14
+ * Phase:   6-B (Social Graph Foundation)
+ * Updated: 2026-05-25
  */
 
 export * from './profile';
 export * from './permissions';
 export * from './content';
+export * from './social';

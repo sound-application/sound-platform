@@ -1,8 +1,16 @@
 /**
  * Sound Platform — Cloud Functions Entry Point
  * ===============================================
- * Phase:   5-C (Profile Update Sync & Privacy-Filtered Public Projection)
- * Updated: 2026-05-14
+ * Phase:   6-B (Social Graph Foundation: Follow / Block / Mute)
+ * Updated: 2026-05-25
+ *
+ * Exports (Phase 6-B additions):
+ *   onFollowWrite   — triggered on follows/{uid}/following/{targetUid} write.
+ *                     Mirrors follow events into followers/ subcollection.
+ *                     Increments/decrements follower/following counts atomically.
+ *                     Triggers onUserProfileUpdate (count sync) via users/{uid} write.
+ *
+ * Previous Phase: 5-C (Profile Update Sync — 2026-05-14)
  *
  * Exports:
  *   onUserCreate         — triggered when a new Firebase Auth user is created.
@@ -38,3 +46,4 @@ admin.firestore().settings({ ignoreUndefinedProperties: true });
 
 export { onUserCreate }         from './triggers/onUserCreate';
 export { onUserProfileUpdate }  from './triggers/onUserProfileUpdate';
+export { onFollowWrite }        from './triggers/onFollowWrite';

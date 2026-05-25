@@ -4,14 +4,17 @@ rules_version = '2';
 // Sound Platform — Cloud Firestore Security Rules
 // Project:  sound-platform-dev
 // Region:   europe-west1
-// Phase:    6-A (Profile + PublicProfile + Privacy schema foundation)
+// Phase:    6-B (Social Graph Foundation: Follow / Block / Mute)
 // Updated:  2026-05-25
 //
-// CHANGELOG (Phase 6-A):
-//   - Added privacySettings/{uid} rule — owner read/write, no client delete.
-//   - uid and createdAt are immutable fields in privacySettings.
+// CHANGELOG (Phase 6-B):
+//   - Replaced old flat follows/{followId} rule with subcollection-based social graph.
+//   - Added follows/{uid}/following/{targetUid}: owner write, self-follow denied.
+//   - Added follows/{uid}/followers/{sourceUid}: CF-only write, any-auth read.
+//   - Added blocks/{uid}/blocked/{targetUid}: owner only, private, self-block denied.
+//   - Added mutes/{uid}/muted/{targetUid}: owner only, private, muteScope updatable.
 //
-// Previous Phase: 4-H-3 (Online Rules Deployed — 2026-05-14)
+// Previous Phase: 6-A (Profile + PublicProfile + Privacy schema — 2026-05-25)
 //
 // PERMISSION MODEL (Phase 4-H-2 — Privacy Correction):
 //
@@ -325,17 +328,112 @@ service cloud.firestore {
     }
 
     // ----------------------------------------------------------
-    // follows/{followId}
-    // Follow relationships (user→user, user→channel).
-    // Owner can create/delete own follow records.
+    // SOCIAL GRAPH — Phase 6-B
+    //
+    // Collection structure (subcollection-based):
+    //   follows/{uid}/following/{targetUid}  — who uid follows (owner write)
+    //   follows/{uid}/followers/{sourceUid}  — who follows uid (CF only)
+    //   blocks/{uid}/blocked/{targetUid}     — who uid blocked (owner only)
+    //   mutes/{uid}/muted/{targetUid}        — who uid muted (owner only)
+    //
+    // IMPORTANT:
+    //   - follows/{uid}/followers/ is NEVER writable by clients.
+    //     Only the onFollowWrite Cloud Function (Admin SDK) writes mirrors.
+    //   - Self-follow/block/mute is denied by rules AND by the Cloud Function.
+    //
+    // ENFORCEMENT GAPS (Phase 6-B):
+    //   - Block does NOT prevent viewing publicProfiles/{uid} via static doc.
+    //     Full block enforcement requires a viewer-aware Cloud Function callable.
+    //     See Phase 7 roadmap in functions/src/triggers/onFollowWrite.ts.
+    //   - Mute does NOT filter feeds (contentItems module doesn't exist yet).
+    //     Feed filtering will be added in Phase 7+ (contentItems + feed queries).
+    //
+    // BACKWARD COMPATIBILITY:
+    //   The old flat follows/{followId} collection is retired.
+    //   Any existing documents in that collection are abandoned (no migration needed
+    //   — there were no real users to have follow data when this rule was created).
     // ----------------------------------------------------------
-    match /follows/{followId} {
+
+    // follows/{uid}/following/{targetUid}
+    // Owner can read/create/delete their own following list.
+    // No client update (follow edges are created-and-deleted, never updated).
+    // No self-follow.
+    match /follows/{uid}/following/{targetUid} {
+      // Owner can read their own following list
+      allow read: if isOwner(uid);
+
+      // Any authenticated user can read a user's following list
+      // (public social graph — enables "does X follow Y?" check)
       allow read: if isAuth();
-      allow create: if isAuth()
-        && request.resource.data.followerUid == request.auth.uid;
-      allow delete: if isAuth()
-        && resource.data.followerUid == request.auth.uid;
+
+      // Owner can follow someone (create the edge)
+      // Must not follow self. sourceUid must match auth uid.
+      allow create: if isOwner(uid)
+        && uid != targetUid
+        && request.resource.data.sourceUid == uid
+        && request.resource.data.targetUid == targetUid;
+
+      // Owner can unfollow (delete the edge)
+      allow delete: if isOwner(uid);
+
+      // No updates — follow edges are immutable; delete+create to re-follow
       allow update: if false;
+    }
+
+    // follows/{uid}/followers/{sourceUid}
+    // CLIENTS CANNOT WRITE. Cloud Function (onFollowWrite) only.
+    // Read: owner (who follows me?) + any authenticated user (public social graph).
+    match /follows/{uid}/followers/{sourceUid} {
+      allow read: if isAuth();
+      // No client writes — Cloud Function (Admin SDK) only
+      allow write: if false;
+    }
+
+    // blocks/{uid}/blocked/{targetUid}
+    // Owner reads/writes their own block list. Private — no other user can read.
+    // No self-block. blockAt field is set by the client.
+    match /blocks/{uid}/blocked/{targetUid} {
+      // Only owner can read their own block list
+      allow read: if isOwner(uid);
+
+      // Owner can block someone (create the edge)
+      // Must not block self. sourceUid must match auth uid.
+      allow create: if isOwner(uid)
+        && uid != targetUid
+        && request.resource.data.sourceUid == uid
+        && request.resource.data.targetUid == targetUid;
+
+      // Owner can unblock (delete the edge)
+      allow delete: if isOwner(uid);
+
+      // No updates — block edges are immutable; delete+create to re-block with new reason
+      allow update: if false;
+    }
+
+    // mutes/{uid}/muted/{targetUid}
+    // Owner reads/writes their own mute list. Private — no other user can read.
+    // No self-mute.
+    match /mutes/{uid}/muted/{targetUid} {
+      // Only owner can read their own mute list
+      allow read: if isOwner(uid);
+
+      // Owner can mute someone
+      // Must not mute self. sourceUid must match auth uid.
+      allow create: if isOwner(uid)
+        && uid != targetUid
+        && request.resource.data.sourceUid == uid
+        && request.resource.data.targetUid == targetUid;
+
+      // Owner can unmute (delete the edge)
+      allow delete: if isOwner(uid);
+
+      // Owner can update muteScope (the only mutable field)
+      allow update: if isOwner(uid)
+        && uid != targetUid
+        && request.resource.data.sourceUid == uid
+        && request.resource.data.targetUid == targetUid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['sourceUid', 'targetUid', 'createdAt']);
     }
 
     // ----------------------------------------------------------

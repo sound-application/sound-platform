@@ -251,6 +251,35 @@
   font-size: 18px;
 }
 
+/* Phase 6-B: Following state — muted/outlined appearance when already following */
+.profile-page__action-btn--primary.profile-page__action-btn--following {
+  background: rgba(124, 58, 237, 0.12);
+  color: #d8b4fe;
+  border: 1px solid rgba(124, 58, 237, 0.4);
+}
+.profile-page__action-btn--primary.profile-page__action-btn--following:hover {
+  background: rgba(255, 60, 60, 0.12);
+  color: #fca5a5;
+  border-color: rgba(255, 60, 60, 0.35);
+}
+
+/* Disabled state — loading or saving in progress */
+.profile-page__action-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* Phase 6-B: Minimal error toast below follow button */
+.profile-page__follow-error {
+  font-size: 0.72rem;
+  color: #fca5a5;
+  padding: 2px 0;
+  align-self: center;
+  flex-shrink: 0;
+}
+
+
 /* ── Listening Now Status ─────────────────────────────────────────────────── */
 .profile-page__listening-now {
   display: flex;
