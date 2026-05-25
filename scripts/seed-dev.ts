@@ -162,14 +162,17 @@ async function seedWorlds(): Promise<void> {
     description: 'محطات الراديو',
   });
 
-  await seed('worlds/live', {
-    nameAr: 'مباشر',
-    nameEn: 'Live',
-    slug: 'live',
-    icon: 'world_live',
+  // NOTE: لايف is the bottom navigation tab label for the Live tab.
+  // It is NOT a world. Do not seed a 'live' world document.
+  // The five worlds are: general, plus, music, radio, tournaments.
+  await seed('worlds/tournaments', {
+    nameAr: 'مسابقات',
+    nameEn: 'Tournaments',
+    slug: 'tournaments',
+    icon: 'world_tournaments',
     sortOrder: 5,
     isActive: true,
-    description: 'الجلسات المباشرة',
+    description: 'البطولات والتصويت والفائزين',
   });
 }
 

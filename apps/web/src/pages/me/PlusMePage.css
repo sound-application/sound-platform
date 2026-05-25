@@ -1,0 +1,560 @@
+/*
+ * Sound Platform — Plus Me Page
+ * ==============================
+ * Route:  /plus/me
+ * World:  بلس (Plus) — gold accent
+ *
+ * Design tokens:
+ *   --pme-accent:        #f59e0b   (Plus gold)
+ *   --pme-accent-light:  #fde68a
+ *   --pme-accent-rgb:    245, 158, 11
+ *   --surface:           #0e0e0e
+ *   radius: 3px (DESIGN.md rule)
+ *   font:   Alexandria, Cairo
+ *
+ * Cover must bleed upward behind the glass AppHeader — achieved by
+ * positioning it absolute at top:0, reaching up by the height of the
+ * AppHeader (~60px) using a negative top margin so the page wrapper
+ * still flows naturally.
+ *
+ * This file is a 1:1 structural clone of GeneralMePage.css
+ * with all `gme-` prefixes replaced with `pme-` and the
+ * purple accent replaced with Plus gold.
+ */
+
+:root {
+  --pme-accent:       #f59e0b;
+  --pme-accent-light: #fde68a;
+  --pme-accent-rgb:   245, 158, 11;
+}
+
+/* ── Page wrapper ─────────────────────────────────────────────────────────── */
+.pme-page {
+  position: relative;
+  background: #0e0e0e;
+  min-height: 100dvh;
+  color: #ffffff;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  direction: rtl;
+  /* Clear bottom nav */
+  padding-bottom: 112px;
+}
+
+/* ── Cover — full bleed hero that reaches up behind the AppHeader ─────────── */
+/*
+ * AppLayout adds: padding-top = var(--header-height) + var(--world-strip-height) = 104px.
+ * So .pme-page starts at y=104 in the viewport.
+ *
+ * To make the gradient bleed behind the glass nav bars, we:
+ *   1. Keep .pme-cover position:absolute within .pme-page.
+ *   2. Apply margin-top: -104px to pull it 104px above .pme-page's top edge
+ *      → cover now starts at y=0 (top of viewport, behind AppHeader glass).
+ *   3. Increase height so we still cover the identity area after the offset.
+ *
+ * The AppHeader has background: rgba(0,0,0,0.15) + blur(28px) — near-transparent.
+ * The world strip has background: rgba(0,0,0,0.10) + blur(20px) — near-transparent.
+ * The gold gradient will show through both glass layers cleanly.
+ */
+.pme-cover {
+  position: absolute;
+  top: 0;
+  left: 0;
+  right: 0;
+  /* Pull the cover UP behind the fixed header+world-strip (104px total) */
+  margin-top: calc(-1 * (var(--header-height) + var(--world-strip-height)));
+  /* Extra height = 104px offset + 340px visible = 444px total */
+  height: calc(340px + var(--header-height) + var(--world-strip-height));
+  /* Gold radial burst from the very top of the screen */
+  background:
+    radial-gradient(
+      ellipse 110% 55% at 50% 0%,
+      rgba(var(--pme-accent-rgb), 0.48) 0%,
+      rgba(var(--pme-accent-rgb), 0.18) 40%,
+      transparent 72%
+    ),
+    linear-gradient(
+      180deg,
+      rgba(var(--pme-accent-rgb), 0.26) 0%,
+      rgba(14, 14, 14, 0.0) 68%
+    );
+  background-color: #0e0e0e;
+  pointer-events: none;
+  z-index: 0;
+}
+
+/* Bottom fade — smooth blend into page background */
+.pme-cover__fade {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to bottom,
+    transparent 30%,
+    rgba(14, 14, 14, 0.70) 65%,
+    #0e0e0e 100%
+  );
+}
+
+/* ── Header utility controls ─────────────────────────────────────────────── */
+/*
+ * Float above the cover. Visually these should appear BELOW the
+ * AppHeader+world-strip — that's 104px down from the page top.
+ * But because the cover was offset by -104px, we offset the
+ * controls by +104px within the same relative stack to land
+ * in the correct visual position on screen.
+ */
+.pme-header-controls {
+  position: relative;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  /* 8px breathing room below where the world strip ends */
+  padding: 8px 16px 0;
+  direction: rtl;
+}
+
+/* Badges — right (RTL start) */
+.pme-header-badges {
+  display: flex;
+  gap: 6px;
+}
+
+/* Control buttons — left (RTL end) */
+.pme-header-btns {
+  display: flex;
+  gap: 6px;
+}
+
+/* ── Premium glass header button ─────────────────────────────────────────── */
+.pme-hdr-btn {
+  width: 36px;
+  height: 36px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 50%;          /* circular — modern utility icon look */
+  color: rgba(255, 255, 255, 0.85);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease, transform 0.1s ease;
+}
+.pme-hdr-btn:hover {
+  background: rgba(var(--pme-accent-rgb), 0.14);
+  border-color: rgba(var(--pme-accent-rgb), 0.40);
+  color: var(--pme-accent-light);
+}
+.pme-hdr-btn:active { transform: scale(0.93); }
+.pme-hdr-btn .material-symbols-outlined {
+  font-size: 18px;
+  font-variation-settings: 'FILL' 0, 'wght' 300;
+}
+
+/* ── Badges ───────────────────────────────────────────────────────────────── */
+.pme-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 10px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--pme-accent-light);
+}
+
+.pme-badge--verified .material-symbols-outlined {
+  font-size: 14px;
+  color: var(--pme-accent);
+  font-variation-settings: 'FILL' 1, 'wght' 500;
+}
+
+.pme-badge--world {
+  color: var(--pme-accent);
+  border-color: rgba(var(--pme-accent-rgb), 0.40);
+  background: rgba(var(--pme-accent-rgb), 0.12);
+  letter-spacing: 0.02em;
+}
+
+/* ── Identity block ───────────────────────────────────────────────────────── */
+.pme-identity {
+  position: relative;
+  z-index: 5;
+  padding: 20px 16px 0;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* ── Avatar ───────────────────────────────────────────────────────────────── */
+.pme-avatar-wrap {
+  position: relative;
+  width: 96px;
+  height: 96px;
+  margin-bottom: 16px;
+}
+
+/* Animated gold story ring */
+.pme-avatar-ring {
+  position: absolute;
+  inset: -3px;
+  border-radius: 50%;
+  background: conic-gradient(
+    #f59e0b 0deg,
+    #fbbf24 90deg,
+    #fde68a 180deg,
+    #f59e0b 270deg,
+    #d97706 360deg
+  );
+  z-index: 0;
+  animation: pme-ring-spin 4s linear infinite;
+}
+
+@keyframes pme-ring-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+.pme-avatar {
+  position: relative;
+  z-index: 1;
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: #1c1a1a;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /* Gap between ring and avatar */
+  border: 3px solid #0e0e0e;
+}
+
+.pme-avatar img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.pme-avatar__initial {
+  font-size: 2rem;
+  font-weight: 700;
+  color: var(--pme-accent-light);
+}
+
+/* ── Identity text ────────────────────────────────────────────────────────── */
+.pme-identity__text {
+  width: 100%;
+}
+
+.pme-identity__name-row {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  margin-bottom: 2px;
+}
+
+.pme-display-name {
+  font-size: 22px;
+  font-weight: 700;
+  color: #ffffff;
+  margin: 0;
+  line-height: 1.3;
+}
+
+.pme-verified-icon .material-symbols-outlined {
+  font-size: 18px;
+  color: var(--pme-accent);
+  vertical-align: middle;
+  font-variation-settings: 'FILL' 1, 'wght' 500;
+}
+
+/* Username: always LTR-isolated */
+.pme-username {
+  font-size: 13px;
+  color: var(--pme-accent-light);
+  margin: 0 0 8px;
+  direction: ltr;
+  text-align: right;
+}
+
+.pme-bio {
+  font-size: 14px;
+  color: #a1a1aa;
+  line-height: 1.55;
+  margin: 0 0 10px;
+  max-width: 320px;
+}
+
+/* ── Status pill ──────────────────────────────────────────────────────────── */
+.pme-status-pill {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 14px;
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: #71717a;
+  font-size: 13px;
+  font-family: inherit;
+  cursor: pointer;
+  margin-bottom: 10px;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.pme-status-pill:hover {
+  background: rgba(var(--pme-accent-rgb), 0.10);
+  border-color: rgba(var(--pme-accent-rgb), 0.35);
+  color: var(--pme-accent-light);
+}
+.pme-status-pill .material-symbols-outlined { font-size: 15px; }
+.pme-status-pill__text { font-style: italic; }
+
+/* ── Listening now ────────────────────────────────────────────────────────── */
+.pme-listening-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 4px;
+}
+
+.pme-listening-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--pme-accent);
+  animation: pme-pulse 1.6s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes pme-pulse {
+  0%, 100% { opacity: 1;   transform: scale(1);    }
+  50%       { opacity: 0.3; transform: scale(0.72); }
+}
+
+.pme-listening-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--pme-accent-light);
+}
+
+.pme-listening-track {
+  font-size: 12px;
+  color: #71717a;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ── Stats grid ───────────────────────────────────────────────────────────── */
+.pme-stats {
+  position: relative;
+  z-index: 5;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  padding: 20px 16px 0;
+}
+
+.pme-stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 4px;
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-bottom: 2px solid transparent;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: border-bottom-color 0.2s ease, background 0.15s ease;
+}
+.pme-stat:hover {
+  background: rgba(var(--pme-accent-rgb), 0.07);
+  border-bottom-color: var(--pme-accent);
+}
+
+.pme-stat__value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.pme-stat__label {
+  font-size: 10px;
+  color: #71717a;
+  margin-top: 2px;
+  text-align: center;
+}
+
+/* ── Action buttons ───────────────────────────────────────────────────────── */
+.pme-actions {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 16px 16px 0;
+}
+
+.pme-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  padding: 10px 16px;
+  border-radius: 3px;
+  font-size: 14px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease, background 0.15s ease;
+}
+.pme-btn:active { transform: scale(0.97); }
+
+.pme-btn--edit {
+  flex: 1;
+  background: rgba(var(--pme-accent-rgb), 0.13);
+  color: var(--pme-accent-light);
+  border: 1px solid rgba(var(--pme-accent-rgb), 0.36);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+}
+.pme-btn--edit:hover { background: rgba(var(--pme-accent-rgb), 0.22); }
+.pme-btn--edit .material-symbols-outlined { font-size: 18px; }
+
+.pme-btn--ghost {
+  flex: 0 0 42px;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  background: rgba(255, 255, 255, 0.04);
+  color: #71717a;
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius: 3px;
+}
+.pme-btn--ghost .material-symbols-outlined { font-size: 18px; }
+
+/* ── Social links ─────────────────────────────────────────────────────────── */
+.pme-social {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 8px;
+  padding: 12px 16px 0;
+  min-height: 44px;
+}
+
+.pme-social__link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  color: var(--pme-accent-light);
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.pme-social__link:hover {
+  background: rgba(var(--pme-accent-rgb), 0.16);
+  border-color: rgba(var(--pme-accent-rgb), 0.42);
+}
+.pme-social__link .material-symbols-outlined { font-size: 18px; }
+
+.pme-social__hint {
+  font-size: 12px;
+  color: #52525b;
+  font-style: italic;
+}
+
+/* ── Content tabs ─────────────────────────────────────────────────────────── */
+.pme-tabs {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+  padding: 0 8px;
+  margin-top: 24px;
+}
+.pme-tabs::-webkit-scrollbar { display: none; }
+
+.pme-tab {
+  flex-shrink: 0;
+  padding: 12px 14px;
+  font-size: 14px;
+  font-weight: 600;
+  font-family: inherit;
+  color: #71717a;
+  white-space: nowrap;
+  border: none;
+  border-bottom: 2px solid transparent;
+  background: transparent;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+.pme-tab:hover { color: var(--pme-accent-light); }
+
+.pme-tab--active {
+  color: var(--pme-accent-light);
+  border-bottom-color: var(--pme-accent);
+}
+
+/* ── Tab panel ────────────────────────────────────────────────────────────── */
+.pme-panel {
+  position: relative;
+  z-index: 5;
+  padding: 16px;
+  min-height: 200px;
+}
+
+/* ── Filter chips ─────────────────────────────────────────────────────────── */
+.pme-filters {
+  position: relative;
+  z-index: 5;
+  display: flex;
+  gap: 8px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding: 10px 16px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+}
+.pme-filters::-webkit-scrollbar { display: none; }
+
+.pme-filter-chip {
+  flex-shrink: 0;
+  padding: 5px 12px;
+  font-size: 12px;
+  font-weight: 500;
+  font-family: inherit;
+  color: #a1a1aa;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: color 0.15s, background 0.15s, border-color 0.15s;
+}
+.pme-filter-chip:hover {
+  color: var(--pme-accent-light);
+  background: rgba(var(--pme-accent-rgb), 0.10);
+  border-color: rgba(var(--pme-accent-rgb), 0.25);
+}
+.pme-filter-chip--active {
+  color: var(--pme-accent-light);
+  background: rgba(var(--pme-accent-rgb), 0.18);
+  border-color: var(--pme-accent);
+}
+

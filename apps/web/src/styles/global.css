@@ -19,7 +19,8 @@ a { text-decoration: none; color: inherit; }
 /* ─── Design Tokens ────────────────────────────────────────────────────────── */
 :root {
   /* Typography */
-  --font-sans: 'IBM Plex Sans Arabic', 'Segoe UI', Tahoma, Arial, sans-serif;
+  /* DESIGN.md authority: preferred = Alexandria, fallback = Cairo */
+  --font-sans: 'Alexandria', 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
   --font-size-xs:   0.75rem;
   --font-size-sm:   0.875rem;
   --font-size-base: 1rem;
@@ -40,9 +41,10 @@ a { text-decoration: none; color: inherit; }
   --color-border-subtle:#1e1e26;
 
   /* Brand */
-  --color-brand:        #7c5cfc;
-  --color-brand-light:  #9b84fd;
-  --color-brand-dim:    rgba(124,92,252,0.15);
+  /* DESIGN.md authority: selected_purple = #7c3aed, soft_lavender = #d8b4fe */
+  --color-brand:        #7c3aed;
+  --color-brand-light:  #d8b4fe;
+  --color-brand-dim:    rgba(124,58,237,0.15);
 
   /* Text */
   --color-text-primary:   #f0f0f5;
@@ -56,12 +58,17 @@ a { text-decoration: none; color: inherit; }
   --color-error:   #f87171;
   --color-info:    #60a5fa;
 
-  /* World colors */
-  --color-world-general: #7c5cfc;
-  --color-world-plus:    #f59e0b;
-  --color-world-music:   #10b981;
-  --color-world-radio:   #ef4444;
-  --color-world-live:    #ec4899;
+  /* World colors — canonical source for ALL world-accent usage
+   * AppHeader reads these via inline --world-color per tab button.
+   * BottomNav reads --color-brand, remapped below per [data-world].
+   * Both derive from the same logical palette defined here.
+   * Tournaments MUST be visually distinct from Plus (orange ≠ gold). */
+  --color-world-general:     #7c5cfc;  /* purple  */
+  --color-world-plus:        #f59e0b;  /* gold    */
+  --color-world-music:       #10b981;  /* emerald */
+  --color-world-radio:       #ef4444;  /* red     */
+  --color-world-tournaments: #f97316;  /* orange  — NOT same as plus */
+  /* --color-world-live is NOT a world; لايف is a bottom tab only */
 
   /* Spacing scale */
   --space-1: 0.25rem;
@@ -93,9 +100,10 @@ a { text-decoration: none; color: inherit; }
   --transition-slow:   350ms ease;
 
   /* Layout */
-  --sidebar-width:     240px;
-  --bottom-nav-height: 64px;
-  --header-height:     56px;
+  --sidebar-width:      240px;
+  --bottom-nav-height:  68px;
+  --header-height:      56px;   /* top bar: avatar | SOUND | search */
+  --world-strip-height: 48px;   /* sticky world tab strip below top bar */
   --content-max-width: 900px;
 }
 
@@ -151,3 +159,80 @@ body {
   border-radius: var(--radius-full);
 }
 ::-webkit-scrollbar-thumb:hover { background: var(--color-surface-hover); }
+
+/* ─── Material Symbols RTL Fix ─────────────────────────────────────────────── */
+/*
+ * Material Symbols uses CSS ligatures to convert text like "settings" → icon glyph.
+ * When a parent element has direction:rtl (all Arabic pages), the BiDi algorithm
+ * can prevent ligature resolution, causing icon names to render as raw text.
+ *
+ * Fix: always force direction:ltr on .material-symbols-outlined regardless of
+ * inherited direction. The icon glyph itself has no directionality.
+ */
+.material-symbols-outlined {
+  direction: ltr;
+  unicode-bidi: embed;
+  font-family: 'Material Symbols Outlined' !important;
+  font-style: normal;
+  font-weight: normal;
+  line-height: 1;
+  letter-spacing: normal;
+  text-transform: none;
+  white-space: nowrap;
+  word-wrap: normal;
+  display: inline-block;
+  -webkit-font-feature-settings: 'liga';
+  font-feature-settings: 'liga';
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ─── World-scoped brand color tokens ─────────────────────────────────────────
+ *
+ * AppLayout sets data-world="<worldId>" on the root .app-layout div.
+ * These selectors remap --color-brand / --color-brand-light / --color-brand-dim
+ * so EVERY shared component (BottomNav active tab, avatar ring, focus ring,
+ * card hover border, etc.) automatically inherits the correct world accent
+ * without any per-component logic.
+ *
+ * Canonical world → brand mapping (must match --color-world-* tokens above):
+ *   general     purple  #7c5cfc
+ *   plus        gold    #f59e0b
+ *   music       emerald #10b981
+ *   radio       red     #ef4444
+ *   tournaments orange  #f97316  ← distinct from plus
+ * ─────────────────────────────────────────────────────────────────────────── */
+
+/* عام — purple (explicit override aligns --color-brand with --color-world-general) */
+[data-world="general"] {
+  --color-brand:       #7c5cfc;
+  --color-brand-light: #c4b5fd;
+  --color-brand-dim:   rgba(124, 92, 252, 0.15);
+}
+
+/* بلس — gold */
+[data-world="plus"] {
+  --color-brand:       #f59e0b;
+  --color-brand-light: #fbbf24;
+  --color-brand-dim:   rgba(245, 158, 11, 0.15);
+}
+
+/* موسيقى — emerald */
+[data-world="music"] {
+  --color-brand:       #10b981;
+  --color-brand-light: #6ee7b7;
+  --color-brand-dim:   rgba(16, 185, 129, 0.15);
+}
+
+/* راديو — red */
+[data-world="radio"] {
+  --color-brand:       #ef4444;
+  --color-brand-light: #fca5a5;
+  --color-brand-dim:   rgba(239, 68, 68, 0.15);
+}
+
+/* مسابقات — orange (distinct from plus gold) */
+[data-world="tournaments"] {
+  --color-brand:       #f97316;
+  --color-brand-light: #fdba74;
+  --color-brand-dim:   rgba(249, 115, 22, 0.15);
+}

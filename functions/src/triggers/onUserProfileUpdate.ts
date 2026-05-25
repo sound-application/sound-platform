@@ -38,8 +38,42 @@ import * as admin from 'firebase-admin';
 import type { UserPrivateDoc } from '@sound/shared';
 import { buildPublicProfileFromUser } from '../helpers/buildPublicProfile';
 
-// ─── Firestore reference (Admin SDK init + settings in index.ts) ──────────────
+// ── Firestore reference (Admin SDK init + settings in index.ts) ──────────────
 const db = admin.firestore();
+
+// ── Write-amplification guard ──────────────────────────────────────────────────────────
+
+/**
+ * Fields in users/{uid} that affect the publicProfiles/{uid} projection.
+ * Writes that touch ONLY fields outside this set (e.g. latestActivity heartbeat,
+ * points balance, isBanned flag, system timestamps) skip the expensive rebuild.
+ */
+const PROFILE_RELEVANT_FIELDS = new Set([
+  'username', 'displayName', 'avatarUrl', 'coverUrl',
+  'isVerified', 'verificationBadgeType',
+  'bio', 'location', 'websiteUrl', 'mood', 'socialLinks',
+  'followersCount', 'followingCount', 'postsCount', 'listensCount',
+  'badges', 'achievements', 'activityStatus', 'pinnedContent',
+  'privacy', 'capabilities', 'consumerActivity',
+]);
+
+/**
+ * Returns true if any field that affects the public projection changed
+ * between the before and after snapshots.
+ * Uses JSON serialisation for deep comparison — acceptable given the small
+ * size of the checked fields and the cost saving on the write side.
+ */
+function hasPublicRelevantChange(
+  before: Record<string, unknown>,
+  after:  Record<string, unknown>,
+): boolean {
+  for (const field of PROFILE_RELEVANT_FIELDS) {
+    if (JSON.stringify(before[field]) !== JSON.stringify(after[field])) {
+      return true;
+    }
+  }
+  return false;
+}
 
 // ─── onUserProfileUpdate trigger ──────────────────────────────────────────────
 
@@ -80,6 +114,22 @@ export const onUserProfileUpdate = functions.firestore
         { uid },
       );
       return;
+    }
+
+    // ── Write-amplification guard ─────────────────────────────────────────────
+    // Skip projection rebuild if no public-profile-relevant fields changed.
+    // Heartbeat fields (latestActivity), points balance, ban timestamps, content
+    // ID arrays (posts, stories, etc.) do NOT affect the public projection.
+    if (change.before.exists) {
+      const beforeData = change.before.data() as Record<string, unknown>;
+      const afterData  = change.after.data()  as Record<string, unknown>;
+      if (!hasPublicRelevantChange(beforeData, afterData)) {
+        functions.logger.info(
+          `[onUserProfileUpdate] No public-relevant field changes for ${uid} — skipping projection rebuild`,
+          { uid },
+        );
+        return;
+      }
     }
 
     functions.logger.info(

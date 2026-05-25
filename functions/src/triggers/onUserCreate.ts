@@ -68,6 +68,15 @@ const DEFAULT_PRIVACY: PrivacySettings = {
   plusCreatorContent:        PUB,
   musicCreatorContent:       PUB,
   radioCreatorContent:       PUB,
+  // ── Tournaments sections (مسابقات world — Phase 5-D schema correction) ──
+  // Organizer content and joined tournaments default to public.
+  // Submissions and voting default to private until the user shares them.
+  // Awards/medals default to public (achievements surface).
+  tournamentsOrganizerContent: PUB,
+  joinedTournaments:           PUB,
+  tournamentSubmissions:       PRIV,
+  votingActivity:              PRIV,
+  awardsAndMedals:             PUB,
 };
 
 // ─── Default Consumer Activity ────────────────────────────────────────────────
@@ -201,8 +210,11 @@ export const onUserCreate = functions.auth.user().onCreate(
       isBanned:   false,
       createdAt:  now,
 
-      // Role (listener by default — Cloud Function/admin promotes)
+      // Role (‘listener’ by default — Cloud Function/admin promotes)
       role:        'listener',
+      // accountType is deprecated — use capabilities map for all new logic.
+      // Written as 'normal' here for backward compatibility with existing reads only.
+      // @deprecated — do not use this field in new product logic.
       accountType: 'normal',
 
       // Wallet / KYC — not set on create (server-only fields)

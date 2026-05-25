@@ -73,12 +73,23 @@ const CREATE_OPTIONS: CreateOption[] = [
   },
   {
     icon: '📡',
-    title: 'بث مباشر',
-    description: 'ابدأ جلسة مباشرة في أي عالم',
-    world: 'مباشر',
-    worldColor: 'var(--color-world-live)',
+    title: 'جلسة لايف',
+    // Live is a tab, not a world. Creation is world-scoped by destination.
+    // لايف is the correct locked bottom tab label. مباشر is forbidden as a world label.
+    description: 'ابدأ جلسة لايف — يتحدد النوع حسب العالم المختار',
+    world: 'لايف',
+    worldColor: 'var(--color-accent)',
     disabled: true,
     disabledReason: 'قريباً',
+  },
+  {
+    icon: '🏆',
+    title: 'بطولة',
+    description: 'أنشئ بطولة صوتية أو أدر تجربة تصويت وفوز',
+    world: 'مسابقات',
+    worldColor: 'var(--color-world-tournaments, var(--color-accent))',
+    disabled: true,
+    disabledReason: 'يتطلب صلاحية منظم بطولات — قريباً',
   },
 ];
 

@@ -50,6 +50,11 @@ import type {
   PlusCreatorContentSection,
   MusicCreatorContentSection,
   RadioCreatorContentSection,
+  TournamentsOrganizerContentSection,
+  JoinedTournamentsSection,
+  TournamentSubmissionsSection,
+  VotingActivitySection,
+  AwardsAndMedalsSection,
   PrivacySettings,
   SectionPrivacy,
 } from '@sound/shared';
@@ -100,13 +105,10 @@ export function buildPublicProfileFromUser(
   const generalSection: GeneralProfileSection = {
     username:     user.username,
     displayName:  user.displayName,
-    // avatarUrl / coverUrl: undefined is dropped by ignoreUndefinedProperties
     avatarUrl:    user.avatarUrl,
     coverUrl:     user.coverUrl,
     isVerified:   user.isVerified,
-    // verificationBadgeType: optional — undefined dropped cleanly
     verificationBadgeType: user.verificationBadgeType,
-    // bio / location / websiteUrl: owner-editable, publicly visible in general section
     bio:          user.bio,
     location:     user.location,
     websiteUrl:   user.websiteUrl,
@@ -118,9 +120,10 @@ export function buildPublicProfileFromUser(
     joinedAt:       user.joinedAt,
     badges:         user.badges ?? [],
     // Capability flags — derived from capabilities map, never raw map exposed
-    isPlusCreator:  user.capabilities?.plus_creator === true,
-    isMusicCreator: user.capabilities?.music_creator === true,
-    isRadioCreator: user.capabilities?.radio_creator === true,
+    isPlusCreator:       user.capabilities?.plus_creator         === true,
+    isMusicCreator:      user.capabilities?.music_creator        === true,
+    isRadioCreator:      user.capabilities?.radio_creator        === true,
+    isTournamentsCreator: user.capabilities?.tournament_organizer === true,
   };
 
   // Start building the public doc — general is always present
@@ -246,6 +249,72 @@ export function buildPublicProfileFromUser(
       radioLists:         [],
     };
     publicDoc.radioCreatorContent = section;
+  }
+
+  // ── 13. Tournaments organizer content section ──────────────────────────────────
+  // RULE: Included only if capability is active AND privacy allows.
+  // This is an owner/management section — the CF will backfill IDs from the
+  // tournaments collection. Empty arrays on first projection are correct.
+  if (
+    capabilities?.tournament_organizer === true &&
+    isSectionPublic(privacy, 'tournamentsOrganizerContent')
+  ) {
+    const u = user as unknown as Record<string, unknown>;
+    const section: TournamentsOrganizerContentSection = {
+      organizedTournamentIds: (u['organizedTournamentIds'] as string[] | undefined) ?? [],
+      activeTournamentIds:    (u['activeTournamentIds']    as string[] | undefined) ?? [],
+    };
+    publicDoc.tournamentsOrganizerContent = section;
+  }
+
+  // ── 14. Joined tournaments section ───────────────────────────────────────────────
+  // RULE: Viewer-facing. Only projected when the user has actually joined tournaments.
+  // An empty list is NOT projected — it would create an empty viewer tab.
+  // Owner empty-state management belongs in private owner UI, not publicProfiles.
+  {
+    const joinedIds = (user as unknown as Record<string, unknown>)['joinedTournamentIds'] as string[] | undefined;
+    if (
+      isSectionPublic(privacy, 'joinedTournaments') &&
+      Array.isArray(joinedIds) && joinedIds.length > 0
+    ) {
+      publicDoc.joinedTournaments = { joinedTournamentIds: joinedIds };
+    }
+  }
+
+  // ── 15. Tournament submissions section ────────────────────────────────────────
+  // RULE: Viewer-facing. Only projected when the user has real submitted entries.
+  {
+    const submissionIds = (user as unknown as Record<string, unknown>)['submissionIds'] as string[] | undefined;
+    if (
+      isSectionPublic(privacy, 'tournamentSubmissions') &&
+      Array.isArray(submissionIds) && submissionIds.length > 0
+    ) {
+      publicDoc.tournamentSubmissions = { submissionIds };
+    }
+  }
+
+  // ── 16. Voting activity section ────────────────────────────────────────────────
+  // RULE: Viewer-facing. Only projected when the user has actually voted (count > 0).
+  {
+    const voteCount = (user as unknown as Record<string, unknown>)['publicVoteCount'] as number | undefined;
+    if (
+      isSectionPublic(privacy, 'votingActivity') &&
+      typeof voteCount === 'number' && voteCount > 0
+    ) {
+      publicDoc.votingActivity = { publicVoteCount: voteCount };
+    }
+  }
+
+  // ── 17. Awards and medals section ──────────────────────────────────────────────
+  // RULE: Viewer-facing. Only projected when the user has won at least one award.
+  {
+    const awardIds = (user as unknown as Record<string, unknown>)['awardIds'] as string[] | undefined;
+    if (
+      isSectionPublic(privacy, 'awardsAndMedals') &&
+      Array.isArray(awardIds) && awardIds.length > 0
+    ) {
+      publicDoc.awardsAndMedals = { awardIds };
+    }
   }
 
   return publicDoc;

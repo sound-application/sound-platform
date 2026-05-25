@@ -1,57 +1,78 @@
 /**
  * Sound Platform — App Routes
  * ============================
- * Phase: 5-A (Online App Shell)
+ * Phase: 5-D (World + Tab Routing)
  *
- * Route definitions for the main app shell.
- * All routes are lazy-importable as pages grow.
+ * URL model:  /:worldId/:tab
  *
- * WORLDS (navigation context):
- *   /              → Home feed (cross-world aggregated)
- *   /discover      → Discover (cross-world)
- *   /live          → Live sessions (any world, auth read)
- *   /profile/:uid  → Public profile (reads publicProfiles/{uid} ONLY)
- *   /me            → Own profile (reads own publicProfiles/{uid})
- *   /settings      → Settings (reads own users/{uid} — owner allowed)
- *   /create        → Create entry point (shell only — no live CF yet)
+ *   worldId  — one of: general | plus | music | radio | tournaments
+ *   tab      — one of: home | discover | live | create | me
  *
- * WORLD ROUTING:
- *   /world/general → General world feed
- *   /world/plus    → Plus world feed
- *   /world/music   → Music world feed
- *   /world/radio   → Radio world feed
+ * Examples:
+ *   /general/home         → General Home
+ *   /plus/home            → Plus Home
+ *   /music/live           → Music Live
+ *   /radio/live           → Radio Live / on-air schedule
+ *   /tournaments/discover → Tournaments Discover
+ *   /radio/me             → Radio Me (world-scoped profile)
  *
- * AUTH:
- *   /login         → Login page
- *   /signup        → Sign-up page
+ * Invariants:
+ *   - "live" is a bottom TAB, not a world. /live is forbidden as a top-level route.
+ *   - مباشر and بطولات are forbidden substitutes (enforced by lockedLabels.ts).
+ *   - World-agnostic routes: /profile/:uid, /settings/**, /login, /signup
+ *   - / redirects to /general/home.
+ *   - /me redirects to /:lastWorld/me (defaults to /general/me).
+ *
+ * Direct URL restoration: both world and tab come from URL params, so
+ * any bookmark or shared link restores the exact state.
+ *
+ * Browser back/forward: handled automatically by React Router — each
+ * /:worldId/:tab URL is a distinct history entry.
  */
 
 import React, { Suspense } from 'react';
-import { Routes, Route, Navigate } from 'react-router-dom';
+import { Routes, Route, Navigate, useLocation } from 'react-router-dom';
 import { useAuth } from '../contexts/AuthContext';
 import { AppLayout } from '../layouts/AppLayout';
 import { LoadingScreen } from '../components/LoadingScreen';
 
-// ─── Page imports (inline for now — lazy as app grows) ───────────────────────
-import { HomePage }          from '../pages/HomePage';
-import { DiscoverPage }      from '../pages/DiscoverPage';
-import { LivePage }          from '../pages/LivePage';
-import { ProfilePage }       from '../pages/ProfilePage';
-import { CreatePage }        from '../pages/CreatePage';
-import { SettingsPage }      from '../pages/SettingsPage';
-import { EditProfilePage }      from '../pages/EditProfilePage';
-import { PrivacySettingsPage }  from '../pages/PrivacySettingsPage';
-import { WorldPage }         from '../pages/WorldPage';
-import { LoginPage }         from '../pages/LoginPage';
-import { SignUpPage }        from '../pages/SignUpPage';
-import { NotFoundPage }      from '../pages/NotFoundPage';
+// ─── Page imports ─────────────────────────────────────────────────────────────
+import { HomePage }           from '../pages/HomePage';
+import { GeneralHomePage }    from '../pages/GeneralHomePage';
+import { PlusHomePage }       from '../pages/home/PlusHomePage';
+import { MusicHomePage }      from '../pages/home/MusicHomePage';
+import { RadioHomePage }        from '../pages/home/RadioHomePage';
+import { TournamentsHomePage }  from '../pages/home/TournamentsHomePage';
+import { DiscoverPage }         from '../pages/DiscoverPage';
+import { GeneralDiscoverPage }  from '../pages/discover/GeneralDiscoverPage';
+import { PlusDiscoverPage }     from '../pages/discover/PlusDiscoverPage';
+import { MusicDiscoverPage }    from '../pages/discover/MusicDiscoverPage';
+import { RadioDiscoverPage }        from '../pages/discover/RadioDiscoverPage';
+import { TournamentsDiscoverPage }  from '../pages/discover/TournamentsDiscoverPage';
+import { LivePage }           from '../pages/LivePage';
+import { ProfilePage }        from '../pages/ProfilePage';
+import { GeneralMePage }      from '../pages/me/GeneralMePage';
+import { PlusMePage }         from '../pages/me/PlusMePage';
+import { MusicMePage }        from '../pages/me/MusicMePage';
+import { RadioMePage }        from '../pages/me/RadioMePage';
+import { TournamentsMePage }  from '../pages/me/TournamentsMePage';
+import { GlobalCreateHubPage } from '../pages/create/GlobalCreateHubPage';
+import { SettingsPage }       from '../pages/SettingsPage';
+import { EditProfilePage }    from '../pages/EditProfilePage';
+import { PrivacySettingsPage } from '../pages/PrivacySettingsPage';
+import { NotFoundPage }       from '../pages/NotFoundPage';
+import { LoginPage }          from '../pages/LoginPage';
+import { SignUpPage }         from '../pages/SignUpPage';
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { authState } = useAuth();
+  const location = useLocation();
   if (authState.status === 'loading') return <LoadingScreen message="جاري التحقق من الجلسة..." />;
-  if (authState.status === 'signed-out') return <Navigate to="/login" replace />;
+  // Pass the requested location in state so LoginPage can redirect back after sign-in.
+  if (authState.status === 'signed-out')
+    return <Navigate to="/login" state={{ from: location }} replace />;
   return <>{children}</>;
 }
 
@@ -60,8 +81,6 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 export function AppRouter() {
   const { authState } = useAuth();
 
-  // Hold the entire app while Firebase resolves the initial auth state.
-  // This prevents a flash of the login screen for returning users.
   if (authState.status === 'loading') {
     return <LoadingScreen message="جاري تحميل Sound..." />;
   }
@@ -69,11 +88,11 @@ export function AppRouter() {
   return (
     <Suspense fallback={<LoadingScreen message="جاري التحميل..." />}>
       <Routes>
-        {/* ── Public auth routes ─────────────────────────────────────── */}
+        {/* ── Public auth routes ──────────────────────────────────────── */}
         <Route path="/login"  element={<LoginPage />} />
         <Route path="/signup" element={<SignUpPage />} />
 
-        {/* ── Protected app shell ────────────────────────────────────── */}
+        {/* ── Protected app shell ─────────────────────────────────────── */}
         <Route
           element={
             <RequireAuth>
@@ -81,19 +100,94 @@ export function AppRouter() {
             </RequireAuth>
           }
         >
-          <Route index element={<HomePage />} />
-          <Route path="discover"          element={<DiscoverPage />} />
-          <Route path="live"              element={<LivePage />} />
-          <Route path="profile/:uid"      element={<ProfilePage />} />
-          <Route path="me"                element={<ProfilePage isSelf />} />
-          <Route path="create"                    element={<CreatePage />} />
-          <Route path="settings"                  element={<SettingsPage />} />
-          <Route path="settings/edit-profile"     element={<EditProfilePage />} />
-          <Route path="settings/privacy"           element={<PrivacySettingsPage />} />
-          <Route path="world/:worldId"            element={<WorldPage />} />
+          {/* ── Root redirect ────────────────────────────────────────── */}
+          {/* / → /general/home */}
+          <Route index element={<Navigate to="/general/home" replace />} />
+
+          {/* ── World + Tab routes: /:worldId/:tab ────────────────────── */}
+          {/*
+           * WorldNavProvider (inside AppLayout) reads :worldId and :tab from
+           * these params and provides them to AppHeader + BottomNav.
+           *
+           * /general/home → GeneralHomePage  (world-scoped, dedicated file)
+           * /:worldId/home → HomePage        (all other worlds — generic fallback)
+           * Each world will eventually get its own home page file.
+           */}
+
+          {/* ── عام (General) world — scoped home ──────────────────────────── */}
+          <Route path="general">
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home"     element={<GeneralHomePage />} />
+            <Route path="discover" element={<GeneralDiscoverPage />} />
+            <Route path="live"     element={<LivePage />} />
+            <Route path="create"   element={<GlobalCreateHubPage />} />
+            <Route path="me"       element={<GeneralMePage />} />
+          </Route>
+
+          {/* ── بلس (Plus) world — scoped home ─────────────────────────────── */}
+          <Route path="plus">
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home"     element={<PlusHomePage />} />
+            <Route path="discover" element={<PlusDiscoverPage />} />
+            <Route path="live"     element={<LivePage />} />
+            <Route path="create"   element={<GlobalCreateHubPage />} />
+            <Route path="me"       element={<PlusMePage />} />
+          </Route>
+
+          {/* ── موسيقى (Music) world — scoped home ─────────────────────────── */}
+          <Route path="music">
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home"     element={<MusicHomePage />} />
+            <Route path="discover" element={<MusicDiscoverPage />} />
+            <Route path="live"     element={<LivePage />} />
+            <Route path="create"   element={<GlobalCreateHubPage />} />
+            <Route path="me"       element={<MusicMePage />} />
+          </Route>
+
+          {/* ── راديو (Radio) world — scoped home ──────────────────────────── */}
+          <Route path="radio">
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home"     element={<RadioHomePage />} />
+            <Route path="discover" element={<RadioDiscoverPage />} />
+            <Route path="live"     element={<LivePage />} />
+            <Route path="create"   element={<GlobalCreateHubPage />} />
+            <Route path="me"       element={<RadioMePage />} />
+          </Route>
+
+          {/* ── مسابقات (Tournaments) world — scoped home ───────────────────── */}
+          <Route path="tournaments">
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home"     element={<TournamentsHomePage />} />
+            <Route path="discover" element={<TournamentsDiscoverPage />} />
+            <Route path="live"     element={<LivePage />} />
+            <Route path="create"   element={<GlobalCreateHubPage />} />
+            <Route path="me"       element={<TournamentsMePage />} />
+          </Route>
+
+          {/* ── All other worlds — generic home fallback ────────────────────── */}
+          <Route path=":worldId">
+            <Route index element={<Navigate to="home" replace />} />
+            <Route path="home"     element={<HomePage />} />
+            <Route path="discover" element={<DiscoverPage />} />
+            <Route path="live"     element={<LivePage />} />
+            <Route path="create"   element={<GlobalCreateHubPage />} />
+            {/* /me shortcut — redirects to /:worldId/me */}
+            <Route path="me"       element={<ProfilePage isSelf />} />
+          </Route>
+
+          {/* ── /me shortcut without world → /general/me ─────────────── */}
+          <Route path="me" element={<Navigate to="/general/me" replace />} />
+
+          {/* ── World-agnostic: public profile ───────────────────────── */}
+          <Route path="profile/:uid" element={<ProfilePage />} />
+
+          {/* ── World-agnostic: settings subtree ─────────────────────── */}
+          <Route path="settings"                 element={<SettingsPage />} />
+          <Route path="settings/edit-profile"    element={<EditProfilePage />} />
+          <Route path="settings/privacy"         element={<PrivacySettingsPage />} />
         </Route>
 
-        {/* ── Fallback ───────────────────────────────────────────────── */}
+        {/* ── Fallback ─────────────────────────────────────────────────── */}
         <Route path="*" element={<NotFoundPage />} />
       </Routes>
     </Suspense>

@@ -1,50 +1,131 @@
-/* Bottom Navigation */
+/*
+ * Sound Platform — Bottom Navigation
+ * Phase: 5-J (Unified world color system)
+ *
+ * 5 separate glass rounded-top pills.
+ * Bottom of each pill is flush to the physical screen edge.
+ * Active pill is taller (rises upward).
+ * Inactive pills are shorter.
+ *
+ * World accent: consumed via --color-brand / --color-brand-light,
+ * remapped globally by [data-world] on .app-layout (see global.css).
+ * NO local [data-world] overrides here — single source of truth only.
+ */
+
+/* ── Outer nav container ───────────────────────────────────────────────────── */
 .bottom-nav {
   position: fixed;
-  bottom: 0; left: 0; right: 0;
-  height: var(--bottom-nav-height);
+  bottom: 0;
+  left: 0;
+  right: 0;
   z-index: 100;
-  display: flex;
-  align-items: stretch;
-  background: rgba(22, 22, 26, 0.92);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border-top: 1px solid var(--color-border-subtle);
-  padding-bottom: env(safe-area-inset-bottom);
+  /* No padding at all — pills go edge to edge */
+  padding: 0;
+  background: transparent;
+  pointer-events: none;
 }
 
-.bottom-nav__item {
+/* ── Bar — the row that holds the 5 pills ─────────────────────────────────── */
+.bottom-nav__bar {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-end;   /* pills bottom-align to screen bottom */
+  justify-content: stretch;
+  gap: 4px;
+  direction: rtl;
+  /* Small horizontal padding so pills don't bleed into screen corners */
+  padding: 0 6px;
+}
+
+/* ── Each pill ─────────────────────────────────────────────────────────────── */
+.bottom-nav__pill {
   flex: 1;
   display: flex;
   flex-direction: column;
   align-items: center;
-  justify-content: center;
-  gap: 2px;
-  padding: var(--space-1) 0;
-  color: var(--color-text-muted);
-  transition: color var(--transition-fast);
+  justify-content: flex-start;   /* content sits at top of pill, bottom flush to screen */
+  gap: 4px;
+
+  /* Content sits 12px from the top of the pill */
+  padding-top: 12px;
+  /* Bottom padding eats the safe area so content clears notch,
+     but the pill background itself stays flush to physical screen */
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+
+  /* Inactive pill height (the visual pill above the screen edge) */
+  height: 56px;
+
+  /* Rounded on top only — bottom is flush to screen */
+  border-radius: 14px 14px 0 0;
+
+  /* Glass */
+  background: rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(16px) saturate(160%);
+  -webkit-backdrop-filter: blur(16px) saturate(160%);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-bottom: none;
+
+  /* Text */
+  color: rgba(180, 170, 200, 0.55);
+
+  cursor: pointer;
+  pointer-events: all;
   -webkit-tap-highlight-color: transparent;
+  outline: none;
+  transition: height 220ms cubic-bezier(0.34, 1.56, 0.64, 1),
+              color  180ms ease,
+              background 180ms ease,
+              border-color 180ms ease;
 }
 
-.bottom-nav__item:hover {
-  color: var(--color-text-secondary);
-}
+/* ══ Active pill — taller, elevated, world-accented ═════════════════════════════ */
+/*
+ * Uses --color-brand and --color-brand-light from global.css [data-world] blocks.
+ * AppLayout root sets data-world="<worldId>" → global.css remaps --color-brand
+ * → this active style automatically reflects the correct world accent.
+ * No local [data-world] overrides needed here.
+ */
+.bottom-nav__pill--active {
+  height: 78px;
 
-.bottom-nav__item--active {
+  /* Glass tinted with current world's brand color */
+  background: color-mix(in srgb, var(--color-brand) 15%, transparent);
+  backdrop-filter: blur(20px) saturate(180%);
+  -webkit-backdrop-filter: blur(20px) saturate(180%);
+  border: 1px solid color-mix(in srgb, var(--color-brand) 50%, transparent);
+  border-bottom: none;
+
+  /* Active label + icon color */
   color: var(--color-brand-light);
 }
 
-.bottom-nav__item--disabled {
-  opacity: 0.4;
-  pointer-events: none;
-}
-
+/* ── Icon ──────────────────────────────────────────────────────────────────── */
 .bottom-nav__icon {
-  font-size: 1.25rem;
-  line-height: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  flex-shrink: 0;
+}
+.bottom-nav__icon svg {
+  width: 22px;
+  height: 22px;
+  display: block;
 }
 
+/* ── Label ─────────────────────────────────────────────────────────────────── */
 .bottom-nav__label {
-  font-size: 0.65rem;
+  font-family: var(--font-arabic, 'Cairo', sans-serif);
+  font-size: 0.58rem;
   font-weight: 500;
+  line-height: 1;
+  text-align: center;
+  white-space: nowrap;
+}
+
+/* ── Press feedback ────────────────────────────────────────────────────────── */
+.bottom-nav__pill:active {
+  opacity: 0.75;
+  transition: opacity 80ms ease;
 }

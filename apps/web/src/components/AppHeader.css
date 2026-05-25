@@ -1,79 +1,82 @@
-/* App Header */
+/*
+ * Sound Platform — App Header Styles
+ * Phase: 5-E (World Strip = Discover subnav pill style, transparent glass bars)
+ *
+ * Two fixed layers:
+ *   .app-header              — top bar 56px  (z-index: 100)
+ *   .app-header__world-strip — world tabs 48px below header (z-index: 99)
+ *
+ * RTL layout (dir="rtl" on <html>):
+ *   - Avatar is on screen-left  (logical start = physical left in RTL)
+ *   - Wordmark is centred absolutely
+ *   - Search is on screen-right (logical end = physical right in RTL)
+ *
+ * World strip: visually matches the Discover subnav pill style exactly.
+ *   - Same glass container: rgba(30,28,30,0.72) + blur(16px) + border + shadow
+ *   - Same pill buttons: padding 6px 14px, border-radius 9999px, font-size 12px
+ *   - Active pill: tinted background + world-accent color + border + box-shadow
+ *   - Inactive: muted color, no background
+ */
+
+/* ── Top Bar ────────────────────────────────────────────────────────────────── */
 .app-header {
   position: fixed;
-  top: 0; left: 0; right: 0;
-  height: var(--header-height);
+  top: 0;
+  left: 0;
+  right: 0;
+  height: var(--header-height);   /* 56px */
   z-index: 100;
   display: flex;
   align-items: center;
-  gap: var(--space-4);
+  justify-content: space-between;
   padding: 0 var(--space-4);
-  background: rgba(12, 12, 14, 0.85);
-  backdrop-filter: blur(16px);
-  -webkit-backdrop-filter: blur(16px);
-  border-bottom: 1px solid var(--color-border-subtle);
+  /* Near-transparent glass — blur provides depth, no solid black band */
+  background: rgba(0, 0, 0, 0.15);
+  backdrop-filter: blur(28px) saturate(180%);
+  -webkit-backdrop-filter: blur(28px) saturate(180%);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.06);
 }
 
+/* ── Wordmark ───────────────────────────────────────────────────────────────── */
 .app-header__wordmark {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
   font-size: var(--font-size-xl);
   font-weight: 700;
-  letter-spacing: -0.03em;
+  letter-spacing: 0.14em;
   color: var(--color-brand-light);
   white-space: nowrap;
-  flex-shrink: 0;
+  line-height: 1;
+  pointer-events: auto;
+  transition: opacity var(--transition-fast);
 }
+.app-header__wordmark:hover { opacity: 0.85; }
 
-/* World Tabs */
-.app-header__worlds {
+/* ── Avatar / User ──────────────────────────────────────────────────────────── */
+.app-header__user {
+  flex-shrink: 0;
   display: flex;
   align-items: center;
-  gap: var(--space-1);
-  flex: 1;
-  overflow-x: auto;
-  scrollbar-width: none;
 }
-.app-header__worlds::-webkit-scrollbar { display: none; }
-
-.app-header__world-tab {
-  padding: var(--space-1) var(--space-3);
-  border-radius: var(--radius-full);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--color-text-secondary);
-  white-space: nowrap;
-  transition: color var(--transition-fast), background var(--transition-fast);
-}
-
-.app-header__world-tab:hover {
-  color: var(--color-text-primary);
-  background: var(--color-surface);
-}
-
-.app-header__world-tab--active {
-  color: var(--world-color);
-  background: color-mix(in srgb, var(--world-color) 12%, transparent);
-  font-weight: 600;
-}
-
-/* User Avatar */
-.app-header__user { flex-shrink: 0; }
 
 .app-header__avatar {
   display: flex;
   align-items: center;
   justify-content: center;
-  width: 34px; height: 34px;
+  width: 34px;
+  height: 34px;
   border-radius: 50%;
   overflow: hidden;
   background: var(--color-brand-dim);
-  border: 2px solid var(--color-border);
+  border: 1.5px solid rgba(255, 255, 255, 0.14);
   transition: border-color var(--transition-fast);
 }
-
 .app-header__avatar:hover { border-color: var(--color-brand); }
 
 .app-header__avatar img {
-  width: 100%; height: 100%;
+  width: 100%;
+  height: 100%;
   object-fit: cover;
 }
 
@@ -93,3 +96,101 @@
   transition: opacity var(--transition-fast);
 }
 .app-header__sign-in-btn:hover { opacity: 0.85; }
+
+/* ── Search Button ──────────────────────────────────────────────────────────── */
+.app-header__search-btn {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  color: var(--color-text-secondary);
+  transition: color var(--transition-fast), background var(--transition-fast);
+}
+.app-header__search-btn:hover {
+  color: var(--color-text-primary);
+  background: rgba(255, 255, 255, 0.08);
+}
+
+/* ── World Strip — outer wrapper ────────────────────────────────────────────── */
+/*
+ * Fixed strip under the top bar. Centres the glass pill.
+ * Minimal glass tint so the pill itself is the main visual element.
+ */
+.app-header__world-strip {
+  position: fixed;
+  top: var(--header-height);
+  left: 0;
+  right: 0;
+  height: var(--world-strip-height);   /* 48px */
+  z-index: 99;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 12px;
+  /* Near-transparent glass — pill floats cleanly, no black rectangle */
+  background: rgba(0, 0, 0, 0.10);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  border-bottom: none;
+  overflow: hidden;
+}
+
+/* ── Glass Pill Container ───────────────────────────────────────────────────── */
+/*
+ * Exact visual match of .gdp-glass-pill from GeneralDiscoverPage.css
+ * Direction is RTL (inherited from <html>), so first DOM item (عام) renders
+ * on the RIGHT — matching the RTL reading order.
+ */
+.app-header__world-pill {
+  background:              rgba(30, 28, 30, 0.72);
+  backdrop-filter:         blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border-radius:           9999px;
+  padding:                 4px;
+  display:                 flex;
+  flex-direction:          row;
+  align-items:             center;
+  border:                  1px solid rgba(255, 255, 255, 0.10);
+  box-shadow:              0 4px 24px rgba(0, 0, 0, 0.45);
+  gap:                     2px;
+  /* RTL is inherited: عام (first in DOM) appears rightmost visually */
+}
+
+/* ── World Tab Pill Button ──────────────────────────────────────────────────── */
+/*
+ * Exact match of .gdp-pill-btn from GeneralDiscoverPage.css
+ */
+.app-header__world-tab {
+  padding:        6px 14px;
+  border-radius:  9999px;
+  font-size:      12px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  border:         none;
+  cursor:         pointer;
+  transition:     all 0.2s ease;
+  color:          rgba(204, 195, 216, 0.75);   /* matches --gdp-on-surface-variant */
+  background:     transparent;
+  white-space:    nowrap;
+}
+
+.app-header__world-tab:hover {
+  color: #e5e2e1;   /* matches --gdp-on-surface */
+}
+
+/* ── Active World Tab — exact match of .gdp-pill-btn--active ────────────────── */
+/*
+ * Tinted bg + world-accent color + matching border + subtle shadow.
+ * --world-color is set inline on each button via AppHeader.tsx.
+ */
+.app-header__world-tab--active {
+  background: color-mix(in srgb, var(--world-color, var(--color-brand)) 18%, transparent);
+  color:      var(--world-color, var(--color-brand-light));
+  border:     1px solid color-mix(in srgb, var(--world-color, var(--color-brand)) 30%, transparent);
+  box-shadow: 0 2px 8px color-mix(in srgb, var(--world-color, var(--color-brand)) 25%, transparent);
+  font-weight: 700;
+}

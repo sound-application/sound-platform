@@ -1,0 +1,536 @@
+/*
+ * TournamentsDiscoverPage.css — exact clone of GeneralDiscoverPage.css
+ * Scope: .tdp-*
+ * Accent: #f59e0b (amber-gold) — مسابقات world
+ *
+ * Shell context (identical to gdp):
+ *   AppLayout.__main has:
+ *     padding-top:    calc(56px + 48px) = 104px  (header + world strip)
+ *     padding-bottom: calc(64px + 24px) = 88px   (bottom nav + breathing)
+ *     overflow-y:     auto
+ *
+ * Strategy: negative-margin bleed so the BG image covers the full viewport
+ * while the fixed shell header/bottom-nav stay on top via their own z-index.
+ *
+ * Layout structure (flex-column, top→bottom):
+ *   tdp-main
+ *   ├── tdp-subnav-cluster   (locks to top, below shell)
+ *   ├── tdp-spacer           (flex:1, pushes lower block down)
+ *   └── tdp-lower            (aligns-end: rail + info, CTA inside info)
+ */
+
+/* ─── CSS custom properties ────────────────────────────────────────────────── */
+.tdp-root {
+  /* Colour tokens — amber-gold مسابقات palette */
+  --tdp-surface:                #131309;
+  --tdp-on-surface:             #e5e2d8;
+  --tdp-on-surface-variant:     #ccc3a8;
+  --tdp-primary:                #f59e0b;
+  --tdp-primary-container:      #92610a;
+  --tdp-on-primary:             #1a0e00;
+  --tdp-on-primary-container:   #fde68a;
+  --tdp-primary-fixed-dim:      #fbbf24;
+  --tdp-outline:                #a89070;
+
+  /* Shell dimensions — mirrors global.css tokens */
+  --tdp-header-h:     56px;
+  --tdp-strip-h:      48px;
+  --tdp-top-total:    calc(var(--tdp-header-h) + var(--tdp-strip-h)); /* 104px */
+  --tdp-bottom-nav-h: 64px;
+
+  /* Gradients */
+  --tdp-story-grad: linear-gradient(
+    180deg,
+    rgba(19,19,9,0)   0%,
+    rgba(19,19,9,0.4) 40%,
+    rgba(19,19,9,0.9) 80%,
+    rgba(19,19,9,1)   100%
+  );
+  --tdp-side-grad: linear-gradient(
+    270deg,
+    rgba(19,19,9,0)   0%,
+    rgba(19,19,9,0.3) 50%,
+    rgba(19,19,9,0.8) 100%
+  );
+
+  /* Layout */
+  direction:   rtl;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  position:    relative;
+  overflow:    hidden;
+
+  /* Bleed out of AppLayout padding to fill full viewport */
+  margin-top:    calc(-1 * var(--tdp-top-total));
+  margin-bottom: calc(-1 * (var(--tdp-bottom-nav-h) + 1.5rem));
+  height:        100dvh;
+  width:         100%;
+  background:    var(--tdp-surface);
+  color:         var(--tdp-on-surface);
+}
+
+/* ─── Background media layer ───────────────────────────────────────────────── */
+.tdp-bg {
+  position: absolute;
+  inset:    0;
+  z-index:  0;
+}
+
+.tdp-bg-image {
+  width:      100%;
+  height:     100%;
+  object-fit: cover;
+  opacity:    0.70;
+  display:    block;
+  transition: opacity 0.4s ease;
+}
+
+.tdp-story-gradient {
+  position:   absolute;
+  inset:      0;
+  z-index:    1;
+  background: var(--tdp-story-grad);
+}
+
+.tdp-side-gradient {
+  position:   absolute;
+  inset:      0;
+  z-index:    1;
+  background: var(--tdp-side-grad);
+}
+
+/* ─── Main wrapper ─────────────────────────────────────────────────────────── */
+.tdp-main {
+  position:        relative;
+  z-index:         20;
+  height:          100%;
+  width:           100%;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     stretch;
+  justify-content: flex-start;
+  /* top padding clears the fixed shell (header + world strip) */
+  padding-top:    calc(var(--tdp-top-total) + 12px);
+}
+
+/* Flex spacer — pushes tdp-lower to the bottom */
+.tdp-spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Sub-nav cluster ──────────────────────────────────────────────────────── */
+/*
+ * Discover-only. World switching is the AppHeader's responsibility.
+ *
+ * Subnav order: اكتشف | لك | المتابعة | الرائج
+ * The pill is direction:ltr so DOM order equals visual left→right order.
+ * Tabs are rendered in natural (non-reversed) order in the TSX.
+ */
+.tdp-subnav-cluster {
+  width:           100%;
+  display:         flex;
+  justify-content: center;
+  padding:         0 16px;
+  flex-shrink:     0;
+}
+
+.tdp-glass-pill {
+  background:               rgba(30, 28, 20, 0.72);
+  backdrop-filter:          blur(16px);
+  -webkit-backdrop-filter:  blur(16px);
+  border-radius:            9999px;
+  padding:                  4px;
+  display:                  flex;
+  flex-direction:           row;
+  align-items:              center;
+  border:                   1px solid rgba(255,255,255,0.10);
+  box-shadow:               0 4px 24px rgba(0,0,0,0.45);
+  gap:                      2px;
+  /* Inherits direction:rtl from tdp-root.
+     RTL flex: first DOM item (اكتشف) renders on the RIGHT. */
+}
+
+.tdp-pill-btn {
+  padding:        6px 14px;
+  border-radius:  9999px;
+  font-size:      12px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  border:         none;
+  cursor:         pointer;
+  transition:     all 0.2s ease;
+  color:          var(--tdp-on-surface-variant);
+  background:     transparent;
+  white-space:    nowrap;
+}
+
+.tdp-pill-btn:hover { color: var(--tdp-on-surface); }
+
+.tdp-pill-btn--active {
+  background: rgba(245, 158, 11, 0.18);
+  color:      var(--tdp-primary);
+  border:     1px solid rgba(245, 158, 11, 0.28);
+  box-shadow: 0 2px 8px rgba(146, 97, 10, 0.20);
+}
+
+/* ─── Lower section ─────────────────────────────────────────────────────────── */
+/*
+ * Rail is NOW absolutely positioned — vertically centered on the right edge.
+ * Info block fills the left portion of the bottom area.
+ */
+.tdp-lower {
+  width:           100%;
+  display:         flex;
+  flex-direction:  column;   /* info stacks vertically */
+  align-items:     flex-start;
+  padding:         0 72px calc(var(--tdp-bottom-nav-h) + 24px) 16px;
+  /* 72px right padding leaves space for the absolute rail (56px wide) */
+  flex-shrink:     0;
+}
+
+/* ─── Side action rail — absolute, vertically centered on right edge ─────────── */
+/*
+ * Positioned relative to .tdp-root (which is position:relative, height:100dvh).
+ * top:50% + transform:-50% = true vertical center of the full viewport card.
+ * Offset by half of top shell so visual center feels balanced.
+ */
+.tdp-rail {
+  position:        absolute;
+  /* visual center = mid-viewport, nudged down slightly to clear subnav */
+  top:             50%;
+  transform:       translateY(-50%);
+  /* RTL: right edge + breathing room */
+  right:           12px;
+  direction:       ltr;    /* isolate from RTL root */
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             16px;
+  width:           56px;
+  z-index:         30;
+  /* soft vignette behind rail so icons are legible on any bg */
+  padding:         12px 0;
+}
+
+/* Avatar wrapper */
+.tdp-avatar-wrap {
+  position:      relative;
+  width:         48px;
+  height:        48px;
+  margin-bottom: 8px;
+}
+
+.tdp-avatar {
+  width:         48px;
+  height:        48px;
+  border-radius: 50%;
+  border:        2px solid rgba(245, 158, 11, 0.40);
+  object-fit:    cover;
+  display:       block;
+}
+
+.tdp-follow-btn {
+  position:        absolute;
+  bottom:          -8px;
+  left:            50%;
+  transform:       translateX(-50%);
+  width:           22px;
+  height:          22px;
+  border-radius:   50%;
+  /* Use grid so the icon-box inside is perfectly centered */
+  display:         grid;
+  place-items:     center;
+  border:          2px solid var(--tdp-surface);
+  cursor:          pointer;
+  z-index:         10;
+  transition:      transform 0.15s ease, background 0.2s ease;
+  background:      var(--tdp-primary-container);
+  color:           var(--tdp-on-primary-container);
+  direction:       ltr;
+}
+
+.tdp-follow-btn--following {
+  background: var(--tdp-on-surface-variant);
+  color:      var(--tdp-surface);
+}
+
+.tdp-follow-btn:hover  { transform: translateX(-50%) scale(1.15); }
+.tdp-follow-btn:active { transform: translateX(-50%) scale(0.92); }
+
+/* ─── Generic action button ─────────────────────────────────────────────────── */
+/*
+ * Grid layout: button is a single-column grid.
+ *   row 1 → tdp-action-icon-box  (fixed 36×36 square, grid place-items:center)
+ *   row 2 → tdp-action-label     (fixed 1-line text below)
+ * direction:ltr isolates from RTL root so icons and labels center on column axis.
+ */
+.tdp-action-btn {
+  /* Single-column vertical stack: icon-box (row 1) then label (row 2) */
+  display:               grid;
+  grid-template-columns: 1fr;   /* force single column — prevents side-by-side layout */
+  grid-auto-flow:        row;
+  justify-items:         center; /* center each child on the column axis */
+  align-content:         start;
+  gap:                   4px;
+  width:                 48px;
+  padding:               6px 0;
+  background:            none;
+  border:                none;
+  cursor:                pointer;
+  border-radius:         3px;
+  transition:            transform 0.15s ease;
+  direction:             ltr;    /* isolate from RTL root */
+  text-align:            center; /* belt-and-suspenders for any nested inline */
+}
+
+.tdp-action-btn:hover  { transform: scale(1.08); }
+.tdp-action-btn:active { transform: scale(0.90); }
+
+/* ─── Icon box — the actual centering container ─────────────────────────────── */
+/*
+ * Fixed square so the icon never touches the edges of its touch target.
+ * display:grid + place-items:center is immune to font line-height / ascender quirks.
+ */
+.tdp-action-icon-box {
+  display:     grid;
+  place-items: center;
+  width:       36px;
+  height:      36px;
+  flex-shrink: 0;
+  /* justify-self centers the box within the 1fr grid column of the parent */
+  justify-self: center;
+}
+
+/* Material icon inside icon-box — MUST be display:block, line-height:1 */
+.tdp-action-icon-box .material-symbols-outlined {
+  display:                 block;
+  line-height:             1;
+  font-size:               28px;
+  color:                   var(--tdp-on-surface);
+  transition:              color 0.2s ease, font-variation-settings 0.2s ease;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+/* Active state — applied to the inner material-symbols span */
+.tdp-action-icon--active {
+  color:                   var(--tdp-primary) !important;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+}
+
+/* Keep old .tdp-action-icon selector as a no-op alias so class names in TSX still compile */
+.tdp-action-icon { /* handled by .tdp-action-icon-box .material-symbols-outlined */ }
+
+.tdp-action-label {
+  display:        block;
+  width:          100%;  /* fill the 1fr column so centering is unambiguous */
+  text-align:     center;
+  font-size:      10px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  color:          var(--tdp-on-surface-variant);
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  direction:      ltr;   /* counts are LTR, Arabic labels still center correctly */
+  unicode-bidi:   embed;
+  line-height:    1;
+  white-space:    nowrap;
+}
+
+/* ─── Follow icon box (inside .tdp-follow-btn) ──────────────────────────────── */
+.tdp-follow-icon-box {
+  display:     grid;
+  place-items: center;
+  width:       100%;
+  height:      100%;
+}
+
+.tdp-follow-icon-box .material-symbols-outlined {
+  display:                 block;
+  line-height:             1;
+  font-size:               14px;
+  font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 20;
+}
+
+/* ─── Content info block (bottom-left, full width of lower area) ─────────────── */
+.tdp-info {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-start;
+  gap:            6px;
+  width:          100%;
+  min-width:      0;
+}
+
+.tdp-category-chip {
+  background:               rgba(30, 28, 20, 0.82);
+  backdrop-filter:          blur(8px);
+  -webkit-backdrop-filter:  blur(8px);
+  padding:                  3px 12px;
+  border-radius:            9999px;
+  border:                   1px solid rgba(245, 158, 11, 0.22);
+}
+
+.tdp-category-chip span {
+  font-size:      11px;
+  font-weight:    500;
+  color:          var(--tdp-primary-fixed-dim);
+  letter-spacing: 0.05em;
+}
+
+.tdp-title {
+  font-size:   22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color:       var(--tdp-on-surface);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.65);
+  margin:      0;
+}
+
+@media (min-width: 768px) { .tdp-title { font-size: 24px; } }
+
+.tdp-description {
+  font-size:   13px;
+  line-height: 1.5;
+  color:       var(--tdp-on-surface-variant);
+  max-width:   95%;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  margin:      0;
+}
+
+@media (min-width: 768px) { .tdp-description { font-size: 14px; } }
+
+.tdp-creator-row {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  flex-wrap:   wrap;
+}
+
+.tdp-creator-name {
+  font-size:   14px;
+  font-weight: 600;
+  color:       var(--tdp-on-surface);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+}
+
+/* handle always LTR — never reflows into Arabic bidi */
+.tdp-creator-handle {
+  font-size:    12px;
+  color:        var(--tdp-outline);
+  direction:    ltr;
+  unicode-bidi: embed;
+  text-shadow:  0 1px 6px rgba(0,0,0,0.55);
+}
+
+.tdp-meta-row {
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+  opacity:     0.82;
+}
+
+.tdp-meta-icon {
+  font-size:   15px;
+  color:       var(--tdp-primary);
+  line-height: 1;
+  flex-shrink: 0;
+  display:     block;
+}
+
+.tdp-meta-text {
+  font-size:   12px;
+  font-weight: 500;
+  color:       var(--tdp-on-surface-variant);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* ─── CTA button ────────────────────────────────────────────────────────────── */
+/*
+ * Centered horizontally within .tdp-info via align-self:center.
+ * Fixed width keeps it from stretching full info column width.
+ * margin-top separates it from the metadata row above.
+ */
+.tdp-cta-btn {
+  margin-top:              12px;
+  align-self:              center;  /* CENTERS the button within the flex column */
+  display:                 flex;
+  flex-direction:          row;
+  align-items:             center;
+  justify-content:         center;
+  gap:                     8px;
+  height:                  44px;
+  padding:                 0 24px;
+  background:              rgb(146, 97, 10);
+  border:                  1px solid rgba(245, 158, 11, 0.40);
+  border-radius:           9999px;
+  color:                   #fff;
+  cursor:                  pointer;
+  box-shadow:              0 0 20px rgba(245, 158, 11, 0.38);
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:              all 0.2s ease;
+  direction:               rtl;
+  white-space:             nowrap;
+  min-width:               180px;   /* ensures text is never squished */
+}
+
+.tdp-cta-btn:hover  { background: #b45309; box-shadow: 0 0 32px rgba(245, 158, 11, 0.55); }
+.tdp-cta-btn:active { transform: scale(0.95); }
+
+.tdp-cta-icon {
+  font-size:               20px;
+  display:                 block;
+  line-height:             1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  transition:              transform 0.15s ease;
+}
+
+.tdp-cta-btn:hover .tdp-cta-icon { transform: scale(1.10); }
+
+.tdp-cta-text {
+  font-size:   14px;
+  font-weight: 600;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+}
+
+/* ─── Feed progress dots (left edge, vertical) ──────────────────────────────── */
+.tdp-progress {
+  position:       absolute;
+  left:           10px;
+  top:            50%;
+  transform:      translateY(-50%);
+  z-index:        35;
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+  pointer-events: none;
+}
+
+.tdp-dot {
+  width:         3px;
+  height:        22px;
+  border-radius: 3px;
+  background:    rgba(255,255,255,0.22);
+  transition:    background 0.25s ease, height 0.25s ease;
+}
+
+.tdp-dot--active {
+  background: var(--tdp-primary);
+  height:     30px;
+}
+
+/* ─── Invisible hit-area nav (a11y, swipe prep) ─────────────────────────────── */
+.tdp-nav-hit {
+  position:   absolute;
+  top:        30%;
+  bottom:     20%;
+  width:      44px;
+  z-index:    50;
+  opacity:    0;
+  background: transparent;
+  border:     none;
+  cursor:     pointer;
+}
+
+.tdp-nav-hit--next { right: 0; }
+.tdp-nav-hit--prev { left:  0; }

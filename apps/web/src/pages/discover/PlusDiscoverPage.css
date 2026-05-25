@@ -1,0 +1,510 @@
+/*
+ * PlusDiscoverPage.css
+ * Scope: .pdp-*
+ *
+ * EXACT CLONE of GeneralDiscoverPage.css layout.
+ * Only color tokens differ — Plus gold (#eec200) replaces General purple.
+ *
+ * Shell context (same as General):
+ *   AppLayout.__main has:
+ *     padding-top:    calc(56px + 48px) = 104px  (header + world strip)
+ *     padding-bottom: calc(64px + 24px) = 88px   (bottom nav + breathing)
+ *
+ * Strategy: negative-margin bleed so the BG image covers the full viewport.
+ */
+
+/* ─── CSS custom properties ─────────────────────────────────────────────────── */
+.pdp-root {
+  /* Plus gold colour tokens */
+  --pdp-surface:                #171309;
+  --pdp-on-surface:             #f5efd6;
+  --pdp-on-surface-variant:     #c8b87a;
+  --pdp-primary:                #eec200;
+  --pdp-primary-container:      #b08c00;
+  --pdp-on-primary:             #1a1200;
+  --pdp-on-primary-container:   #fff8d6;
+  --pdp-primary-fixed-dim:      #eec200;
+  --pdp-outline:                #a0905a;
+
+  /* Shell dimensions — mirrors global.css tokens */
+  --pdp-header-h:     56px;
+  --pdp-strip-h:      48px;
+  --pdp-top-total:    calc(var(--pdp-header-h) + var(--pdp-strip-h)); /* 104px */
+  --pdp-bottom-nav-h: 64px;
+
+  /* Gradients — warm dark matching Plus surface */
+  --pdp-story-grad: linear-gradient(
+    180deg,
+    rgba(23,19,9,0)   0%,
+    rgba(23,19,9,0.4) 40%,
+    rgba(23,19,9,0.9) 80%,
+    rgba(23,19,9,1)   100%
+  );
+  --pdp-side-grad: linear-gradient(
+    270deg,
+    rgba(23,19,9,0)   0%,
+    rgba(23,19,9,0.3) 50%,
+    rgba(23,19,9,0.8) 100%
+  );
+
+  /* Layout */
+  direction:   rtl;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  position:    relative;
+  overflow:    hidden;
+
+  /* Bleed out of AppLayout padding to fill full viewport */
+  margin-top:    calc(-1 * var(--pdp-top-total));
+  margin-bottom: calc(-1 * (var(--pdp-bottom-nav-h) + 1.5rem));
+  height:        100dvh;
+  width:         100%;
+  background:    var(--pdp-surface);
+  color:         var(--pdp-on-surface);
+}
+
+/* ─── Background media layer ────────────────────────────────────────────────── */
+.pdp-bg {
+  position: absolute;
+  inset:    0;
+  z-index:  0;
+}
+
+.pdp-bg-image {
+  width:      100%;
+  height:     100%;
+  object-fit: cover;
+  opacity:    0.70;
+  display:    block;
+  transition: opacity 0.4s ease;
+}
+
+.pdp-story-gradient {
+  position:   absolute;
+  inset:      0;
+  z-index:    1;
+  background: var(--pdp-story-grad);
+}
+
+.pdp-side-gradient {
+  position:   absolute;
+  inset:      0;
+  z-index:    1;
+  background: var(--pdp-side-grad);
+}
+
+/* Plus warm amber radial tint */
+.pdp-plus-tint {
+  position:   absolute;
+  inset:      0;
+  z-index:    2;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 100%,
+    rgba(238,194,0,0.10) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* ─── Main wrapper ──────────────────────────────────────────────────────────── */
+.pdp-main {
+  position:        relative;
+  z-index:         20;
+  height:          100%;
+  width:           100%;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     stretch;
+  justify-content: flex-start;
+  padding-top:    calc(var(--pdp-top-total) + 12px);
+}
+
+/* Flex spacer */
+.pdp-spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Sub-nav cluster ───────────────────────────────────────────────────────── */
+.pdp-subnav-cluster {
+  width:           100%;
+  display:         flex;
+  justify-content: center;
+  padding:         0 16px;
+  flex-shrink:     0;
+}
+
+.pdp-glass-pill {
+  background:               rgba(30, 25, 10, 0.72);
+  backdrop-filter:          blur(16px);
+  -webkit-backdrop-filter:  blur(16px);
+  border-radius:            9999px;
+  padding:                  4px;
+  display:                  flex;
+  flex-direction:           row;
+  align-items:              center;
+  border:                   1px solid rgba(238,194,0,0.15);
+  box-shadow:               0 4px 24px rgba(0,0,0,0.45);
+  gap:                      2px;
+  /* RTL: pill inherits dir:rtl from root, so DOM order = visual right→left.
+     SUB_NAV_LABELS rendered in natural order (اكتشف first) gives:
+     visual: اكتشف | لك | المتابعة | الرائج  ✓ */
+}
+
+.pdp-pill-btn {
+  padding:        6px 14px;
+  border-radius:  9999px;
+  font-size:      12px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  border:         none;
+  cursor:         pointer;
+  transition:     all 0.2s ease;
+  color:          var(--pdp-on-surface-variant);
+  background:     transparent;
+  white-space:    nowrap;
+}
+
+.pdp-pill-btn:hover { color: var(--pdp-on-surface); }
+
+.pdp-pill-btn--active {
+  background: rgba(238,194,0,0.18);
+  color:      var(--pdp-primary);
+  border:     1px solid rgba(238,194,0,0.30);
+  box-shadow: 0 2px 8px rgba(238,194,0,0.20);
+}
+
+/* ─── Lower section ─────────────────────────────────────────────────────────── */
+.pdp-lower {
+  width:           100%;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     flex-start;
+  padding:         0 72px calc(var(--pdp-bottom-nav-h) + 24px) 16px;
+  flex-shrink:     0;
+}
+
+/* ─── Side action rail — absolute, vertically centered ──────────────────────── */
+.pdp-rail {
+  position:        absolute;
+  top:             50%;
+  transform:       translateY(-50%);
+  right:           12px;
+  direction:       ltr;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             16px;
+  width:           56px;
+  z-index:         30;
+  padding:         12px 0;
+}
+
+/* Avatar wrapper */
+.pdp-avatar-wrap {
+  position:      relative;
+  width:         48px;
+  height:        48px;
+  margin-bottom: 8px;
+}
+
+.pdp-avatar {
+  width:         48px;
+  height:        48px;
+  border-radius: 50%;
+  border:        2px solid rgba(238,194,0,0.30);
+  object-fit:    cover;
+  display:       block;
+}
+
+.pdp-follow-btn {
+  position:        absolute;
+  bottom:          -8px;
+  left:            50%;
+  transform:       translateX(-50%);
+  width:           22px;
+  height:          22px;
+  border-radius:   50%;
+  display:         grid;
+  place-items:     center;
+  border:          2px solid var(--pdp-surface);
+  cursor:          pointer;
+  z-index:         10;
+  transition:      transform 0.15s ease, background 0.2s ease;
+  background:      var(--pdp-primary-container);
+  color:           var(--pdp-on-primary);
+  direction:       ltr;
+}
+
+.pdp-follow-btn--following {
+  background: var(--pdp-on-surface-variant);
+  color:      var(--pdp-surface);
+}
+
+.pdp-follow-btn:hover  { transform: translateX(-50%) scale(1.15); }
+.pdp-follow-btn:active { transform: translateX(-50%) scale(0.92); }
+
+/* ─── Generic action button ─────────────────────────────────────────────────── */
+/*
+ * Single-column grid: icon-box (row 1) then label (row 2).
+ * This is identical to the General pattern — it is what works.
+ */
+.pdp-action-btn {
+  display:               grid;
+  grid-template-columns: 1fr;
+  grid-auto-flow:        row;
+  justify-items:         center;
+  align-content:         start;
+  gap:                   4px;
+  width:                 48px;
+  padding:               6px 0;
+  background:            none;
+  border:                none;
+  cursor:                pointer;
+  border-radius:         3px;
+  transition:            transform 0.15s ease;
+  direction:             ltr;
+  text-align:            center;
+}
+
+.pdp-action-btn:hover  { transform: scale(1.08); }
+.pdp-action-btn:active { transform: scale(0.90); }
+
+/* ─── Icon box ───────────────────────────────────────────────────────────────── */
+.pdp-action-icon-box {
+  display:      grid;
+  place-items:  center;
+  width:        36px;
+  height:       36px;
+  flex-shrink:  0;
+  justify-self: center;
+}
+
+.pdp-action-icon-box .material-symbols-outlined {
+  display:                 block;
+  line-height:             1;
+  font-size:               28px;
+  color:                   var(--pdp-on-surface);
+  transition:              color 0.2s ease, font-variation-settings 0.2s ease;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.pdp-action-icon--active {
+  color:                   var(--pdp-primary) !important;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+}
+
+.pdp-action-icon { /* alias — handled by .pdp-action-icon-box .material-symbols-outlined */ }
+
+.pdp-action-label {
+  display:        block;
+  width:          100%;
+  text-align:     center;
+  font-size:      10px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  color:          var(--pdp-on-surface-variant);
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  direction:      ltr;
+  unicode-bidi:   embed;
+  line-height:    1;
+  white-space:    nowrap;
+}
+
+/* ─── Follow icon box ────────────────────────────────────────────────────────── */
+.pdp-follow-icon-box {
+  display:     grid;
+  place-items: center;
+  width:       100%;
+  height:      100%;
+}
+
+.pdp-follow-icon-box .material-symbols-outlined {
+  display:                 block;
+  line-height:             1;
+  font-size:               14px;
+  font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 20;
+}
+
+/* ─── Content info block ─────────────────────────────────────────────────────── */
+.pdp-info {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-start;
+  gap:            6px;
+  width:          100%;
+  min-width:      0;
+}
+
+.pdp-category-chip {
+  background:               rgba(30, 25, 10, 0.82);
+  backdrop-filter:          blur(8px);
+  -webkit-backdrop-filter:  blur(8px);
+  padding:                  3px 12px;
+  border-radius:            9999px;
+  border:                   1px solid rgba(238,194,0,0.18);
+}
+
+.pdp-category-chip span {
+  font-size:      11px;
+  font-weight:    500;
+  color:          var(--pdp-primary-fixed-dim);
+  letter-spacing: 0.05em;
+}
+
+.pdp-title {
+  font-size:   22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color:       var(--pdp-on-surface);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.65);
+  margin:      0;
+}
+
+@media (min-width: 768px) { .pdp-title { font-size: 24px; } }
+
+.pdp-description {
+  font-size:   13px;
+  line-height: 1.5;
+  color:       var(--pdp-on-surface-variant);
+  max-width:   95%;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  margin:      0;
+}
+
+@media (min-width: 768px) { .pdp-description { font-size: 14px; } }
+
+.pdp-creator-row {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  flex-wrap:   wrap;
+}
+
+.pdp-creator-name {
+  font-size:   14px;
+  font-weight: 600;
+  color:       var(--pdp-on-surface);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+}
+
+.pdp-creator-handle {
+  font-size:    12px;
+  color:        var(--pdp-outline);
+  direction:    ltr;
+  unicode-bidi: embed;
+  text-shadow:  0 1px 6px rgba(0,0,0,0.55);
+}
+
+.pdp-meta-row {
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+  opacity:     0.82;
+}
+
+.pdp-meta-icon {
+  font-size:   15px;
+  color:       var(--pdp-on-surface-variant);
+  line-height: 1;
+  flex-shrink: 0;
+  display:     block;
+}
+
+.pdp-meta-text {
+  font-size:   12px;
+  font-weight: 500;
+  color:       var(--pdp-on-surface-variant);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* ─── CTA button — Plus gold ─────────────────────────────────────────────────── */
+.pdp-cta-btn {
+  margin-top:              12px;
+  align-self:              center;
+  display:                 flex;
+  flex-direction:          row;
+  align-items:             center;
+  justify-content:         center;
+  gap:                     8px;
+  height:                  44px;
+  padding:                 0 24px;
+  background:              var(--pdp-primary);
+  border:                  1px solid rgba(238,194,0,0.50);
+  border-radius:           9999px;
+  color:                   var(--pdp-on-primary);
+  cursor:                  pointer;
+  box-shadow:              0 0 20px rgba(238,194,0,0.35);
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:              all 0.2s ease;
+  direction:               rtl;
+  white-space:             nowrap;
+  min-width:               180px;
+  font-weight:             700;
+}
+
+.pdp-cta-btn:hover  {
+  background:  #ffd700;
+  box-shadow:  0 0 32px rgba(238,194,0,0.55);
+}
+.pdp-cta-btn:active { transform: scale(0.95); }
+
+.pdp-cta-icon {
+  font-size:               20px;
+  display:                 block;
+  line-height:             1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  transition:              transform 0.15s ease;
+}
+
+.pdp-cta-btn:hover .pdp-cta-icon { transform: scale(1.10); }
+
+.pdp-cta-text {
+  font-size:   14px;
+  font-weight: 700;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  color:       var(--pdp-on-primary);
+}
+
+/* ─── Feed progress dots (left edge, vertical) ───────────────────────────────── */
+.pdp-progress {
+  position:       absolute;
+  left:           10px;
+  top:            50%;
+  transform:      translateY(-50%);
+  z-index:        35;
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+  pointer-events: none;
+}
+
+.pdp-dot {
+  width:         3px;
+  height:        22px;
+  border-radius: 3px;
+  background:    rgba(255,255,255,0.22);
+  transition:    background 0.25s ease, height 0.25s ease;
+}
+
+.pdp-dot--active {
+  background: var(--pdp-primary);
+  height:     30px;
+}
+
+/* ─── Invisible hit-area nav (swipe prep) ────────────────────────────────────── */
+.pdp-nav-hit {
+  position:   absolute;
+  top:        30%;
+  bottom:     20%;
+  width:      44px;
+  z-index:    50;
+  opacity:    0;
+  background: transparent;
+  border:     none;
+  cursor:     pointer;
+}
+
+.pdp-nav-hit--next { right: 0; }
+.pdp-nav-hit--prev { left:  0; }

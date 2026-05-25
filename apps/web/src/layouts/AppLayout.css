@@ -8,8 +8,16 @@
 
 .app-layout__main {
   flex: 1;
-  padding-top: var(--header-height);
-  padding-bottom: var(--bottom-nav-height);
+  /* clear fixed header (56px) + world-strip (48px) = 104px total */
+  padding-top: calc(var(--header-height) + var(--world-strip-height));
+  /* pill nav: active pill 78px + safe area (pill itself already eats inset) */
+  padding-bottom: calc(78px + env(safe-area-inset-bottom));
   overflow-y: auto;
   -webkit-overflow-scrolling: touch;
+}
+
+/* Transparent wrapper keyed on location.pathname — forces React to unmount
+   and remount the page tree on every navigation. No visual effect. */
+.app-layout__page-container {
+  display: contents;
 }

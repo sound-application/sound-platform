@@ -1,0 +1,694 @@
+/*
+ * Sound Platform — Plus Home Page Styles
+ * Phase: 5-E (World-Scoped Feeds)
+ *
+ * Prefix: php- (Plus Home Page)
+ * Design rules (LOCKED):
+ *   - border-radius: 3px
+ *   - Alexandria/Cairo fonts
+ *   - RTL layout
+ *   - Dark theme with gold/amber Plus accent (#f59e0b / #fbbf24)
+ *   - No مباشر / بطولات labels
+ */
+
+/* ── Page Wrapper ─────────────────────────────────────────────────────────── */
+.php {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) var(--space-8);
+}
+
+/* ── Horizontal scroll utility ─────────────────────────────────────────────── */
+.php-h-scroll {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: var(--space-4);
+  padding-bottom: var(--space-1);
+}
+.php-h-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Section header ─────────────────────────────────────────────────────────── */
+.php-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.php-section__title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+}
+
+.php-section__title-badge {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.12);
+  border: 1px solid rgba(245, 158, 11, 0.28);
+  border-radius: 3px;
+  padding: 1px 6px;
+}
+
+.php-section__see-all {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #fbbf24;
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+.php-section__see-all:hover { opacity: 0.75; }
+
+/* ── Plus hero banner ───────────────────────────────────────────────────────── */
+.php-hero {
+  position: relative;
+  border-radius: 3px;
+  overflow: hidden;
+  background: linear-gradient(135deg, #1a1200 0%, #0d0d14 100%);
+  border: 1px solid rgba(245, 158, 11, 0.22);
+  padding: var(--space-5) var(--space-5);
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+}
+
+.php-hero__glow {
+  position: absolute;
+  top: -40px;
+  right: -40px;
+  width: 200px;
+  height: 200px;
+  background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%);
+  pointer-events: none;
+}
+
+.php-hero__eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: #f59e0b;
+  margin-bottom: var(--space-1);
+}
+
+.php-hero__headline {
+  font-size: var(--font-size-base);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.35;
+  max-width: 200px;
+  margin-bottom: var(--space-2);
+}
+
+.php-hero__sub {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  line-height: 1.45;
+  max-width: 200px;
+}
+
+.php-hero__cta {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: #0d0d14;
+  background: linear-gradient(135deg, #f59e0b 0%, #fbbf24 100%);
+  border-radius: 3px;
+  padding: var(--space-2) var(--space-4);
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+  border: none;
+  cursor: pointer;
+}
+.php-hero__cta:hover { opacity: 0.88; }
+
+/* ── Search bar ─────────────────────────────────────────────────────────────── */
+.php-search {
+  position: relative;
+  width: 100%;
+}
+
+.php-search__input {
+  width: 100%;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 0 var(--space-10) 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  text-align: right;
+}
+.php-search__input::placeholder { color: var(--color-text-muted); }
+.php-search__input:focus {
+  outline: none;
+  border-color: rgba(245, 158, 11, 0.4);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.php-search__icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+
+/* ── Smart filter row ───────────────────────────────────────────────────────── */
+.php-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  /* Always scroll horizontally — triggers use min-width:72px so they
+     never shrink below readable size. Parent scroll handles overflow. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;   /* prevent clip of focus ring / border-bottom */
+}
+.php-filters::-webkit-scrollbar { display: none; }
+
+/* ── Subpage CTA ─────────────────────────────────────────────────────────────── */
+.php-subpage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #fbbf24;
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  margin-top: var(--space-2);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+.php-subpage-btn:hover { opacity: 0.75; }
+
+/* ── Story row ──────────────────────────────────────────────────────────────── */
+.php-story-row {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--space-4);
+  scrollbar-width: none;
+  padding-bottom: var(--space-1);
+}
+.php-story-row::-webkit-scrollbar { display: none; }
+
+.php-story-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+.php-story-item:hover { transform: translateY(-2px); }
+
+.php-story-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #f59e0b 0%, #d97706 100%);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.php-story-ring--self {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+}
+
+.php-story-ring__inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--color-bg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.php-story-ring__add {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: #f59e0b;
+  color: #0d0d14;
+  font-size: 14px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 700;
+  border: 2px solid var(--color-bg);
+}
+
+.php-story-item__name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  max-width: 56px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Avatar fallback ────────────────────────────────────────────────────────── */
+.php-avatar-fallback {
+  border-radius: 50%;
+  background: rgba(245, 158, 11, 0.14);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: #fbbf24;
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Cover fallback ─────────────────────────────────────────────────────────── */
+.php-cover-fallback {
+  width: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(245, 158, 11, 0.10) 0%,
+    rgba(20, 15, 5, 0.95) 100%
+  );
+}
+
+/* ── Plus badge on cards ─────────────────────────────────────────────────────── */
+.php-plus-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.06em;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.14);
+  border: 1px solid rgba(245, 158, 11, 0.30);
+  border-radius: 3px;
+  padding: 1px 5px;
+}
+
+/* ── Content cards ──────────────────────────────────────────────────────────── */
+.php-content-card {
+  flex-shrink: 0;
+  width: 148px;
+  background: var(--color-bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.php-content-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.php-content-card--exclusive {
+  border-color: rgba(245, 158, 11, 0.18);
+}
+
+.php-content-card__cover {
+  position: relative;
+  overflow: hidden;
+}
+
+.php-content-card__cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 12, 14, 0.85) 0%, transparent 60%);
+}
+
+.php-content-card__tag {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  font-size: 9px;
+  font-weight: 700;
+  color: #f59e0b;
+  background: rgba(245, 158, 11, 0.22);
+  border: 1px solid rgba(245, 158, 11, 0.38);
+  border-radius: 3px;
+  padding: 1px var(--space-2);
+}
+
+.php-content-card__lock {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-2);
+  font-size: 12px;
+  opacity: 0.75;
+}
+
+.php-content-card__play-stat {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.php-content-card__body {
+  padding: var(--space-3);
+}
+
+.php-content-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: var(--space-1);
+  line-height: 1.35;
+}
+
+.php-content-card__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+/* ── Creator grid ───────────────────────────────────────────────────────────── */
+.php-creator-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.php-creator-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: var(--space-3) var(--space-4);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+}
+.php-creator-card--plus {
+  border-color: rgba(245, 158, 11, 0.14);
+}
+.php-creator-card:hover {
+  background: rgba(255, 255, 255, 0.05);
+  border-color: rgba(245, 158, 11, 0.22);
+}
+
+.php-creator-card__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+.php-creator-card__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.php-creator-card__followers {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.php-creator-card__specialty {
+  font-size: 10px;
+  font-weight: 600;
+  color: #fbbf24;
+  margin-top: 1px;
+  opacity: 0.85;
+}
+
+.php-creator-card__follow-btn {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 3px;
+  padding: var(--space-1) var(--space-3);
+  background: rgba(245, 158, 11, 0.08);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+  cursor: pointer;
+}
+.php-creator-card__follow-btn:hover {
+  background: rgba(245, 158, 11, 0.16);
+  border-color: rgba(245, 158, 11, 0.55);
+}
+
+/* ── Sponsor / ad block ─────────────────────────────────────────────────────── */
+.php-sponsor {
+  display: flex;
+  align-items: center;
+  gap: var(--space-4);
+  background: rgba(255, 255, 255, 0.025);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  border-radius: 3px;
+  padding: var(--space-4) var(--space-5);
+  position: relative;
+}
+
+.php-sponsor__label {
+  position: absolute;
+  top: var(--space-2);
+  left: var(--space-3);
+  font-size: 9px;
+  font-weight: 500;
+  color: var(--color-text-muted);
+  opacity: 0.55;
+  letter-spacing: 0.04em;
+}
+
+.php-sponsor__logo {
+  width: 48px;
+  height: 48px;
+  border-radius: 3px;
+  background: rgba(245, 158, 11, 0.10);
+  border: 1px solid rgba(245, 158, 11, 0.20);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 22px;
+  flex-shrink: 0;
+}
+
+.php-sponsor__body { flex: 1; overflow: hidden; }
+
+.php-sponsor__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.php-sponsor__tagline {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.php-sponsor__cta {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: #f59e0b;
+  border: 1px solid rgba(245, 158, 11, 0.35);
+  border-radius: 3px;
+  padding: var(--space-1) var(--space-3);
+  background: rgba(245, 158, 11, 0.08);
+  cursor: pointer;
+  transition: background var(--transition-fast);
+  white-space: nowrap;
+}
+.php-sponsor__cta:hover { background: rgba(245, 158, 11, 0.15); }
+
+/* ── Exclusive rooms row ─────────────────────────────────────────────────────── */
+.php-room-card {
+  flex-shrink: 0;
+  width: 200px;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(245, 158, 11, 0.14);
+  border-radius: 3px;
+  padding: var(--space-3) var(--space-4);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+}
+.php-room-card:hover {
+  background: rgba(245,158,11,0.05);
+  border-color: rgba(245, 158, 11, 0.28);
+}
+
+.php-room-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  margin-bottom: var(--space-1);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.php-room-card__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-bottom: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.php-room-card__live-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 5px #f59e0b;
+  flex-shrink: 0;
+}
+
+.php-room-card__join {
+  font-size: 10px;
+  font-weight: 700;
+  color: #f59e0b;
+  letter-spacing: 0.04em;
+}
+
+/* ── Playlist grid ──────────────────────────────────────────────────────────── */
+.php-playlist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.php-playlist-card {
+  position: relative;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.php-playlist-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 12, 14, 0.92) 0%, transparent 55%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--space-3);
+  gap: var(--space-1);
+}
+
+.php-playlist-card__tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: #fbbf24;
+  opacity: 0.9;
+}
+
+.php-playlist-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.php-playlist-card__count {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* ── Rising / following list ────────────────────────────────────────────────── */
+.php-follow-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.php-follow-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+}
+.php-follow-item:hover { background: rgba(255, 255, 255, 0.04); }
+
+.php-follow-item__info { flex: 1; overflow: hidden; }
+
+.php-follow-item__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.php-follow-item__status {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.php-follow-item__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #f59e0b;
+  box-shadow: 0 0 6px #f59e0b;
+  flex-shrink: 0;
+}
+
+.php-follow-item__chevron {
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}

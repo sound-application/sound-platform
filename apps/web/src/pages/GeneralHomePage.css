@@ -1,0 +1,575 @@
+/*
+ * Sound Platform — General Home Page Styles
+ * Phase: 5-E (World-Scoped Feeds)
+ *
+ * Scoped to .ghp — all selectors prefixed with ghp- to avoid collisions
+ * with HomePage.css or any future world-specific home CSS.
+ *
+ * Locked design rules (IMMUTABLE):
+ *   - border-radius: 3px on all cards and controls
+ *   - glass-card: rgba(255,255,255,0.03) bg / blur(20px) / 1px rgba(255,255,255,0.08) border
+ *   - Arabic RTL layout throughout
+ *   - No emoji in section headings
+ *   - No مباشر / بطولات labels
+ */
+
+/* ── Page Wrapper ────────────────────────────────────────────────────────────── */
+.ghp {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-8);
+  max-width: var(--content-max-width);
+  margin: 0 auto;
+  padding: var(--space-4) var(--space-4) var(--space-8);
+}
+
+/* ── Horizontal scroll utility ──────────────────────────────────────────────── */
+.ghp-h-scroll {
+  display: flex;
+  overflow-x: auto;
+  scrollbar-width: none;
+  gap: var(--space-4);
+  padding-bottom: var(--space-1);
+}
+.ghp-h-scroll::-webkit-scrollbar { display: none; }
+
+/* ── Section header ─────────────────────────────────────────────────────────── */
+.ghp-section__header {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  margin-bottom: var(--space-4);
+}
+
+.ghp-section__title {
+  font-size: var(--font-size-lg);
+  font-weight: 700;
+  color: var(--color-text-primary);
+  letter-spacing: -0.02em;
+}
+
+.ghp-section__see-all {
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-brand-light);
+  white-space: nowrap;
+  transition: opacity var(--transition-fast);
+}
+.ghp-section__see-all:hover { opacity: 0.75; }
+
+/* ── Search bar ─────────────────────────────────────────────────────────────── */
+.ghp-search {
+  position: relative;
+  width: 100%;
+}
+
+.ghp-search__input {
+  width: 100%;
+  height: 48px;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 3px;
+  padding: 0 var(--space-10) 0 var(--space-4);
+  font-size: var(--font-size-sm);
+  font-family: var(--font-sans);
+  color: var(--color-text-primary);
+  transition: border-color var(--transition-fast), background var(--transition-fast);
+  text-align: right;
+}
+.ghp-search__input::placeholder { color: var(--color-text-muted); }
+.ghp-search__input:focus {
+  outline: none;
+  border-color: rgba(124, 58, 237, 0.5);
+  background: rgba(255, 255, 255, 0.06);
+}
+
+.ghp-search__icon {
+  position: absolute;
+  top: 50%;
+  left: var(--space-3);
+  transform: translateY(-50%);
+  color: var(--color-text-muted);
+  pointer-events: none;
+  display: flex;
+  align-items: center;
+}
+.ghp-search__input:focus ~ .ghp-search__icon { color: var(--color-brand-light); }
+
+/* ── Smart filter row ───────────────────────────────────────────────────────── */
+.ghp-filters {
+  display: flex;
+  align-items: center;
+  gap: var(--space-2);
+  flex-wrap: nowrap;
+  /* Always scroll horizontally — triggers use min-width:72px so they
+     never shrink below readable size. Parent scroll handles overflow. */
+  overflow-x: auto;
+  scrollbar-width: none;
+  padding-bottom: 2px;   /* prevent clip of focus ring / border-bottom */
+}
+.ghp-filters::-webkit-scrollbar { display: none; }
+
+/* ── "Subpage / استعراض الأصناف" CTA button ───────────────────────────────── */
+.ghp-subpage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-brand-light);
+  background: none;
+  border: none;
+  padding: var(--space-1) 0;
+  margin-top: var(--space-2);
+  cursor: pointer;
+  transition: opacity var(--transition-fast);
+}
+.ghp-subpage-btn:hover { opacity: 0.75; }
+
+/* ── Story row ──────────────────────────────────────────────────────────────── */
+.ghp-story-row {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--space-4);
+  scrollbar-width: none;
+  padding-bottom: var(--space-1);
+}
+.ghp-story-row::-webkit-scrollbar { display: none; }
+
+.ghp-story-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+.ghp-story-item:hover { transform: translateY(-2px); }
+
+.ghp-story-ring {
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--color-brand) 0%, #4f46e5 100%);
+  padding: 2px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+}
+
+.ghp-story-ring--self {
+  background: rgba(255, 255, 255, 0.08);
+  border: 1.5px dashed rgba(255, 255, 255, 0.25);
+}
+
+.ghp-story-ring__inner {
+  width: 100%;
+  height: 100%;
+  border-radius: 50%;
+  background: var(--color-bg);
+  overflow: hidden;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.ghp-story-ring__avatar {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  border-radius: 50%;
+}
+
+.ghp-story-ring__add {
+  position: absolute;
+  bottom: -2px;
+  left: -2px;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  color: #fff;
+  font-size: 14px;
+  line-height: 18px;
+  text-align: center;
+  font-weight: 700;
+  border: 2px solid var(--color-bg);
+}
+
+.ghp-story-item__name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  max-width: 56px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Avatar fallback ────────────────────────────────────────────────────────── */
+.ghp-avatar-fallback {
+  border-radius: 50%;
+  background: rgba(124, 58, 237, 0.18);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  color: var(--color-brand-light);
+  user-select: none;
+  flex-shrink: 0;
+}
+
+/* ── Cover fallback ─────────────────────────────────────────────────────────── */
+.ghp-cover-fallback {
+  width: 100%;
+  background: linear-gradient(
+    135deg,
+    rgba(124, 92, 252, 0.15) 0%,
+    rgba(20, 20, 30, 0.95) 100%
+  );
+}
+
+/* ── Content cards (horizontal scroll) ─────────────────────────────────────── */
+.ghp-content-card {
+  flex-shrink: 0;
+  width: 148px;
+  background: var(--color-bg-card);
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  transition: transform var(--transition-fast), border-color var(--transition-fast);
+}
+.ghp-content-card:hover {
+  transform: translateY(-2px);
+  border-color: rgba(124, 58, 237, 0.25);
+}
+
+.ghp-content-card__cover {
+  position: relative;
+  overflow: hidden;
+}
+
+.ghp-content-card__cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 12, 14, 0.85) 0%, transparent 60%);
+}
+
+.ghp-content-card__tag {
+  position: absolute;
+  top: var(--space-2);
+  right: var(--space-2);
+  font-size: 9px;
+  font-weight: 700;
+  color: var(--color-brand-light);
+  background: rgba(124, 58, 237, 0.3);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  border-radius: 3px;
+  padding: 1px var(--space-2);
+  letter-spacing: 0.03em;
+}
+
+.ghp-content-card__play-stat {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.8);
+}
+
+.ghp-content-card__duration {
+  position: absolute;
+  bottom: var(--space-2);
+  left: var(--space-2);
+  font-size: 10px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.ghp-content-card__body {
+  padding: var(--space-3) var(--space-3) var(--space-3);
+}
+
+.ghp-content-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  overflow: hidden;
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+  margin-bottom: var(--space-1);
+  line-height: 1.35;
+}
+
+.ghp-content-card__meta {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ghp-content-card__flag {
+  font-size: 12px;
+}
+
+/* ── Creator grid ───────────────────────────────────────────────────────────── */
+.ghp-creator-grid {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.ghp-creator-card {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-3);
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 3px;
+  padding: var(--space-3) var(--space-4);
+  transition: background var(--transition-fast);
+}
+.ghp-creator-card:hover { background: rgba(255, 255, 255, 0.05); }
+
+.ghp-creator-card__left {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  overflow: hidden;
+}
+
+.ghp-creator-card__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  display: flex;
+  align-items: center;
+  gap: var(--space-1);
+}
+
+.ghp-creator-card__flag { font-size: 13px; }
+
+.ghp-creator-card__followers {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  margin-top: 2px;
+}
+
+.ghp-creator-card__specialty {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--color-brand-light);
+  margin-top: 1px;
+  opacity: 0.8;
+}
+
+.ghp-creator-card__follow-btn {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 600;
+  color: var(--color-brand-light);
+  border: 1px solid rgba(124, 58, 237, 0.4);
+  border-radius: 3px;
+  padding: var(--space-1) var(--space-3);
+  background: rgba(124, 58, 237, 0.08);
+  transition: background var(--transition-fast), border-color var(--transition-fast);
+  white-space: nowrap;
+}
+.ghp-creator-card__follow-btn:hover {
+  background: rgba(124, 58, 237, 0.18);
+  border-color: rgba(124, 58, 237, 0.6);
+}
+
+/* ── Plus banner ────────────────────────────────────────────────────────────── */
+.ghp-plus-banner {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--space-4);
+  background: linear-gradient(
+    135deg,
+    rgba(124, 58, 237, 0.12) 0%,
+    rgba(79, 70, 229, 0.08) 100%
+  );
+  border: 1px solid rgba(124, 58, 237, 0.2);
+  border-radius: 3px;
+  padding: var(--space-4) var(--space-5);
+}
+
+.ghp-plus-banner__eyebrow {
+  font-size: 10px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--color-brand-light);
+  margin-bottom: var(--space-1);
+  opacity: 0.85;
+}
+
+.ghp-plus-banner__headline {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.4;
+  max-width: 220px;
+}
+
+.ghp-plus-banner__cta {
+  flex-shrink: 0;
+  font-size: var(--font-size-xs);
+  font-weight: 700;
+  color: var(--color-bg);
+  background: var(--color-brand-light);
+  border-radius: 3px;
+  padding: var(--space-2) var(--space-4);
+  transition: opacity var(--transition-fast);
+  white-space: nowrap;
+}
+.ghp-plus-banner__cta:hover { opacity: 0.88; }
+
+/* ── Playlist grid ──────────────────────────────────────────────────────────── */
+.ghp-playlist-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: var(--space-3);
+}
+
+.ghp-playlist-card {
+  position: relative;
+  border-radius: 3px;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.ghp-playlist-card__overlay {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, rgba(12, 12, 14, 0.92) 0%, transparent 55%);
+  display: flex;
+  flex-direction: column;
+  justify-content: flex-end;
+  padding: var(--space-3);
+  gap: var(--space-1);
+}
+
+.ghp-playlist-card__tag {
+  font-size: 9px;
+  font-weight: 700;
+  letter-spacing: 0.05em;
+  color: var(--color-brand-light);
+  opacity: 0.85;
+}
+
+.ghp-playlist-card__title {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  line-height: 1.3;
+}
+
+.ghp-playlist-card__count {
+  font-size: 10px;
+  color: var(--color-text-muted);
+}
+
+/* ── Rising creators row ────────────────────────────────────────────────────── */
+.ghp-rising-row {
+  display: flex;
+  overflow-x: auto;
+  gap: var(--space-5);
+  scrollbar-width: none;
+  padding-bottom: var(--space-1);
+}
+.ghp-rising-row::-webkit-scrollbar { display: none; }
+
+.ghp-rising-item {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--space-2);
+  flex-shrink: 0;
+  background: none;
+  border: none;
+  cursor: pointer;
+  transition: transform var(--transition-fast);
+}
+.ghp-rising-item:hover { transform: translateY(-2px); }
+
+.ghp-rising-item__name {
+  font-size: 11px;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  max-width: 60px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* ── Following / creators you follow list ────────────────────────────────────── */
+.ghp-follow-list {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-2);
+}
+
+.ghp-follow-item {
+  display: flex;
+  align-items: center;
+  gap: var(--space-3);
+  padding: var(--space-3) var(--space-4);
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+  transition: background var(--transition-fast);
+  position: relative;
+}
+.ghp-follow-item:hover { background: rgba(255, 255, 255, 0.04); }
+
+.ghp-follow-item__info {
+  flex: 1;
+  overflow: hidden;
+}
+
+.ghp-follow-item__name {
+  font-size: var(--font-size-sm);
+  font-weight: 600;
+  color: var(--color-text-primary);
+  margin-bottom: 2px;
+}
+
+.ghp-follow-item__status {
+  font-size: 11px;
+  color: var(--color-text-muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.ghp-follow-item__indicator {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: var(--color-brand);
+  box-shadow: 0 0 6px var(--color-brand);
+  flex-shrink: 0;
+}
+
+.ghp-follow-item__chevron {
+  color: var(--color-text-muted);
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}

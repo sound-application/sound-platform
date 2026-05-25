@@ -9,7 +9,13 @@
     "rules": "firebase/rules/storage.rules"
   },
   "functions": {
-    "source": "functions"
+    "source": "functions",
+    "predeploy": [
+      "npm run build --workspace=packages/shared",
+      "node scripts/vendor-shared.js",
+      "npm install --workspace=functions",
+      "npm run functions:build"
+    ]
   },
   "hosting": {
     "public": "apps/web/dist",

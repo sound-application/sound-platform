@@ -2,7 +2,12 @@
  * Sound Platform — Permission Model
  * =====================================
  * Phase:   4-H-1
- * Updated: 2026-05-14
+ * Updated: 2026-05-17 (world model correction — tournaments replaces live)
+ *
+ * WORLD MODEL (five worlds, one app):
+ *   عام (general) | بلس (plus) | موسيقى (music) | راديو (radio) | مسابقات (tournaments)
+ *   Live (لايف) is a bottom navigation TAB scoped by the selected world.
+ *   Live is NOT a world. The fifth world is tournaments (مسابقات).
  *
  * CORE PRINCIPLES:
  *
@@ -18,39 +23,53 @@
  *    - Account restrictions (bans, violations, temp blocks)
  *
  * 3. GENERAL WORLD creation is open by default for normal users.
- *    General live needs no special permission unless account is restricted.
+ *    General live rooms need no special permission unless account is restricted.
  *
  * 4. PLUS WORLD publishing requires plus_creator capability.
- *    Plus live requires plus_creator capability.
+ *    Plus live rooms require plus_creator capability.
  *
- * 5. MUSIC WORLD: uploading songs/albums/playlists requires music_creator.
- *    Music world has no native live mode.
+ * 5. MUSIC WORLD: uploading songs/albums requires music_creator.
+ *    Music Live exists as event/concert-style experiences — NOT generic chat rooms.
+ *    Music Live creation requires music_creator capability.
  *
  * 6. RADIO WORLD: adding radio stations requires radio_creator capability.
+ *    Radio Live tab shows current on-air broadcasts and scheduled programs.
+ *    Normal Sound-native live room creation is DISABLED in the Radio world.
  *
- * 7. Any user can create a live session in principle.
+ * 7. TOURNAMENTS WORLD: creating/managing tournaments requires tournament_organizer capability.
+ *    Any authenticated user can submit competition entries (open tournaments).
+ *    Tournament Live shows tournament broadcast/voting events.
  *
  * All permission checks are AUTHORITATIVE SERVER-SIDE ONLY.
  */
 
-export type WorldId = 'general' | 'plus' | 'music' | 'radio' | 'live';
+/**
+ * WorldId — the five fixed worlds of the Sound platform.
+ *
+ * IMPORTANT: 'live' is NOT a world. Live is a bottom tab scoped by the selected world.
+ * The fifth world is 'tournaments' (مسابقات).
+ */
+export type WorldId = 'general' | 'plus' | 'music' | 'radio' | 'tournaments';
 
 export type ContentTypeId =
   | 'audio' | 'video' | 'image' | 'text' | 'poll' | 'question' | 'link'
   | 'template' | 'story' | 'song' | 'album' | 'liveSession'
-  | 'radioStation' | 'radioShow' | 'radioEpisode';
+  | 'radioStation' | 'radioShow' | 'radioEpisode'
+  | 'tournament'        // A tournament created by a tournament_organizer (مسابقات world)
+  | 'competitionEntry'; // A submission/entry to a tournament
 
 /**
  * CapabilityModule — entitlement modules that can be added to a profile.
  * Granted by package subscription, admin override, or verification.
  */
 export type CapabilityModule =
-  | 'plus_creator'      // Can publish content/live into Plus world
-  | 'music_creator'     // Can upload songs, create albums, song playlists
-  | 'radio_creator'     // Can add/manage radio stations, radio shows/episodes
-  | 'competition_jury'  // Can score competition entries as jury member
-  | 'ads_creator'       // Can create ad campaigns
-  | 'promoter';         // Can promote/boost content
+  | 'plus_creator'         // Can publish content/live into Plus world
+  | 'music_creator'        // Can upload songs, create albums, music live events
+  | 'radio_creator'        // Can add/manage radio stations, radio shows/episodes
+  | 'tournament_organizer' // Can create and manage tournaments (مسابقات world)
+  | 'competition_jury'     // Can score competition entries as jury member
+  | 'ads_creator'          // Can create ad campaigns
+  | 'promoter';            // Can promote/boost content
 
 /**
  * PermissionKey — granular action permissions resolved server-side.
@@ -89,10 +108,13 @@ export type PermissionKey =
   | 'manage_radio_station'
   | 'create_radio_show'
   | 'publish_radio_episode'
-  // Competition
+  // Competition / Tournaments (مسابقات world)
   | 'enter_competition'
   | 'vote_competition_public'
   | 'score_competition_jury'
+  | 'organize_tournament'        // Requires tournament_organizer capability
+  | 'manage_tournament_entries'  // Requires tournament_organizer capability
+  | 'publish_tournament_results' // Requires tournament_organizer capability
   // Wallet & Economy
   | 'view_own_wallet'
   | 'request_payout'
@@ -124,7 +146,7 @@ export interface WorldPublishingRule {
 }
 
 export const WORLD_PUBLISHING_RULES: WorldPublishingRule[] = [
-  // General World — open by default
+  // ── General World — open by default ──────────────────────────────────────────
   { worldId: 'general', contentType: 'audio',       requiredCapability: null, note: 'Open by default' },
   { worldId: 'general', contentType: 'video',       requiredCapability: null },
   { worldId: 'general', contentType: 'image',       requiredCapability: null },
@@ -133,25 +155,34 @@ export const WORLD_PUBLISHING_RULES: WorldPublishingRule[] = [
   { worldId: 'general', contentType: 'question',    requiredCapability: null },
   { worldId: 'general', contentType: 'link',        requiredCapability: null },
   { worldId: 'general', contentType: 'story',       requiredCapability: null },
-  { worldId: 'general', contentType: 'liveSession', requiredCapability: null, note: 'General live open by default; restricted only by account bans' },
-  { worldId: 'general', contentType: 'song',        requiredCapability: 'music_creator', note: 'Music profiles can publish songs to General' },
+  { worldId: 'general', contentType: 'liveSession', requiredCapability: null, note: 'General live rooms open by default; restricted only by account bans' },
+  { worldId: 'general', contentType: 'song',        requiredCapability: 'music_creator', note: 'Music profiles can publish songs to General world' },
   { worldId: 'general', contentType: 'album',       requiredCapability: 'music_creator' },
-  // Plus World — publishing requires plus_creator; VIEWING is open to all authenticated users
+
+  // ── Plus World — viewing is open to all; publishing requires plus_creator ────
   { worldId: 'plus', contentType: 'audio',          requiredCapability: 'plus_creator' },
   { worldId: 'plus', contentType: 'video',          requiredCapability: 'plus_creator' },
   { worldId: 'plus', contentType: 'image',          requiredCapability: 'plus_creator' },
   { worldId: 'plus', contentType: 'text',           requiredCapability: 'plus_creator' },
   { worldId: 'plus', contentType: 'story',          requiredCapability: 'plus_creator' },
-  { worldId: 'plus', contentType: 'liveSession',    requiredCapability: 'plus_creator', note: 'Plus live requires Plus publishing capability' },
-  // Music World — no native live mode
+  { worldId: 'plus', contentType: 'liveSession',    requiredCapability: 'plus_creator', note: 'Plus live rooms require Plus publishing capability' },
+
+  // ── Music World — Music Live is event/concert-style, NOT generic chat rooms ──
   { worldId: 'music', contentType: 'song',          requiredCapability: 'music_creator' },
   { worldId: 'music', contentType: 'album',         requiredCapability: 'music_creator' },
-  // Radio World
-  { worldId: 'radio', contentType: 'radioStation',  requiredCapability: 'radio_creator', note: 'Adding radio stations requires radio capability' },
+  { worldId: 'music', contentType: 'liveSession',   requiredCapability: 'music_creator', note: 'Music Live is event/concert-style experience, not a generic live room. Requires music_creator capability.' },
+
+  // ── Radio World — NO Sound-native live creation ───────────────────────────────
+  // Radio Live tab shows current on-air broadcasts and scheduled programs through
+  // the radio system. Normal live room creation is disabled in the Radio world.
+  { worldId: 'radio', contentType: 'radioStation',  requiredCapability: 'radio_creator', note: 'Adding radio stations requires radio_creator capability' },
   { worldId: 'radio', contentType: 'radioShow',     requiredCapability: 'radio_creator' },
   { worldId: 'radio', contentType: 'radioEpisode',  requiredCapability: 'radio_creator' },
-  // Live World hub — sessions originate from General or Plus
-  { worldId: 'live', contentType: 'liveSession',    requiredCapability: null, note: 'Any user can create a live; Plus live additionally requires plus_creator' },
+
+  // ── Tournaments World (مسابقات) ───────────────────────────────────────────────
+  { worldId: 'tournaments', contentType: 'tournament',       requiredCapability: 'tournament_organizer', note: 'Creating and managing tournaments requires tournament_organizer capability' },
+  { worldId: 'tournaments', contentType: 'competitionEntry', requiredCapability: null, note: 'Any user can submit an entry to an open tournament (subject to tournament eligibility rules)' },
+  { worldId: 'tournaments', contentType: 'liveSession',      requiredCapability: 'tournament_organizer', note: 'Tournament broadcast/voting events require tournament_organizer capability' },
 ];
 
 /** Resolved permissions for a user — computed server-side only. */

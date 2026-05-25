@@ -1,0 +1,140 @@
+/**
+ * MusicLivePage.css — Music Live accent overrides only
+ * ALL structural classes (live-carousel, room-row, live-section, etc.)
+ * are inherited from LivePage.css — do NOT duplicate them here.
+ *
+ * This file only adds:
+ *  1. Hero card glow + overlay layout
+ *  2. Music badge colours
+ *  3. Event-cover waveform animation
+ *  4. CTA accent colour
+ */
+
+/* ─── Hero Card skin ─────────────────────────────────────────────────────────── */
+
+.music-hero-card {
+  position: relative;
+  overflow: hidden;
+  /* width/height come from .live-feat-card in LivePage.css */
+}
+
+.music-hero__glow {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 1;
+}
+
+.music-hero__top {
+  position: relative;
+  z-index: 3;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.85rem 1rem 0;
+  flex-direction: row-reverse; /* RTL: badge on right */
+}
+
+.music-hero__spacer {
+  flex: 1;
+  min-height: 4rem;
+}
+
+.music-hero__overlay {
+  position: relative;
+  z-index: 3;
+  padding: 0 1rem 1rem;
+  background: linear-gradient(to top, rgba(0,0,0,0.85) 0%, transparent 100%);
+  border-radius: 0 0 3px 3px;
+}
+
+/* ─── Badges ─────────────────────────────────────────────────────────────────── */
+
+.music-live-badge {
+  background: rgba(168, 85, 247, 0.22) !important;
+  border: 1px solid rgba(168, 85, 247, 0.45) !important;
+  color: #c084fc !important;
+}
+
+.music-upcoming-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.2rem 0.55rem;
+  background: rgba(245, 158, 11, 0.18);
+  border: 1px solid rgba(245, 158, 11, 0.4);
+  border-radius: 3px;
+  font-size: 0.7rem;
+  color: #fcd34d;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+}
+
+.music-cat-tag {
+  padding: 0.2rem 0.55rem;
+  border: 1px solid;
+  border-radius: 3px;
+  font-size: 0.68rem;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  background: rgba(0,0,0,0.3);
+}
+
+/* ─── Event cover waveform ───────────────────────────────────────────────────── */
+
+.music-event-cover {
+  position: relative;
+  flex-shrink: 0;
+  width: 52px !important;
+  height: 52px !important;
+  border-radius: 3px !important;
+  overflow: hidden;
+}
+
+.room-avatar__waveform {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  gap: 2px;
+  padding-bottom: 6px;
+  background: rgba(0,0,0,0.35);
+}
+
+.room-avatar__wave-bar {
+  width: 3px;
+  border-radius: 2px;
+  animation: music-wave 0.9s ease-in-out infinite alternate;
+  height: 10px;
+}
+
+.room-avatar__wave-bar:nth-child(1) { --h: 14px; }
+.room-avatar__wave-bar:nth-child(2) { --h: 20px; }
+.room-avatar__wave-bar:nth-child(3) { --h: 12px; }
+.room-avatar__wave-bar:nth-child(4) { --h: 18px; }
+
+@keyframes music-wave {
+  from { height: 6px; }
+  to   { height: var(--h, 16px); }
+}
+
+/* ─── CTA block accent ───────────────────────────────────────────────────────── */
+
+.music-cta {
+  border-left-color: #a855f7 !important;
+}
+
+.music-cta__btn {
+  background: linear-gradient(135deg, #7c3aed 0%, #a855f7 100%) !important;
+  border-color: transparent !important;
+  color: #fff !important;
+}
+
+.music-cta__btn:hover {
+  background: linear-gradient(135deg, #6d28d9 0%, #9333ea 100%) !important;
+}
+
+/* ─── Music Ad card accent ───────────────────────────────────────────────────── */
+
+.music-ad .live-sponsor__icon {
+  color: #a855f7;
+}

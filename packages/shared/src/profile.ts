@@ -1,20 +1,30 @@
 /**
  * Sound Platform — Modular Profile Schema
  * =========================================
- * Phase:   5-C-3 (Privacy Audience Model Upgrade)
- * Updated: 2026-05-14
+ * Phase:   5-D (World Model + Tournaments Privacy Alignment)
+ * Updated: 2026-05-17
+ *
+ * WORLD MODEL (authoritative):
+ *   Five worlds: general | plus | music | radio | tournaments
+ *   Live (لايف) is a BOTTOM TAB scoped by the user's active world.
+ *   Live is NOT a world and must never appear as a WorldId value.
  *
  * DOCUMENT SPLIT (Phase 4-H-2):
- *   users/{uid}          → PRIVATE. Owner + admin readable only.
+ *   users/{uid}          -> PRIVATE. Owner + admin readable only.
  *                           Contains raw profile data, settings, capabilities,
  *                           restrictions, consumer activity, privacy config.
- *   publicProfiles/{uid} → PUBLIC PROJECTION. Any authenticated user can read.
+ *   publicProfiles/{uid} -> PUBLIC PROJECTION. Any authenticated user can read.
  *                           Built section-by-section by Cloud Function.
  *                           Only contains what owner has made visible.
  *
+ * EMPTY-SECTION RULE:
+ *   Viewer-facing sections are projected ONLY when real content exists.
+ *   Owner/management sections may project empty for CTA purposes.
+ *   See buildPublicProfile.ts for per-section projection rules.
+ *
  * SEPARATION:
- *   - Consumer activity  → what the user listened to / saved / followed
- *   - Creator ownership  → what the user published / owns / manages
+ *   - Consumer activity  -> what the user listened to / saved / followed
+ *   - Creator ownership  -> what the user published / owns / manages
  *   Both are individually privacy-controlled sections in the public projection.
  */
 
@@ -25,23 +35,29 @@
  * of a public profile. Each section has its own SectionPrivacy config.
  */
 export type PrivacySection =
-  | 'generalProfile'           // username, bio, avatar, social counters
-  | 'mood'                     // current mood string
-  | 'listeningActivity'        // latest listened item / total time
-  | 'followedRadioStations'    // followed radio stations list
-  | 'followedRadioStationLists'// followed radio station lists
-  | 'musicPlaylists'           // music playlists owned/followed
-  | 'savedItems'               // bookmarked/saved items
-  | 'storyViews'               // story view activity
-  | 'activityStatus'           // online / offline / hidden
-  | 'pinnedContent'            // pinned item on profile
-  | 'achievements'             // badges / gamification
-  | 'following'                // who the user follows
-  | 'followers'                // follower list
-  | 'directMessages'           // DM permission
-  | 'plusCreatorContent'       // Plus world published content
-  | 'musicCreatorContent'      // Music world content (songs, albums)
-  | 'radioCreatorContent';     // Radio stations / shows owned
+  | 'generalProfile'              // username, bio, avatar, social counters
+  | 'mood'                        // current mood string
+  | 'listeningActivity'           // latest listened item / total time
+  | 'followedRadioStations'       // followed radio stations list
+  | 'followedRadioStationLists'   // followed radio station lists
+  | 'musicPlaylists'              // music playlists owned/followed
+  | 'savedItems'                  // bookmarked/saved items
+  | 'storyViews'                  // story view activity
+  | 'activityStatus'              // online / offline / hidden
+  | 'pinnedContent'               // pinned item on profile
+  | 'achievements'                // badges / gamification
+  | 'following'                   // who the user follows
+  | 'followers'                   // follower list
+  | 'directMessages'              // DM permission
+  | 'plusCreatorContent'          // Plus world published content
+  | 'musicCreatorContent'         // Music world content (songs, albums)
+  | 'radioCreatorContent'         // Radio stations / shows owned
+  // ── Tournaments sections (مسابقات world — added Phase 5-D schema correction) ───────────────
+  | 'tournamentsOrganizerContent' // tournaments created/managed by this user
+  | 'joinedTournaments'           // tournaments this user participated in
+  | 'tournamentSubmissions'       // competition entries/submissions
+  | 'votingActivity'              // public voting activity (my votes)
+  | 'awardsAndMedals';            // winner badges / competition medals
 
 /**
  * PrivacyAudience — the atomic audience token (Phase 5-C-3).
@@ -239,6 +255,7 @@ export interface UserPrivateDoc {
     plus_creator?: true;
     music_creator?: true;
     radio_creator?: true;
+    tournament_organizer?: true; // Can create/manage tournaments (مسابقات world)
     competition_jury?: true;
     ads_creator?: true;
     promoter?: true;
@@ -255,7 +272,13 @@ export interface UserPrivateDoc {
 
   // Role (set by Cloud Function / Admin SDK only)
   role: 'superAdmin' | 'admin' | 'moderator' | 'creator' | 'listener';
-  accountType: 'normal' | 'plus' | 'music' | 'radio'; // legacy field — use capabilities instead
+  /**
+   * @deprecated Legacy rigid account type. Use the capabilities map for all new logic.
+   * Kept for backward compatibility only — do not write new product logic against this field.
+   * New users receive 'normal'. Do not write 'plus', 'music', or 'radio' for new users.
+   * Migration: this field will be removed after all existing documents are migrated.
+   */
+  accountType?: 'normal' | 'plus' | 'music' | 'radio';
   walletId?: string; // server-only reference
   kycStatus?: 'pending' | 'approved' | 'rejected'; // server-only
 }
@@ -425,6 +448,7 @@ export interface GeneralProfileSection {
   isPlusCreator: boolean;
   isMusicCreator: boolean;
   isRadioCreator: boolean;
+  isTournamentsCreator: boolean; // has tournament_organizer capability
   // Viewer-relative computed flags
   isBlocked?: boolean;
   isMuted?: boolean;
@@ -504,6 +528,34 @@ export interface RadioCreatorContentSection {
   radioLists: string[];
 }
 
+// ── Tournaments Sections (مسابقات world — Phase 5-D schema correction) ──────────────────────────
+
+/** Tournaments organizer content section (privacy-controlled, only if has tournament_organizer capability). */
+export interface TournamentsOrganizerContentSection {
+  organizedTournamentIds: string[]; // tournament IDs created/managed by this user
+  activeTournamentIds: string[];    // currently active tournament IDs
+}
+
+/** Joined tournaments section (privacy-controlled). */
+export interface JoinedTournamentsSection {
+  joinedTournamentIds: string[]; // tournament IDs user has participated in
+}
+
+/** Tournament submissions section (privacy-controlled). */
+export interface TournamentSubmissionsSection {
+  submissionIds: string[]; // competition entry IDs submitted by this user
+}
+
+/** Voting activity section (privacy-controlled). */
+export interface VotingActivitySection {
+  publicVoteCount: number; // total number of public votes cast
+}
+
+/** Awards and medals section (privacy-controlled). */
+export interface AwardsAndMedalsSection {
+  awardIds: string[]; // badge/medal IDs won in tournaments
+}
+
 /**
  * PublicProfileDoc — the document stored at publicProfiles/{uid}.
  *
@@ -529,6 +581,12 @@ export interface PublicProfileDoc {
   plusCreatorContent?: PlusCreatorContentSection;
   musicCreatorContent?: MusicCreatorContentSection;
   radioCreatorContent?: RadioCreatorContentSection;
+  // Tournaments sections — present only if capability/participation exists AND privacy allows
+  tournamentsOrganizerContent?: TournamentsOrganizerContentSection;
+  joinedTournaments?: JoinedTournamentsSection;
+  tournamentSubmissions?: TournamentSubmissionsSection;
+  votingActivity?: VotingActivitySection;
+  awardsAndMedals?: AwardsAndMedalsSection;
   // Meta
   lastUpdatedAt: string; // ISO — when the CF last rebuilt this projection
 }

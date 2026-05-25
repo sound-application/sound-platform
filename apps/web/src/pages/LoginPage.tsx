@@ -7,15 +7,20 @@
  */
 
 import React, { useState, useId } from 'react';
-import { useNavigate, Link } from 'react-router-dom';
+import { useNavigate, useLocation, Link } from 'react-router-dom';
 import { signInWithEmailAndPassword } from 'firebase/auth';
 import { auth } from '../lib/firebase';
 import './AuthPage.css';
 
 export function LoginPage() {
-  const navigate = useNavigate();
-  const emailId  = useId();
-  const passId   = useId();
+  const navigate  = useNavigate();
+  const location  = useLocation();
+  const emailId   = useId();
+  const passId    = useId();
+
+  // If the user was redirected here from a protected route, go back there after login.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const from = (location.state as any)?.from?.pathname ?? '/general/home';
 
   const [email,    setEmail]    = useState('');
   const [password, setPassword] = useState('');
@@ -28,7 +33,7 @@ export function LoginPage() {
     setLoading(true);
     try {
       await signInWithEmailAndPassword(auth, email, password);
-      navigate('/', { replace: true });
+      navigate(from, { replace: true });
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'حدث خطأ — حاول مجدداً';
       setError(msg);

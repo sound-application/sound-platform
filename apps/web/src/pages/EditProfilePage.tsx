@@ -38,9 +38,29 @@ import { useAuth } from '../contexts/AuthContext';
 import { usePrivateProfile } from '../hooks/usePrivateProfile';
 import { db } from '../lib/firebase';
 import { LoadingScreen } from '../components/LoadingScreen';
-import type { PrivacyLevel } from '@sound/shared';
+import type { PrivacyLevel, SectionPrivacy } from '@sound/shared';
 import './EditProfilePage.css';
 import './Page.css';
+
+// ─── Privacy Level Normalizer ─────────────────────────────────────────────────
+// The privacy model was upgraded to SectionPrivacy (audiences array) in Phase 5-C-3.
+// EditProfilePage still uses the simpler 3-option PrivacyLevel for its UI controls.
+// This helper extracts a PrivacyLevel from SectionPrivacy for the form state.
+// On save, the string is written directly — onUserCreate / buildPublicProfile
+// interpret it via the isSectionPublic() helper.
+function normalizePrivacyLevel(section: SectionPrivacy | PrivacyLevel | undefined): PrivacyLevel {
+  if (!section) return 'public';
+  // Legacy string format
+  if (typeof section === 'string') return section as PrivacyLevel;
+  // New SectionPrivacy format: { audiences: string[] }
+  if (typeof section === 'object' && Array.isArray((section as SectionPrivacy).audiences)) {
+    const audiences = (section as SectionPrivacy).audiences;
+    if (audiences.includes('onlyMe'))    return 'private';
+    if (audiences.includes('followers')) return 'followers';
+    return 'public';
+  }
+  return 'public';
+}
 
 // ─── Form State ───────────────────────────────────────────────────────────────
 // Only the fields the owner can edit. Never includes server-only fields.
@@ -106,12 +126,12 @@ export function EditProfilePage() {
         username:                  d.username ?? '',
         bio:                       d.bio ?? '',
         mood:                      d.mood ?? '',
-        privacyMood:               d.privacy.mood                ?? 'public',
-        privacyActivityStatus:     d.privacy.activityStatus      ?? 'public',
-        privacyListeningActivity:  d.privacy.listeningActivity   ?? 'public',
-        privacyMusicPlaylists:     d.privacy.musicPlaylists      ?? 'public',
-        privacyRadioCreatorContent:d.privacy.radioCreatorContent ?? 'public',
-        privacyPlusCreatorContent: d.privacy.plusCreatorContent  ?? 'public',
+        privacyMood:               normalizePrivacyLevel(d.privacy.mood),
+        privacyActivityStatus:     normalizePrivacyLevel(d.privacy.activityStatus),
+        privacyListeningActivity:  normalizePrivacyLevel(d.privacy.listeningActivity),
+        privacyMusicPlaylists:     normalizePrivacyLevel(d.privacy.musicPlaylists),
+        privacyRadioCreatorContent:normalizePrivacyLevel(d.privacy.radioCreatorContent),
+        privacyPlusCreatorContent: normalizePrivacyLevel(d.privacy.plusCreatorContent),
       });
       setInitialized(true);
     }

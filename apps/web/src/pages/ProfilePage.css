@@ -1,100 +1,388 @@
-/* Profile Page */
-.profile-page__header {
-  display: flex;
-  align-items: center;
-  gap: var(--space-4);
-  padding: var(--space-6) var(--space-4) var(--space-4);
+/*
+ * ProfilePage.css
+ * ================
+ * Source material: music_me_profile_sound_authority/code.html
+ * Authority:       DESIGN.md
+ *
+ * Design tokens in use:
+ *   --surface:          #0e0e0e  (main dark)
+ *   --surface-elevated: rgba(28,27,27,0.7)  (glass)
+ *   --glass-btn:        rgba(255,255,255,0.08)
+ *   --purple:           #7c3aed  (selected / CTA)
+ *   --text-primary:     #ffffff
+ *   --text-lavender:    #d8b4fe
+ *   --text-muted:       #a1a1aa
+ *   --border-glass:     rgba(255,255,255,0.1)
+ *   radius:             3px (not 15px — per DESIGN.md correction rule)
+ *   font:               Alexandria, Cairo
+ */
+
+/* ── Page Wrapper ─────────────────────────────────────────────────────────── */
+.profile-page {
+  background: #0e0e0e;
+  min-height: 100dvh;
+  color: #ffffff;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  direction: rtl;
+  padding-bottom: 96px; /* clearance for bottom nav */
 }
 
-.profile-page__avatar {
-  width: 72px;
-  height: 72px;
-  border-radius: 50%;
+/* ── Cover / Hero ─────────────────────────────────────────────────────────── */
+.profile-page__cover {
+  position: relative;
+  width: 100%;
+  height: 192px;
+  background: linear-gradient(135deg, rgba(124,58,237,0.25) 0%, rgba(14,14,14,1) 100%);
   overflow: hidden;
-  flex-shrink: 0;
-  background: var(--color-brand-dim);
+}
+
+.profile-page__cover-overlay {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.3);
+}
+
+.profile-page__cover-badges {
+  position: absolute;
+  top: 16px;
+  right: 16px;  /* RTL: visually top-start (right side in Arabic) */
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.profile-page__cover-actions {
+  position: absolute;
+  top: 16px;
+  left: 16px;   /* RTL: visually top-end */
+  display: flex;
+  gap: 8px;
+  z-index: 2;
+}
+
+.profile-page__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px 8px;
+  border-radius: 3px;
+  font-size: 11px;
+  font-weight: 600;
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1);
+  color: #d8b4fe;
+}
+
+.profile-page__badge--verified .material-symbols-outlined {
+  font-size: 14px;
+  color: #7c3aed;
+}
+
+.profile-page__cover-btn {
+  width: 32px;
+  height: 32px;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: 2px solid var(--color-border);
+  background: rgba(255,255,255,0.08);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.1);
+  border-radius: 3px;
+  color: #ffffff;
+  cursor: pointer;
+  transition: background 0.15s ease;
+}
+.profile-page__cover-btn:active { background: rgba(255,255,255,0.14); }
+.profile-page__cover-btn .material-symbols-outlined { font-size: 18px; }
+
+/* ── Identity Block ───────────────────────────────────────────────────────── */
+.profile-page__identity {
+  padding: 0 16px;
+  margin-top: -48px;  /* pull avatar up into cover */
+  position: relative;
+  z-index: 3;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+}
+
+/* Avatar with active-ring (purple border — from music_me_profile reference) */
+.profile-page__avatar-wrap {
+  position: relative;
+  margin-bottom: 12px;
+}
+
+.profile-page__avatar {
+  width: 96px;
+  height: 96px;
+  border-radius: 50%;
+  overflow: hidden;
+  background: rgba(28,27,27,0.9);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+/* active-ring = 2px purple border, 2px inner gap */
+.active-ring {
+  border: 2px solid #7c3aed;
+  padding: 2px;
 }
 
 .profile-page__avatar img {
   width: 100%;
   height: 100%;
   object-fit: cover;
+  border-radius: 50%;
 }
 
 .profile-page__avatar-initial {
-  font-size: var(--font-size-2xl);
+  font-size: 2rem;
   font-weight: 700;
-  color: var(--color-brand-light);
+  color: #d8b4fe;
 }
 
-.profile-page__info {
-  flex: 1;
-  min-width: 0;
+.profile-page__identity-text {
+  width: 100%;
 }
 
 .profile-page__display-name {
-  font-size: var(--font-size-xl);
+  font-size: 22px;
   font-weight: 700;
-  color: var(--color-text-primary);
-  margin-bottom: var(--space-1);
+  color: #ffffff;
+  margin: 0 0 4px;
+  line-height: 1.3;
+}
+
+/* Username: LTR-isolated — displays @handle, never handle@ */
+.profile-page__username {
+  font-size: 13px;
+  color: #d8b4fe;
+  margin: 0 0 8px;
+  direction: ltr;  /* must be ltr-isolated per DESIGN.md */
+  text-align: right; /* but visually right-aligned in RTL context */
 }
 
 .profile-page__bio {
-  font-size: var(--font-size-sm);
-  color: var(--color-text-secondary);
-  line-height: 1.5;
+  font-size: 15px;
+  color: #a1a1aa;
+  line-height: 1.55;
+  margin: 4px 0 0;
+  max-width: 320px;
 }
 
-/* Tabs */
+/* ── Stats Grid ───────────────────────────────────────────────────────────── */
+.profile-page__stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 8px;
+  padding: 20px 16px 0;
+}
+
+.profile-page__stat {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding: 12px 0;
+  background: rgba(255,255,255,0.03);
+  backdrop-filter: blur(16px);
+  border: 1px solid rgba(255,255,255,0.05);
+  border-radius: 3px;
+  border-bottom: 2px solid transparent;
+  transition: border-bottom-color 0.2s ease;
+}
+.profile-page__stat:hover { border-bottom-color: #7c3aed; }
+
+.profile-page__stat-value {
+  font-size: 16px;
+  font-weight: 700;
+  color: #ffffff;
+}
+
+.profile-page__stat-label {
+  font-size: 10px;
+  font-weight: 400;
+  color: #a1a1aa;
+  margin-top: 2px;
+}
+
+/* ── Action Buttons ───────────────────────────────────────────────────────── */
+.profile-page__actions {
+  display: flex;
+  gap: 8px;
+  padding: 16px 16px 0;
+}
+
+.profile-page__action-btn {
+  flex: 1;
+  padding: 10px 0;
+  border-radius: 3px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  transition: transform 0.1s ease, opacity 0.15s ease;
+  text-align: center;
+}
+.profile-page__action-btn:active { transform: scale(0.97); }
+
+.profile-page__action-btn--primary {
+  background: #7c3aed;
+  color: #ffffff;
+  border: none;
+}
+
+.profile-page__action-btn--secondary {
+  background: rgba(255,255,255,0.05);
+  color: #ffffff;
+  border: 1px solid rgba(255,255,255,0.1);
+  backdrop-filter: blur(16px);
+}
+
+/* Edit profile button — inline-flex to sit icon + text side by side (RTL) */
+.profile-page__action-btn--with-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+.profile-page__action-btn--with-icon .material-symbols-outlined {
+  font-size: 18px;
+}
+
+/* ── Listening Now Status ─────────────────────────────────────────────────── */
+.profile-page__listening-now {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 16px 0;
+  direction: rtl;
+}
+
+.profile-page__listening-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #7c3aed;
+  animation: listening-pulse 1.5s ease-in-out infinite;
+  flex-shrink: 0;
+}
+
+@keyframes listening-pulse {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50%       { opacity: 0.4; transform: scale(0.75); }
+}
+
+.profile-page__listening-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: #d8b4fe;
+}
+
+.profile-page__listening-track {
+  font-size: 12px;
+  color: #a1a1aa;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  flex: 1;
+}
+
+/* ── Social Links ─────────────────────────────────────────────────────────── */
+.profile-page__social-links {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  padding: 12px 16px 0;
+  direction: rtl;
+}
+
+.profile-page__social-links--empty {
+  padding: 8px 16px 0;
+}
+
+.profile-page__social-hint {
+  font-size: 12px;
+  color: #52525b;
+  font-style: italic;
+}
+
+.profile-page__social-link {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 36px;
+  height: 36px;
+  border-radius: 3px;
+  background: rgba(255,255,255,0.05);
+  border: 1px solid rgba(255,255,255,0.08);
+  color: #d8b4fe;
+  text-decoration: none;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.profile-page__social-link:hover {
+  background: rgba(124,58,237,0.2);
+  border-color: rgba(124,58,237,0.4);
+}
+.profile-page__social-link .material-symbols-outlined { font-size: 18px; }
+
+
+/* ── Tabs ─────────────────────────────────────────────────────────────────── */
+/* Horizontal scrollable tab bar — purple underline for active, 3px radius */
 .profile-page__tabs {
   display: flex;
   gap: 0;
   overflow-x: auto;
   scrollbar-width: none;
-  border-bottom: 1px solid var(--color-border-subtle);
-  padding: 0 var(--space-4);
+  border-bottom: 1px solid rgba(255,255,255,0.05);
+  padding: 0 16px;
+  margin-top: 24px;
 }
 .profile-page__tabs::-webkit-scrollbar { display: none; }
 
 .profile-page__tab {
-  padding: var(--space-3) var(--space-4);
-  font-size: var(--font-size-sm);
-  font-weight: 500;
-  color: var(--color-text-muted);
+  padding: 12px 16px;
+  font-size: 15px;
+  font-weight: 700;
+  font-family: inherit;
+  color: #a1a1aa;
   white-space: nowrap;
   border-bottom: 2px solid transparent;
-  transition: color var(--transition-fast), border-color var(--transition-fast);
+  background: transparent;
+  border-top: none;
+  border-left: none;
+  border-right: none;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease;
 }
 
-.profile-page__tab:hover { color: var(--color-text-secondary); }
+.profile-page__tab:hover { color: #d8b4fe; }
 
 .profile-page__tab--active {
-  color: var(--color-brand-light);
-  border-bottom-color: var(--color-brand);
+  color: #d8b4fe;
+  border-bottom-color: #7c3aed;
 }
 
-/* Panel */
+/* ── Tab Panel ────────────────────────────────────────────────────────────── */
 .profile-page__panel {
-  padding: var(--space-4);
+  padding: 16px;
   min-height: 200px;
 }
 
 .profile-page__section {
-  padding: var(--space-4) 0;
+  padding: 16px 0;
 }
 
+/* Privacy-hidden section: centered lock icon + message */
 .profile-page__section--hidden {
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  gap: var(--space-2);
-  padding: var(--space-10) var(--space-4);
+  gap: 8px;
+  padding: 48px 16px;
   text-align: center;
 }
 
-.profile-page__privacy-icon { font-size: 1.5rem; }
+.profile-page__privacy-icon { font-size: 1.75rem; }

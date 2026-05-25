@@ -1,0 +1,503 @@
+/*
+ * MusicDiscoverPage.css
+ * Scope: .mdp-*
+ *
+ * EXACT CLONE of GeneralDiscoverPage.css layout.
+ * Only color tokens differ — Music emerald (#1db97c) replaces General purple.
+ *
+ * Shell context (same as General/Plus):
+ *   AppLayout.__main has:
+ *     padding-top:    calc(56px + 48px) = 104px
+ *     padding-bottom: calc(64px + 24px) = 88px
+ */
+
+/* ─── CSS custom properties ─────────────────────────────────────────────────── */
+.mdp-root {
+  /* Music emerald colour tokens */
+  --mdp-surface:                #0c1a12;
+  --mdp-on-surface:             #d6f0e4;
+  --mdp-on-surface-variant:     #7abf9a;
+  --mdp-primary:                #1db97c;
+  --mdp-primary-container:      #0e7a50;
+  --mdp-on-primary:             #ffffff;
+  --mdp-on-primary-container:   #c8f7e2;
+  --mdp-primary-fixed-dim:      #1db97c;
+  --mdp-outline:                #4a9970;
+
+  /* Shell dimensions */
+  --mdp-header-h:     56px;
+  --mdp-strip-h:      48px;
+  --mdp-top-total:    calc(var(--mdp-header-h) + var(--mdp-strip-h));
+  --mdp-bottom-nav-h: 64px;
+
+  /* Gradients — cool dark green matching Music surface */
+  --mdp-story-grad: linear-gradient(
+    180deg,
+    rgba(12,26,18,0)   0%,
+    rgba(12,26,18,0.4) 40%,
+    rgba(12,26,18,0.9) 80%,
+    rgba(12,26,18,1)   100%
+  );
+  --mdp-side-grad: linear-gradient(
+    270deg,
+    rgba(12,26,18,0)   0%,
+    rgba(12,26,18,0.3) 50%,
+    rgba(12,26,18,0.8) 100%
+  );
+
+  /* Layout */
+  direction:   rtl;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  position:    relative;
+  overflow:    hidden;
+
+  /* Bleed out of AppLayout padding to fill full viewport */
+  margin-top:    calc(-1 * var(--mdp-top-total));
+  margin-bottom: calc(-1 * (var(--mdp-bottom-nav-h) + 1.5rem));
+  height:        100dvh;
+  width:         100%;
+  background:    var(--mdp-surface);
+  color:         var(--mdp-on-surface);
+}
+
+/* ─── Background media layer ────────────────────────────────────────────────── */
+.mdp-bg {
+  position: absolute;
+  inset:    0;
+  z-index:  0;
+}
+
+.mdp-bg-image {
+  width:      100%;
+  height:     100%;
+  object-fit: cover;
+  opacity:    0.70;
+  display:    block;
+  transition: opacity 0.4s ease;
+}
+
+.mdp-story-gradient {
+  position:   absolute;
+  inset:      0;
+  z-index:    1;
+  background: var(--mdp-story-grad);
+}
+
+.mdp-side-gradient {
+  position:   absolute;
+  inset:      0;
+  z-index:    1;
+  background: var(--mdp-side-grad);
+}
+
+/* Music emerald radial tint */
+.mdp-music-tint {
+  position:   absolute;
+  inset:      0;
+  z-index:    2;
+  background: radial-gradient(
+    ellipse 80% 60% at 50% 100%,
+    rgba(29,185,124,0.12) 0%,
+    transparent 70%
+  );
+  pointer-events: none;
+}
+
+/* ─── Main wrapper ──────────────────────────────────────────────────────────── */
+.mdp-main {
+  position:        relative;
+  z-index:         20;
+  height:          100%;
+  width:           100%;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     stretch;
+  justify-content: flex-start;
+  padding-top:    calc(var(--mdp-top-total) + 12px);
+}
+
+/* Flex spacer */
+.mdp-spacer {
+  flex: 1;
+  min-height: 0;
+}
+
+/* ─── Sub-nav cluster ───────────────────────────────────────────────────────── */
+.mdp-subnav-cluster {
+  width:           100%;
+  display:         flex;
+  justify-content: center;
+  padding:         0 16px;
+  flex-shrink:     0;
+}
+
+.mdp-glass-pill {
+  background:               rgba(12, 26, 18, 0.72);
+  backdrop-filter:          blur(16px);
+  -webkit-backdrop-filter:  blur(16px);
+  border-radius:            9999px;
+  padding:                  4px;
+  display:                  flex;
+  flex-direction:           row;
+  align-items:              center;
+  border:                   1px solid rgba(29,185,124,0.15);
+  box-shadow:               0 4px 24px rgba(0,0,0,0.45);
+  gap:                      2px;
+  /* RTL: SUB_NAV_LABELS rendered in natural DOM order gives
+     visual:  اكتشف | لك | المتابعة | الرائج  ✓ */
+}
+
+.mdp-pill-btn {
+  padding:        6px 14px;
+  border-radius:  9999px;
+  font-size:      12px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  border:         none;
+  cursor:         pointer;
+  transition:     all 0.2s ease;
+  color:          var(--mdp-on-surface-variant);
+  background:     transparent;
+  white-space:    nowrap;
+}
+
+.mdp-pill-btn:hover { color: var(--mdp-on-surface); }
+
+.mdp-pill-btn--active {
+  background: rgba(29,185,124,0.18);
+  color:      var(--mdp-primary);
+  border:     1px solid rgba(29,185,124,0.30);
+  box-shadow: 0 2px 8px rgba(29,185,124,0.20);
+}
+
+/* ─── Lower section ─────────────────────────────────────────────────────────── */
+.mdp-lower {
+  width:           100%;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     flex-start;
+  padding:         0 72px calc(var(--mdp-bottom-nav-h) + 24px) 16px;
+  flex-shrink:     0;
+}
+
+/* ─── Side action rail — absolute, vertically centered ──────────────────────── */
+.mdp-rail {
+  position:        absolute;
+  top:             50%;
+  transform:       translateY(-50%);
+  right:           12px;
+  direction:       ltr;
+  display:         flex;
+  flex-direction:  column;
+  align-items:     center;
+  gap:             16px;
+  width:           56px;
+  z-index:         30;
+  padding:         12px 0;
+}
+
+/* Avatar wrapper */
+.mdp-avatar-wrap {
+  position:      relative;
+  width:         48px;
+  height:        48px;
+  margin-bottom: 8px;
+}
+
+.mdp-avatar {
+  width:         48px;
+  height:        48px;
+  border-radius: 50%;
+  border:        2px solid rgba(29,185,124,0.30);
+  object-fit:    cover;
+  display:       block;
+}
+
+.mdp-follow-btn {
+  position:        absolute;
+  bottom:          -8px;
+  left:            50%;
+  transform:       translateX(-50%);
+  width:           22px;
+  height:          22px;
+  border-radius:   50%;
+  display:         grid;
+  place-items:     center;
+  border:          2px solid var(--mdp-surface);
+  cursor:          pointer;
+  z-index:         10;
+  transition:      transform 0.15s ease, background 0.2s ease;
+  background:      var(--mdp-primary-container);
+  color:           var(--mdp-on-primary);
+  direction:       ltr;
+}
+
+.mdp-follow-btn--following {
+  background: var(--mdp-on-surface-variant);
+  color:      var(--mdp-surface);
+}
+
+.mdp-follow-btn:hover  { transform: translateX(-50%) scale(1.15); }
+.mdp-follow-btn:active { transform: translateX(-50%) scale(0.92); }
+
+/* ─── Generic action button ─────────────────────────────────────────────────── */
+.mdp-action-btn {
+  display:               grid;
+  grid-template-columns: 1fr;
+  grid-auto-flow:        row;
+  justify-items:         center;
+  align-content:         start;
+  gap:                   4px;
+  width:                 48px;
+  padding:               6px 0;
+  background:            none;
+  border:                none;
+  cursor:                pointer;
+  border-radius:         3px;
+  transition:            transform 0.15s ease;
+  direction:             ltr;
+  text-align:            center;
+}
+
+.mdp-action-btn:hover  { transform: scale(1.08); }
+.mdp-action-btn:active { transform: scale(0.90); }
+
+/* ─── Icon box ───────────────────────────────────────────────────────────────── */
+.mdp-action-icon-box {
+  display:      grid;
+  place-items:  center;
+  width:        36px;
+  height:       36px;
+  flex-shrink:  0;
+  justify-self: center;
+}
+
+.mdp-action-icon-box .material-symbols-outlined {
+  display:                 block;
+  line-height:             1;
+  font-size:               28px;
+  color:                   var(--mdp-on-surface);
+  transition:              color 0.2s ease, font-variation-settings 0.2s ease;
+  font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+}
+
+.mdp-action-icon--active {
+  color:                   var(--mdp-primary) !important;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24 !important;
+}
+
+.mdp-action-icon { /* alias */ }
+
+.mdp-action-label {
+  display:        block;
+  width:          100%;
+  text-align:     center;
+  font-size:      10px;
+  font-weight:    500;
+  letter-spacing: 0.04em;
+  color:          var(--mdp-on-surface-variant);
+  font-family:    'Alexandria', 'Cairo', sans-serif;
+  direction:      ltr;
+  unicode-bidi:   embed;
+  line-height:    1;
+  white-space:    nowrap;
+}
+
+/* ─── Follow icon box ────────────────────────────────────────────────────────── */
+.mdp-follow-icon-box {
+  display:     grid;
+  place-items: center;
+  width:       100%;
+  height:      100%;
+}
+
+.mdp-follow-icon-box .material-symbols-outlined {
+  display:                 block;
+  line-height:             1;
+  font-size:               14px;
+  font-variation-settings: 'FILL' 0, 'wght' 700, 'GRAD' 0, 'opsz' 20;
+}
+
+/* ─── Content info block ─────────────────────────────────────────────────────── */
+.mdp-info {
+  display:        flex;
+  flex-direction: column;
+  align-items:    flex-start;
+  gap:            6px;
+  width:          100%;
+  min-width:      0;
+}
+
+.mdp-category-chip {
+  background:               rgba(12, 26, 18, 0.82);
+  backdrop-filter:          blur(8px);
+  -webkit-backdrop-filter:  blur(8px);
+  padding:                  3px 12px;
+  border-radius:            9999px;
+  border:                   1px solid rgba(29,185,124,0.20);
+}
+
+.mdp-category-chip span {
+  font-size:      11px;
+  font-weight:    500;
+  color:          var(--mdp-primary-fixed-dim);
+  letter-spacing: 0.05em;
+}
+
+.mdp-title {
+  font-size:   22px;
+  font-weight: 700;
+  line-height: 1.25;
+  color:       var(--mdp-on-surface);
+  text-shadow: 0 2px 10px rgba(0,0,0,0.65);
+  margin:      0;
+}
+
+@media (min-width: 768px) { .mdp-title { font-size: 24px; } }
+
+.mdp-description {
+  font-size:   13px;
+  line-height: 1.5;
+  color:       var(--mdp-on-surface-variant);
+  max-width:   95%;
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+  margin:      0;
+}
+
+@media (min-width: 768px) { .mdp-description { font-size: 14px; } }
+
+.mdp-creator-row {
+  display:     flex;
+  align-items: center;
+  gap:         8px;
+  flex-wrap:   wrap;
+}
+
+.mdp-creator-name {
+  font-size:   14px;
+  font-weight: 600;
+  color:       var(--mdp-on-surface);
+  text-shadow: 0 1px 6px rgba(0,0,0,0.55);
+}
+
+.mdp-creator-handle {
+  font-size:    12px;
+  color:        var(--mdp-outline);
+  direction:    ltr;
+  unicode-bidi: embed;
+  text-shadow:  0 1px 6px rgba(0,0,0,0.55);
+}
+
+.mdp-meta-row {
+  display:     flex;
+  align-items: center;
+  gap:         5px;
+  opacity:     0.82;
+}
+
+.mdp-meta-icon {
+  font-size:   15px;
+  color:       var(--mdp-on-surface-variant);
+  line-height: 1;
+  flex-shrink: 0;
+  display:     block;
+}
+
+.mdp-meta-text {
+  font-size:   12px;
+  font-weight: 500;
+  color:       var(--mdp-on-surface-variant);
+  text-shadow: 0 1px 4px rgba(0,0,0,0.5);
+}
+
+/* ─── CTA button — Music emerald ─────────────────────────────────────────────── */
+.mdp-cta-btn {
+  margin-top:              12px;
+  align-self:              center;
+  display:                 flex;
+  flex-direction:          row;
+  align-items:             center;
+  justify-content:         center;
+  gap:                     8px;
+  height:                  44px;
+  padding:                 0 24px;
+  background:              var(--mdp-primary);
+  border:                  1px solid rgba(29,185,124,0.50);
+  border-radius:           9999px;
+  color:                   var(--mdp-on-primary);
+  cursor:                  pointer;
+  box-shadow:              0 0 20px rgba(29,185,124,0.35);
+  backdrop-filter:         blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  transition:              all 0.2s ease;
+  direction:               rtl;
+  white-space:             nowrap;
+  min-width:               180px;
+  font-weight:             700;
+}
+
+.mdp-cta-btn:hover  {
+  background:  #22d68e;
+  box-shadow:  0 0 32px rgba(29,185,124,0.55);
+}
+.mdp-cta-btn:active { transform: scale(0.95); }
+
+.mdp-cta-icon {
+  font-size:               20px;
+  display:                 block;
+  line-height:             1;
+  font-variation-settings: 'FILL' 1, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+  transition:              transform 0.15s ease;
+}
+
+.mdp-cta-btn:hover .mdp-cta-icon { transform: scale(1.10); }
+
+.mdp-cta-text {
+  font-size:   14px;
+  font-weight: 700;
+  font-family: 'Alexandria', 'Cairo', sans-serif;
+  color:       var(--mdp-on-primary);
+}
+
+/* ─── Feed progress dots ─────────────────────────────────────────────────────── */
+.mdp-progress {
+  position:       absolute;
+  left:           10px;
+  top:            50%;
+  transform:      translateY(-50%);
+  z-index:        35;
+  display:        flex;
+  flex-direction: column;
+  gap:            6px;
+  pointer-events: none;
+}
+
+.mdp-dot {
+  width:         3px;
+  height:        22px;
+  border-radius: 3px;
+  background:    rgba(255,255,255,0.22);
+  transition:    background 0.25s ease, height 0.25s ease;
+}
+
+.mdp-dot--active {
+  background: var(--mdp-primary);
+  height:     30px;
+}
+
+/* ─── Invisible hit-area nav ─────────────────────────────────────────────────── */
+.mdp-nav-hit {
+  position:   absolute;
+  top:        30%;
+  bottom:     20%;
+  width:      44px;
+  z-index:    50;
+  opacity:    0;
+  background: transparent;
+  border:     none;
+  cursor:     pointer;
+}
+
+.mdp-nav-hit--next { right: 0; }
+.mdp-nav-hit--prev { left:  0; }

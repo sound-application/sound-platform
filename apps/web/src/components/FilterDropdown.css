@@ -1,0 +1,347 @@
+/*
+ * Sound Platform — FilterDropdown Styles
+ * Phase: 5-C
+ *
+ * DESIGN.md compliance:
+ *   - 3px radius on every surface
+ *   - Glass dark premium
+ *   - Alexandria/Cairo font
+ *   - RTL correct: label on right (first in DOM), checkbox on left (second in DOM)
+ *   - Panel is FIXED-positioned via inline style (portal) — no overflow clipping
+ *
+ * RTL option layout (corrected):
+ *   DOM order:  <label> <checkbox>
+ *   flex-direction: row + direction: rtl
+ *   → label renders on RIGHT (Arabic reading start)
+ *   → checkbox renders on LEFT (trailing action indicator)
+ *   NO row-reverse needed — direction:rtl handles it.
+ */
+
+/* ── Trigger ──────────────────────────────────────────────────────────────── */
+.fd-trigger {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 7px 10px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.09);
+  border-radius: 3px;
+  cursor: pointer;
+  /* flex:1 lets triggers share available width equally on desktop;
+     min-width:72px prevents shrinking below readable size on mobile —
+     the parent scroll container handles overflow instead. */
+  flex: 1 1 auto;
+  min-width: 72px;
+  max-width: 160px;
+  text-align: right;
+  direction: rtl;
+  white-space: nowrap;
+  transition: background 0.15s, border-color 0.15s;
+  font-family: var(--font-sans);
+}
+.fd-trigger:hover,
+.fd-trigger.is-open {
+  background: rgba(124, 58, 237, 0.12);
+  border-color: rgba(124, 58, 237, 0.45);
+}
+.fd-trigger.has-value {
+  border-color: rgba(124, 58, 237, 0.30);
+}
+
+.fd-trigger__text {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  flex: 1;
+  overflow: hidden;
+  text-align: right;
+}
+
+.fd-trigger__label {
+  font-size: 10px;
+  font-weight: 500;
+  color: rgba(255, 255, 255, 0.42);
+  letter-spacing: 0.04em;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.fd-trigger__value {
+  font-size: 12px;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.78);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.fd-trigger.has-value .fd-trigger__value {
+  color: #a78bfa;
+}
+
+.fd-trigger__chevron {
+  flex-shrink: 0;
+  display: flex;
+  align-items: center;
+  color: rgba(255, 255, 255, 0.35);
+  transition: color 0.15s;
+  /*
+    RTL leading side = left edge of the button.
+    order: 2 places the chevron AFTER the text block in DOM order,
+    which in direction:rtl renders it on the LEFT (leading/start side).
+    Arabic convention: chevron on the left of the label.
+  */
+  order: 2;
+}
+.fd-trigger.is-open .fd-trigger__chevron {
+  color: #a78bfa;
+}
+
+/* ── Panel (fixed position injected inline by portal) ──────────────────────
+   IMPORTANT: do NOT set position here — it comes from JS style prop.
+   The panel is mounted into document.body, so no ancestor can clip it.
+ ──────────────────────────────────────────────────────────────────────────── */
+.fd-panel {
+  /* position, top, left, width, z-index come from inline style */
+  background: rgba(12, 10, 20, 0.97);
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  border-radius: 3px;
+  box-shadow:
+    0 8px 32px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  backdrop-filter: blur(24px);
+  -webkit-backdrop-filter: blur(24px);
+  display: flex;
+  flex-direction: column;
+  max-height: min(360px, 60vh);
+  overflow: hidden;                    /* clip internal content only */
+  animation: fd-appear 0.15s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+@keyframes fd-appear {
+  from { opacity: 0; transform: translateY(-4px) scaleY(0.97); }
+  to   { opacity: 1; transform: translateY(0)    scaleY(1); }
+}
+
+/* ── Search ───────────────────────────────────────────────────────────────── */
+.fd-panel__search-row {
+  padding: 8px 10px;
+  flex-shrink: 0;
+}
+
+.fd-panel__search {
+  width: 100%;
+  height: 34px;
+  background: rgba(255, 255, 255, 0.07);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  border-radius: 3px;
+  padding: 0 10px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  color: #fff;
+  direction: rtl;
+  outline: none;
+  box-sizing: border-box;
+  transition: border-color 0.12s, background 0.12s;
+}
+.fd-panel__search::placeholder { color: rgba(255, 255, 255, 0.28); }
+.fd-panel__search:focus {
+  border-color: rgba(124, 58, 237, 0.55);
+  background: rgba(255, 255, 255, 0.09);
+}
+/* hide browser X on search input */
+.fd-panel__search::-webkit-search-cancel-button { display: none; }
+
+/* ── Divider ──────────────────────────────────────────────────────────────── */
+.fd-panel__hr {
+  height: 1px;
+  background: rgba(255, 255, 255, 0.07);
+  flex-shrink: 0;
+}
+
+/* ── Clear All ────────────────────────────────────────────────────────────── */
+.fd-panel__clear {
+  display: block;
+  width: 100%;
+  padding: 5px 12px;
+  text-align: right;
+  direction: rtl;
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: rgba(167, 139, 250, 0.70);
+  background: none;
+  border: none;
+  cursor: pointer;
+  flex-shrink: 0;
+  transition: color 0.12s;
+}
+.fd-panel__clear:hover { color: #a78bfa; }
+
+/* ── Options ──────────────────────────────────────────────────────────────── */
+.fd-panel__options {
+  flex: 1;
+  min-height: 0;           /* CRITICAL: allows flex to compress below natural height */
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scrollbar-width: thin;
+  scrollbar-color: rgba(124, 58, 237, 0.22) transparent;
+}
+.fd-panel__options::-webkit-scrollbar       { width: 4px; }
+.fd-panel__options::-webkit-scrollbar-thumb {
+  background: rgba(124, 58, 237, 0.22);
+  border-radius: 2px;
+}
+
+.fd-panel__empty {
+  padding: 20px 12px;
+  text-align: center;
+  font-size: 12px;
+  font-style: italic;
+  color: rgba(255, 255, 255, 0.35);
+  direction: rtl;
+  margin: 0;
+  letter-spacing: 0.02em;
+}
+
+/* ── Individual option row ────────────────────────────────────────────────
+   RTL CORRECTED:
+   DOM order: <label> <checkbox>
+   direction: rtl + flex-direction: row (default)
+   → first element (label) → RIGHT side
+   → second element (checkbox) → LEFT side
+   This is correct Arabic UX: text starts from right, action indicator on left.
+   ─────────────────────────────────────────────────────────────────────────── */
+.fd-panel__option {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  /* NO flex-direction: row-reverse — direction:rtl handles the visual order */
+  width: 100%;
+  padding: 10px 14px;
+  background: none;
+  border: none;
+  cursor: pointer;
+  direction: rtl;               /* text starts from right */
+  text-align: right;
+  font-size: 13px;
+  font-family: var(--font-sans);
+  color: rgba(255, 255, 255, 0.72);
+  transition: background 0.08s, color 0.08s;
+}
+.fd-panel__option:hover {
+  background: rgba(124, 58, 237, 0.10);
+  color: #fff;
+}
+.fd-panel__option.is-selected {
+  color: #c4b5fd;
+  background: rgba(124, 58, 237, 0.06);
+}
+.fd-panel__option.is-selected:hover {
+  background: rgba(124, 58, 237, 0.16);
+}
+
+.fd-panel__option-label {
+  flex: 1;
+  text-align: right;
+}
+
+/* ── Checkbox indicator (right-to-left trailing) ─────────────────────────── */
+.fd-checkbox {
+  width: 16px;
+  height: 16px;
+  flex-shrink: 0;
+  border: 1.5px solid rgba(255, 255, 255, 0.28);
+  border-radius: 3px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+  transition: border-color 0.12s, background 0.12s;
+}
+.fd-checkbox--checked {
+  background: #7c3aed;
+  border-color: #7c3aed;
+}
+
+/* ── Selected Chips — rendered by parent BELOW filter row ────────────────── */
+.fd-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  padding: 6px 0 0;
+  direction: rtl;
+  justify-content: flex-start;       /* start from right in RTL */
+}
+
+.fd-chip {
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 8px 3px 4px;
+  background: rgba(124, 58, 237, 0.14);
+  border: 1px solid rgba(124, 58, 237, 0.28);
+  border-radius: 3px;
+  animation: chip-pop 0.13s ease both;
+}
+
+@keyframes chip-pop {
+  from { opacity: 0; transform: scale(0.85); }
+  to   { opacity: 1; transform: scale(1); }
+}
+
+.fd-chip__label {
+  font-size: 11px;
+  font-family: var(--font-sans);
+  font-weight: 500;
+  color: #c4b5fd;
+  direction: rtl;
+}
+
+.fd-chip__x {
+  width: 16px;
+  height: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: rgba(255, 255, 255, 0.07);
+  border: none;
+  border-radius: 2px;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.50);
+  font-size: 14px;
+  line-height: 1;
+  padding: 0;
+  transition: background 0.10s, color 0.10s;
+  flex-shrink: 0;
+}
+.fd-chip__x:hover {
+  background: rgba(239, 68, 68, 0.18);
+  color: #fca5a5;
+}
+
+/* ── External Subpage Button — rendered by PARENT under chips ────────────
+   This is NOT inside the dropdown panel.
+   Lives in HomePage below SelectedChips.
+   ─────────────────────────────────────────────────────────────────────────── */
+.fd-subpage-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  margin-top: 6px;
+  padding: 6px 12px;
+  background: rgba(124, 58, 237, 0.08);
+  border: 1px solid rgba(124, 58, 237, 0.22);
+  border-radius: 3px;
+  font-size: 12px;
+  font-family: var(--font-sans);
+  font-weight: 600;
+  color: #a78bfa;
+  cursor: pointer;
+  direction: rtl;
+  transition: background 0.12s, border-color 0.12s;
+}
+.fd-subpage-btn:hover {
+  background: rgba(124, 58, 237, 0.15);
+  border-color: rgba(124, 58, 237, 0.40);
+}

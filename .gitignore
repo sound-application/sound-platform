@@ -1,6 +1,8 @@
 node_modules/
 dist/
 apps/web/dist/
+packages/shared/dist/
+functions/vendor/
 build/
 lib/
 coverage/
