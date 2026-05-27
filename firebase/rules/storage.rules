@@ -61,12 +61,17 @@ service firebase.storage {
     // Phase 8-B/8-C: Audio recording, file upload, and cover
     // image staging area. Owner-scoped path for creation flow.
     //
-    // Rules:
+    // WRITE rules:
     //   - Authenticated user only
     //   - uid in path must equal request.auth.uid
     //   - Content type must start with audio/ or image/
     //   - Max size: 100MB (generous for dev phase)
-    //   - No public read — playback via signed URLs later
+    //
+    // READ rules:
+    //   - Images/covers are PUBLIC-FACING and readable by any
+    //     authenticated user (covers displayed on cards/players).
+    //   - Audio files remain PRIVATE — direct read is DENIED.
+    //     Audio playback will use signed URLs (Phase 8-D+).
     // ----------------------------------------------------------
     match /audioUploads/{uid}/{draftId}/original/{fileName} {
       allow write: if request.auth != null
@@ -74,8 +79,9 @@ service firebase.storage {
         && (request.resource.contentType.matches('audio/.*')
             || request.resource.contentType.matches('image/.*'))
         && request.resource.size < 100 * 1024 * 1024; // 100MB max
-      // No client read — playback/display will be via signed URLs
-      allow read: if false;
+      // Images/covers: public-facing, readable
+      // Audio: private, direct read denied (signed URL pipeline later)
+      allow read: if resource.contentType.matches('image/.*');
     }
 
     // ----------------------------------------------------------
