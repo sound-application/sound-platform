@@ -111,20 +111,29 @@ export const updateAudioDraft = functions
       };
 
       // Only include fields that were provided in the request
-      if (data.world !== undefined)         update.world = data.world;
-      if (data.kind !== undefined)          update.kind = data.kind;
-      if (data.title !== undefined)         update.title = data.title;
-      if (data.caption !== undefined)       update.caption = data.caption;
-      if (data.description !== undefined)   update.description = data.description;
-      if (data.categoryId !== undefined)    update.categoryId = data.categoryId;
-      if (data.categoryLabel !== undefined) update.categoryLabel = data.categoryLabel;
-      if (data.countryCode !== undefined)   update.countryCode = data.countryCode;
-      if (data.countryLabel !== undefined)  update.countryLabel = data.countryLabel;
-      if (data.language !== undefined)      update.language = data.language;
-      if (data.tags !== undefined)          update.tags = data.tags;
-      if (data.audience !== undefined)      update.audience = data.audience;
-      if (data.isExplicit !== undefined)    update.isExplicit = data.isExplicit;
-      if (data.currentStep !== undefined)   update.currentStep = data.currentStep;
+      if (data.world !== undefined)            update.world = data.world;
+      if (data.kind !== undefined)             update.kind = data.kind;
+      if (data.title !== undefined)            update.title = data.title;
+      if (data.caption !== undefined)          update.caption = data.caption;
+      if (data.description !== undefined)      update.description = data.description;
+      if (data.categoryId !== undefined)       update.categoryId = data.categoryId;
+      if (data.categoryLabel !== undefined)    update.categoryLabel = data.categoryLabel;
+      if (data.subcategoryId !== undefined)    update.subcategoryId = data.subcategoryId;
+      if (data.subcategoryLabel !== undefined) update.subcategoryLabel = data.subcategoryLabel;
+      if (data.countryMode !== undefined)      update.countryMode = data.countryMode;
+      if (data.countryCodes !== undefined)     update.countryCodes = data.countryCodes;
+      if (data.countryCode !== undefined)      update.countryCode = data.countryCode;
+      if (data.countryLabel !== undefined)     update.countryLabel = data.countryLabel;
+      if (data.language !== undefined)         update.language = data.language;
+      if (data.tags !== undefined)             update.tags = data.tags;
+      if (data.audience !== undefined)         update.audience = data.audience;
+      if (data.isExplicit !== undefined)       update.isExplicit = data.isExplicit;
+      if (data.ageSuitability !== undefined)   update.ageSuitability = data.ageSuitability;
+      if (data.publishToggles !== undefined)   update.publishToggles = data.publishToggles;
+      if (data.coverAsset !== undefined)       update.coverAsset = data.coverAsset;
+      if (data.captionsSetup !== undefined)    update.captionsSetup = data.captionsSetup;
+      if (data.autoCue !== undefined)          update.autoCue = data.autoCue;
+      if (data.currentStep !== undefined)      update.currentStep = data.currentStep;
 
       // ── 5b. Handle audioAsset attachment (Phase 8-B) ────────────────────────
       if (data.audioAsset !== undefined) {

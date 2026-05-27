@@ -1,7 +1,7 @@
 /**
  * Sound Platform — Audio Content Schema
  * ========================================
- * Phase:   8-B (Audio Recording + Upload + Storage Attachment)
+ * Phase:   8-C (Complete Audio Creation Flow Foundation)
  * Updated: 2026-05-27
  *
  * This is the AUDIO CONTENT CORE MODULE — not generic social content.
@@ -139,6 +139,61 @@ export interface AudioAssetMeta {
   uploadedAt?: string;
 }
 
+// ─── Phase 8-C Types ─────────────────────────────────────────────────────────
+
+/** Country targeting mode */
+export type CountryMode = 'all' | 'one' | 'upToFour';
+
+/** Age suitability rating */
+export type AgeSuitability = 'everyone' | 'teen' | 'mature';
+
+/** Full audience/privacy options */
+export type AudienceType =
+  | 'public'
+  | 'followers'
+  | 'following'
+  | 'friends'
+  | 'specificList'
+  | 'listExcept'
+  | 'selectedPeople'
+  | 'onlyMe';
+
+/** Cover image asset metadata */
+export interface CoverAsset {
+  sourceType?: 'uploaded' | 'camera' | 'ai' | 'default';
+  storagePath?: string;
+  aiProvider?: string;
+  aiPrompt?: string;
+  uploadedAt?: string;
+}
+
+/** Captions/subtitles setup preferences */
+export interface CaptionsSetup {
+  enabled: boolean;
+  language?: string;
+  style?: 'standard' | 'karaoke' | 'subtitles';
+}
+
+/** AutoCue (teleprompter) configuration */
+export interface AutoCueConfig {
+  enabled: boolean;
+  scriptText?: string;
+  scriptSource?: 'manual' | 'description' | 'ai' | 'imported';
+  scrollSpeed?: 'slow' | 'medium' | 'fast';
+  fontSize?: 'small' | 'medium' | 'large';
+  readingMode?: 'lineByLine' | 'paragraphByParagraph';
+  startDelaySec?: number;
+  highlightCurrentLine?: boolean;
+}
+
+/** Publish behaviour toggles */
+export interface PublishToggles {
+  commentsEnabled?: boolean;
+  giftsEnabled?: boolean;
+  sharingEnabled?: boolean;
+  scheduledAt?: string;
+}
+
 // ─── Owner Snapshot ──────────────────────────────────────────────────────────
 //
 // Denormalized from publicProfiles/{uid} at publish time.
@@ -186,10 +241,18 @@ export interface AudioContentDoc {
   categoryId?: string;
   /** Localized category label snapshot */
   categoryLabel?: string;
+  /** Subcategory ID */
+  subcategoryId?: string;
+  /** Localized subcategory label snapshot */
+  subcategoryLabel?: string;
 
-  /** ISO 3166-1 alpha-2 country code */
+  /** Country targeting mode (Phase 8-C) */
+  countryMode?: CountryMode;
+  /** Country codes when countryMode !== 'all' */
+  countryCodes?: string[];
+  /** @deprecated use countryMode/countryCodes instead */
   countryCode?: string;
-  /** Localized country label snapshot */
+  /** @deprecated */
   countryLabel?: string;
 
   /** ISO 639-1 language code */
@@ -197,6 +260,21 @@ export interface AudioContentDoc {
 
   /** User-defined tags for discovery */
   tags: string[];
+
+  /** Age suitability (Phase 8-C) */
+  ageSuitability?: AgeSuitability;
+
+  /** Publish behaviour toggles (Phase 8-C) */
+  publishToggles?: PublishToggles;
+
+  /** Cover image asset (Phase 8-C) */
+  coverAsset?: CoverAsset;
+
+  /** Captions setup preferences (Phase 8-C) */
+  captionsSetup?: CaptionsSetup;
+
+  /** AutoCue teleprompter config (Phase 8-C) */
+  autoCue?: AutoCueConfig;
 
   // ── Visibility & Status ────────────────────────────────────────────────────
 
@@ -281,6 +359,10 @@ export interface AudioDraftDoc {
 
   categoryId?: string;
   categoryLabel?: string;
+  subcategoryId?: string;
+  subcategoryLabel?: string;
+  countryMode?: CountryMode;
+  countryCodes?: string[];
   countryCode?: string;
   countryLabel?: string;
   language?: string;
@@ -288,6 +370,11 @@ export interface AudioDraftDoc {
 
   audience?: string;
   isExplicit?: boolean;
+  ageSuitability?: AgeSuitability;
+  publishToggles?: PublishToggles;
+  coverAsset?: CoverAsset;
+  captionsSetup?: CaptionsSetup;
+  autoCue?: AutoCueConfig;
 
   // ── Draft Status ───────────────────────────────────────────────────────────
 
@@ -347,12 +434,21 @@ export interface UpdateAudioDraftRequest {
   description?: string;
   categoryId?: string;
   categoryLabel?: string;
+  subcategoryId?: string;
+  subcategoryLabel?: string;
+  countryMode?: CountryMode;
+  countryCodes?: string[];
   countryCode?: string;
   countryLabel?: string;
   language?: string;
   tags?: string[];
   audience?: string;
   isExplicit?: boolean;
+  ageSuitability?: AgeSuitability;
+  publishToggles?: PublishToggles;
+  coverAsset?: CoverAsset;
+  captionsSetup?: CaptionsSetup;
+  autoCue?: AutoCueConfig;
   currentStep?: string;
   /** Audio asset metadata — attached after upload completes (Phase 8-B) */
   audioAsset?: AudioAssetMeta;

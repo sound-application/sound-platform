@@ -205,6 +205,10 @@ export function createAudioContentFromDraft(
 
     categoryId: draft.categoryId,
     categoryLabel: draft.categoryLabel,
+    subcategoryId: draft.subcategoryId,
+    subcategoryLabel: draft.subcategoryLabel,
+    countryMode: draft.countryMode,
+    countryCodes: draft.countryCodes,
     countryCode: draft.countryCode,
     countryLabel: draft.countryLabel,
     language: draft.language,
@@ -214,6 +218,11 @@ export function createAudioContentFromDraft(
     status: 'published',
     moderationStatus: 'pending',
     isExplicit: draft.isExplicit ?? false,
+    ageSuitability: draft.ageSuitability,
+    publishToggles: draft.publishToggles,
+    coverAsset: draft.coverAsset,
+    captionsSetup: draft.captionsSetup,
+    autoCue: draft.autoCue,
 
     // Audio asset — copied from draft (attached during recording/upload)
     audioAsset: draft.audioAsset,
