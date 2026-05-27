@@ -1,18 +1,19 @@
 /**
  * Sound Platform — onUserCreate Cloud Function
  * ===============================================
- * Phase:   6-A (Profile + PublicProfile + Privacy schema foundation)
- * Updated: 2026-05-25
- *   - Now initializes privacySettings/{uid} on signup (3-document atomic batch).
- *
+ * Phase:   7.1 (Username-Aware Profile Links)
+ * Updated: 2026-05-27
+ *   - Now initializes usernames/{normalizedUsername} on signup (4-document atomic batch).
+ *   - Imports normalizeUsername from @sound/shared.
  * Previous Phase: 5-C-3 (Privacy Audience Model Upgrade — 2026-05-14)
  *
  * Trigger: Firebase Auth user.onCreate (Gen 1 API — works with firebase-functions v5)
  *
  * On each new Firebase Auth user creation:
- *   1. Creates users/{uid}          — private internal document (owner/admin/CF only)
- *   2. Creates publicProfiles/{uid} — public-safe projection via shared builder
- *   3. Creates privacySettings/{uid} — AccountControlHub Privacy Center state (owner r/w)
+ *   1. Creates users/{uid}                        — private internal document (owner/admin/CF only)
+ *   2. Creates publicProfiles/{uid}                — public-safe projection via shared builder
+ *   3. Creates privacySettings/{uid}               — AccountControlHub Privacy Center state (owner r/w)
+ *   4. Creates usernames/{normalizedUsername}       — username → UID index (Phase 7.1)
  *
  * PRIVACY RULES (Phase 4-H-2):
  *   users/{uid}:
@@ -22,7 +23,7 @@
  *     - Built by buildPublicProfileFromUser() — full section-level privacy filtering.
  *     - NO email, role, capabilities, restrictions, wallet, internal flags.
  *
- * Both documents are written atomically in a single Firestore batch.
+ * Both documents are written atomically in a single Firestore batch (4 documents).
  *
  * Phase 5-C note:
  *   publicProfiles/{uid} is now also rebuilt on every users/{uid} write by
@@ -38,9 +39,10 @@ import type {
   PrivacySettings,
   SectionPrivacy,
   ConsumerActivity,
+  UsernameDoc,
 } from '@sound/shared';
 import { buildPublicProfileFromUser } from '../helpers/buildPublicProfile';
-import { createDefaultPrivacySettingsDoc } from '@sound/shared';
+import { createDefaultPrivacySettingsDoc, normalizeUsername } from '@sound/shared';
 
 // ─── Firestore reference (Admin SDK initialised + settings applied in index.ts) ────
 // ignoreUndefinedProperties is set in index.ts — do NOT re-set here.
@@ -243,7 +245,15 @@ export const onUserCreate = functions.auth.user().onCreate(
     //
     const privacySettingsDoc = createDefaultPrivacySettingsDoc(uid, now);
 
-    // ── 4. Atomic batch write (3 documents) ───────────────────────────────────
+    // ── 4. Username index (usernames/{normalizedUsername}) ──────────────────
+    //
+    // Maps the normalized username to the owner UID.
+    // Used by getProfileForViewer for username → UID resolution.
+    // Must be in the same atomic batch to prevent orphaned state.
+    //
+    const normalizedUsernameKey = normalizeUsername(resolvedUsername);
+
+    // ── 5. Atomic batch write (4 documents) ───────────────────────────────
     const batch = db.batch();
 
     batch.set(
@@ -264,11 +274,31 @@ export const onUserCreate = functions.auth.user().onCreate(
       { merge: false },
     );
 
+    if (normalizedUsernameKey) {
+      const usernameDoc: UsernameDoc = {
+        uid,
+        username: resolvedUsername,
+        normalizedUsername: normalizedUsernameKey,
+        createdAt: now,
+        updatedAt: now,
+      };
+      batch.set(
+        db.collection('usernames').doc(normalizedUsernameKey),
+        usernameDoc,
+        { merge: false },
+      );
+    } else {
+      functions.logger.warn(
+        `[onUserCreate] Could not normalize username "${resolvedUsername}" for uid ${uid} — skipping usernames index`,
+        { uid, resolvedUsername },
+      );
+    }
+
     await batch.commit();
 
     functions.logger.info(
-      `[onUserCreate] Created users/${uid}, publicProfiles/${uid}, privacySettings/${uid}`,
-      { uid },
+      `[onUserCreate] Created users/${uid}, publicProfiles/${uid}, privacySettings/${uid}${normalizedUsernameKey ? `, usernames/${normalizedUsernameKey}` : ''}`,
+      { uid, normalizedUsernameKey },
     );
   }
 );

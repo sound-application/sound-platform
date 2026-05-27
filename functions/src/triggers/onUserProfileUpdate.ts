@@ -1,8 +1,8 @@
 /**
  * Sound Platform — onUserProfileUpdate Cloud Function
  * =====================================================
- * Phase:   5-C (Profile Update Sync & Privacy-Filtered Public Projection)
- * Updated: 2026-05-14
+ * Phase:   7.1 (Username-Aware Profile Links)
+ * Updated: 2026-05-27
  *
  * Trigger: Firestore document write on users/{uid}
  *   - Fires on create, update, delete of any users/{uid} document.
@@ -35,8 +35,9 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import type { UserPrivateDoc } from '@sound/shared';
+import type { UserPrivateDoc, UsernameDoc } from '@sound/shared';
 import { buildPublicProfileFromUser } from '../helpers/buildPublicProfile';
+import { normalizeUsername } from '@sound/shared';
 
 // ── Firestore reference (Admin SDK init + settings in index.ts) ──────────────
 const db = admin.firestore();
@@ -160,5 +161,94 @@ export const onUserProfileUpdate = functions.firestore
         { uid, err },
       );
       throw err;
+    }
+
+    // ── Username index sync (Phase 7.1) ───────────────────────────────────
+    // When users/{uid}.username changes, sync the usernames/{normalized} index.
+    //
+    // LIMITATION: The client update to users/{uid}.username has already landed
+    // when this trigger fires. If the new username conflicts with another user's
+    // index entry, the trigger logs a warning but cannot roll back the write.
+    // This is a best-effort guard. Collisions are rare because deriveUsername
+    // appends a 6-char UID suffix. A future Phase could add pre-validation
+    // via a callable (checkUsernameAvailability) before the client write.
+    if (change.before.exists) {
+      const beforeUsername = (change.before.data() as Record<string, unknown>).username as string | undefined;
+      const afterUsername  = userData.username;
+
+      if (beforeUsername && afterUsername && beforeUsername !== afterUsername) {
+        const oldNormalized = normalizeUsername(beforeUsername);
+        const newNormalized = normalizeUsername(afterUsername);
+
+        if (oldNormalized !== newNormalized && newNormalized) {
+          functions.logger.info(
+            `[onUserProfileUpdate] Username changed for ${uid}: "${beforeUsername}" → "${afterUsername}"`,
+            { uid, oldNormalized, newNormalized },
+          );
+
+          try {
+            // Check if the new username is already taken by another user
+            const existingSnap = await db.collection('usernames').doc(newNormalized).get();
+            if (existingSnap.exists) {
+              const existingDoc = existingSnap.data() as UsernameDoc;
+              if (existingDoc.uid !== uid) {
+                // Another user owns this username — do NOT overwrite
+                functions.logger.error(
+                  `[onUserProfileUpdate] Username conflict: "${newNormalized}" already belongs to uid ${existingDoc.uid}. Cannot assign to ${uid}.`,
+                  { uid, newNormalized, conflictUid: existingDoc.uid },
+                );
+                // Skip — the trigger cannot roll back the users/{uid} write.
+                // The old username index remains valid. The user's display
+                // username in users/{uid} is now mismatched with the index.
+                // A manual fix or callable-based rename is needed.
+                return;
+              }
+              // Same user — username doc already exists for this uid (idempotent)
+            }
+
+            // Create new username index entry
+            const newDoc: UsernameDoc = {
+              uid,
+              username: afterUsername,
+              normalizedUsername: newNormalized,
+              createdAt: existingSnap.exists ? ((existingSnap.data() as UsernameDoc).createdAt ?? now) : now,
+              updatedAt: now,
+            };
+            await db.collection('usernames').doc(newNormalized).set(newDoc, { merge: false });
+
+            functions.logger.info(
+              `[onUserProfileUpdate] Created usernames/${newNormalized} for uid ${uid}`,
+              { uid, newNormalized },
+            );
+
+            // Delete old username index entry (only if it still belongs to this uid)
+            if (oldNormalized && oldNormalized !== newNormalized) {
+              const oldSnap = await db.collection('usernames').doc(oldNormalized).get();
+              if (oldSnap.exists) {
+                const oldDoc = oldSnap.data() as UsernameDoc;
+                if (oldDoc.uid === uid) {
+                  await db.collection('usernames').doc(oldNormalized).delete();
+                  functions.logger.info(
+                    `[onUserProfileUpdate] Deleted old usernames/${oldNormalized} for uid ${uid}`,
+                    { uid, oldNormalized },
+                  );
+                } else {
+                  functions.logger.warn(
+                    `[onUserProfileUpdate] Old username "${oldNormalized}" now belongs to uid ${oldDoc.uid} — not deleting`,
+                    { uid, oldNormalized, ownerUid: oldDoc.uid },
+                  );
+                }
+              }
+            }
+          } catch (err) {
+            functions.logger.error(
+              `[onUserProfileUpdate] Failed to sync usernames index for ${uid}`,
+              { uid, err },
+            );
+            // Non-fatal — publicProfiles was already updated above.
+            // The usernames index is best-effort in this trigger.
+          }
+        }
+      }
     }
   });

@@ -1,7 +1,7 @@
 /**
  * Sound Platform — Profile Page
  * ================================
- * Phase:   7 (Viewer-Aware Privacy Resolver)
+ * Phase:   7.1 (Username-Aware Profile Links)
  * Updated: 2026-05-25
  *
  * Source material:
@@ -131,14 +131,20 @@ interface Props {
 //   (both hooks are always called in their respective components).
 
 export function ProfilePage({ isSelf = false }: Props) {
-  const { uid: routeUid } = useParams<{ uid: string }>();
+  const { uid: routeKey } = useParams<{ uid: string }>();
   const { currentUser }   = useAuth();
-  const targetUid = isSelf ? (currentUser?.uid ?? null) : (routeUid ?? null);
+  const targetUid = isSelf ? (currentUser?.uid ?? null) : null;
+
+  // Phase 7.1: strip leading '@' from the route param for username links.
+  // The callable getProfileForViewer handles UID vs. username resolution.
+  const targetKey = !isSelf && routeKey
+    ? routeKey.replace(/^@/, '')
+    : null;
 
   if (isSelf) {
     return <ProfilePageSelf selfUid={targetUid} currentUser={currentUser} />;
   }
-  return <ProfilePageOther targetUid={targetUid} currentUid={currentUser?.uid ?? null} />;
+  return <ProfilePageOther targetKey={targetKey} currentUid={currentUser?.uid ?? null} />;
 }
 
 // ─── Self View (usePublicProfile — real-time) ──────────────────────────────────
@@ -185,13 +191,13 @@ function ProfilePageSelf({
 // ─── Other-User View (useViewerProfile — caller-filtered) ─────────────────────
 
 function ProfilePageOther({
-  targetUid,
+  targetKey,
   currentUid,
 }: {
-  targetUid: string | null;
+  targetKey: string | null;
   currentUid: string | null;
 }) {
-  const { status, refetch, ...rest } = useViewerProfile(targetUid);
+  const { status, refetch, ...rest } = useViewerProfile(targetKey);
 
   if (status === 'loading') {
     return <LoadingScreen message="جاري تحميل الملف الشخصي..." />;

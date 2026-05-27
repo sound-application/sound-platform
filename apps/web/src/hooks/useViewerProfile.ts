@@ -1,8 +1,8 @@
 /**
  * Sound Platform — useViewerProfile hook
  * ==========================================
- * Phase:   7 (Viewer-Aware Profile Privacy Resolver)
- * Updated: 2026-05-25
+ * Phase:   7.1 (Username-Aware Profile Links)
+ * Updated: 2026-05-27
  *
  * Calls the getProfileForViewer Cloud Function callable.
  * Returns a viewer-filtered profile and the viewer's social state
@@ -10,6 +10,9 @@
  *
  * Used by ProfilePage for all non-self profile views.
  * Self-view continues to use usePublicProfile (onSnapshot, real-time).
+ *
+ * Phase 7.1: accepts targetKey which may be a Firebase UID or a username.
+ * The callable resolves the key server-side (see getProfileForViewer).
  *
  * WHY NOT REAL-TIME (onSnapshot)?
  *   Viewer-aware filtering cannot be done with client-side onSnapshot because:
@@ -20,8 +23,8 @@
  *   with polling or a push notification trigger).
  *
  * CACHE POLICY:
- *   Loads once per mount or targetUid change.
- *   Re-fetches when targetUid changes (navigation between profiles).
+ *   Loads once per mount or targetKey change.
+ *   Re-fetches when targetKey changes (navigation between profiles).
  *   Does NOT re-fetch when the viewer's follow state changes — ProfilePage
  *   must call refetch() after follow/unfollow to update the visible sections.
  *
@@ -43,7 +46,7 @@ import app from '../lib/firebase';
 
 export type ViewerProfileState =
   | { status: 'loading' }
-  | { status: 'blocked'; targetUid: string }
+  | { status: 'blocked'; targetKey: string }
   | { status: 'not-found' }
   | { status: 'error'; message: string }
   | { status: 'loaded'; result: GetProfileForViewerResponse };
@@ -51,18 +54,18 @@ export type ViewerProfileState =
 // ─── Hook ─────────────────────────────────────────────────────────────────────
 
 /**
- * useViewerProfile(targetUid)
+ * useViewerProfile(targetKey)
  *
  * Calls getProfileForViewer callable and returns the viewer-filtered result.
  *
- * @param targetUid - The uid of the profile to load. Pass null to skip.
+ * @param targetKey - The profile key (UID or username). Pass null to skip.
  * @returns ViewerProfileState + refetch() function.
  *
  * refetch() — re-calls the callable. Use after a follow/unfollow action
  * to update the visible sections for newly gated content.
  */
 export function useViewerProfile(
-  targetUid: string | null | undefined,
+  targetKey: string | null | undefined,
 ): ViewerProfileState & { refetch: () => void } {
   const [state, setState] = useState<ViewerProfileState>({ status: 'loading' });
   const [version, setVersion] = useState(0);
@@ -71,7 +74,7 @@ export function useViewerProfile(
   const refetch = useCallback(() => setVersion((v) => v + 1), []);
 
   useEffect(() => {
-    if (!targetUid) {
+    if (!targetKey) {
       setState({ status: 'loading' });
       return;
     }
@@ -85,13 +88,13 @@ export function useViewerProfile(
       'getProfileForViewer',
     );
 
-    callable({ targetUid })
+    callable({ targetKey })
       .then((result) => {
         if (cancelled) return;
         const data = result.data;
 
         if (data.isBlocked) {
-          setState({ status: 'blocked', targetUid });
+          setState({ status: 'blocked', targetKey });
           return;
         }
 
@@ -117,7 +120,8 @@ export function useViewerProfile(
       });
 
     return () => { cancelled = true; };
-  }, [targetUid, version]);
+  }, [targetKey, version]);
 
   return { ...state, refetch };
 }
+

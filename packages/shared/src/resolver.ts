@@ -1,8 +1,8 @@
 /**
  * Sound Platform — Viewer-Aware Profile Resolver Types
  * ======================================================
- * Phase:   7 (Viewer-Aware Privacy Resolver)
- * Updated: 2026-05-25
+ * Phase:   7.1 (Username-Aware Profile Links)
+ * Updated: 2026-05-27
  *
  * These types define the contract between the getProfileForViewer
  * Cloud Function callable and the ProfilePage client.
@@ -29,12 +29,32 @@ import type { PublicProfileDoc } from './profile';
 /**
  * GetProfileForViewerRequest — the input data passed to the callable.
  *
- * Only targetUid is required. viewerUid is inferred from request.auth.uid
- * by the Cloud Function — the client MUST NOT pass viewerUid.
+ * Phase 7.1: accepts either targetKey (preferred) or targetUid (legacy).
+ * viewerUid is inferred from request.auth.uid by the Cloud Function —
+ * the client MUST NOT pass viewerUid.
+ *
+ * targetKey may be:
+ *   - A Firebase UID (resolved via publicProfiles/{key} existence check).
+ *   - A username/handle (resolved via usernames/{normalizedKey} lookup).
+ *   - A username with leading '@' (stripped before resolution).
+ *
+ * Resolution order in getProfileForViewer:
+ *   1. normalizeUsername(targetKey)
+ *   2. publicProfiles/{key} exists? → treat as UID.
+ *   3. usernames/{normalizedKey} exists? → extract uid.
+ *   4. Neither → not-found.
  */
 export interface GetProfileForViewerRequest {
-  /** UID of the profile to load and filter for the caller */
-  targetUid: string;
+  /**
+   * Profile key — may be a Firebase UID or a username (with or without @).
+   * Preferred field. Takes precedence over targetUid if both are provided.
+   */
+  targetKey?: string;
+  /**
+   * @deprecated Use targetKey instead. Kept for backward compatibility.
+   * If targetKey is not provided, targetUid is used as the raw key.
+   */
+  targetUid?: string;
 }
 
 // ─── Viewer State ─────────────────────────────────────────────────────────────
@@ -122,6 +142,13 @@ export interface GetProfileForViewerResponse {
    * When true, profile is a minimal stub (displayName, uid, isBlocked=true).
    */
   isBlocked: boolean;
+  /**
+   * The resolved Firebase UID of the target profile.
+   * Useful when the request used a username as targetKey — the client
+   * needs the canonical UID for follow/block/mute actions.
+   * Always present in Phase 7.1+.
+   */
+  resolvedTargetUid: string;
 }
 
 // ─── Blocked Profile Stub ────────────────────────────────────────────────────

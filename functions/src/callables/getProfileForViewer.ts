@@ -1,8 +1,8 @@
 /**
  * Sound Platform — getProfileForViewer Callable Cloud Function
  * =============================================================
- * Phase:   7 (Viewer-Aware Profile Privacy Resolver)
- * Updated: 2026-05-25
+ * Phase:   7.1 (Username-Aware Profile Links)
+ * Updated: 2026-05-27
  *
  * WHAT THIS FUNCTION DOES:
  *   Returns a viewer-filtered profile for the authenticated caller.
@@ -10,18 +10,30 @@
  *   this callable knows who the caller is and applies the correct audience
  *   gates for 'followers', 'friends', 'onlyMe', and block enforcement.
  *
- * CALLER CONTRACT:
- *   Input:  { targetUid: string }
+ * CALLER CONTRACT (Phase 7.1):
+ *   Input:  { targetKey: string } OR { targetUid: string } (legacy)
  *   Output: GetProfileForViewerResponse
  *   Auth:   required — throws unauthenticated if not signed in
  *
+ *   targetKey may be:
+ *     - A Firebase UID (resolved via publicProfiles/{key} existence check).
+ *     - A username/handle (resolved via usernames/{normalizedKey} lookup).
+ *     - A username with leading '@' (stripped by normalizeUsername).
+ *
+ * RESOLUTION ORDER (Phase 7.1):
+ *   1. normalizeUsername(targetKey) — strip @, lowercase, etc.
+ *   2. publicProfiles/{rawKey} exists? → treat rawKey as UID.
+ *   3. usernames/{normalizedKey} exists? → extract uid.
+ *   4. Neither → throw not-found.
+ *
  * DATA READS (all Admin SDK — bypasses Firestore client rules):
  *   1. publicProfiles/{targetUid}          — base projection (safe public fields)
- *   2. privacySettings/{targetUid}         — raw per-section privacy config
- *   3. follows/{viewerUid}/following/{targetUid}  — does viewer follow target?
- *   4. follows/{targetUid}/following/{viewerUid}  — does target follow viewer?
- *   5. blocks/{targetUid}/blocked/{viewerUid}     — has target blocked viewer?
- *   6. blocks/{viewerUid}/blocked/{targetUid}     — has viewer blocked target?
+ *   2. usernames/{normalizedKey}           — username → UID resolution (Phase 7.1)
+ *   3. privacySettings/{targetUid}         — raw per-section privacy config
+ *   4. follows/{viewerUid}/following/{targetUid}  — does viewer follow target?
+ *   5. follows/{targetUid}/following/{viewerUid}  — does target follow viewer?
+ *   6. blocks/{targetUid}/blocked/{viewerUid}     — has target blocked viewer?
+ *   7. blocks/{viewerUid}/blocked/{targetUid}     — has viewer blocked target?
  *
  * AUDIENCE ENFORCEMENT:
  *   'public'    → always visible
@@ -43,18 +55,9 @@
  *                         Client renders a "You have blocked this user" banner.
  *
  * SELF-VIEW:
- *   If viewerUid === targetUid, return all sections from publicProfiles as-is.
+ *   If viewerUid === resolvedTargetUid, return all sections from publicProfiles as-is.
  *   The owner sees everything in their public projection.
  *   (Raw users/{uid} private fields are NOT exposed — publicProfiles is used.)
- *
- * READS DIAGRAM:
- *   publicProfiles/{targetUid}          → always read (base projection)
- *   privacySettings/{targetUid}         → read only if NOT self-view and NOT blocked
- *   follows/{viewerUid}/following/{targetUid}  → only if NOT self-view
- *   follows/{targetUid}/following/{viewerUid}  → only if NOT self-view and isFollower
- *   blocks/{targetUid}/blocked/{viewerUid}     → only if NOT self-view
- *   blocks/{viewerUid}/blocked/{targetUid}     → only if NOT self-view
- *   Maximum = 6 reads. Minimum (self-view) = 1 read.
  *
  * INFINITE LOOP PREVENTION:
  *   This is a callable (HTTPS trigger). It does NOT watch any Firestore path.
@@ -78,8 +81,9 @@ import type {
   GetProfileForViewerRequest,
   GetProfileForViewerResponse,
   ViewerState,
+  UsernameDoc,
 } from '@sound/shared';
-import { makeBlockedProfileStub } from '@sound/shared';
+import { makeBlockedProfileStub, normalizeUsername } from '@sound/shared';
 
 // ── Admin Firestore ────────────────────────────────────────────────────────────
 const db = admin.firestore();
@@ -291,7 +295,7 @@ function filterProfileForViewer(
 export const getProfileForViewer = functions.https.onCall(
   async (data: GetProfileForViewerRequest, context): Promise<GetProfileForViewerResponse> => {
 
-    // ── Auth guard ────────────────────────────────────────────────────────────
+    // ── Auth guard ─────────────────────────────────────────────────────────────────
     if (!context.auth) {
       throw new functions.https.HttpsError(
         'unauthenticated',
@@ -301,32 +305,90 @@ export const getProfileForViewer = functions.https.onCall(
 
     const viewerUid = context.auth.uid;
 
-    // ── Input validation ──────────────────────────────────────────────────────
-    const targetUid = (data?.targetUid ?? '').toString().trim();
-    if (!targetUid) {
+    // ── Input validation (Phase 7.1: targetKey or legacy targetUid) ──────────
+    const rawKey = ((data?.targetKey ?? data?.targetUid) ?? '').toString().trim();
+    if (!rawKey) {
       throw new functions.https.HttpsError(
         'invalid-argument',
-        'targetUid is required and must be a non-empty string.',
+        'targetKey (or targetUid) is required and must be a non-empty string.',
       );
     }
 
     functions.logger.info(
-      `[getProfileForViewer] viewerUid=${viewerUid} targetUid=${targetUid}`,
-      { viewerUid, targetUid },
+      `[getProfileForViewer] viewerUid=${viewerUid} rawKey=${rawKey}`,
+      { viewerUid, rawKey },
     );
 
-    // ── Self-view fast path ───────────────────────────────────────────────────
-    // Owner sees all sections from their own public projection.
-    // No need to load privacySettings or social graph checks.
-    if (viewerUid === targetUid) {
-      const selfDoc = await db.collection('publicProfiles').doc(targetUid).get();
-      if (!selfDoc.exists) {
+    // ── Resolve targetKey → canonical Firebase UID (Phase 7.1) ───────────────
+    //
+    // Resolution order:
+    //   1. Check if publicProfiles/{rawKey} exists → rawKey is a UID.
+    //   2. Normalize rawKey and lookup usernames/{normalizedKey} → get uid.
+    //   3. Neither → not-found.
+    //
+    // This approach is UID-first: existing UID links work with a single read.
+    // Username links cost one extra read (the usernames lookup).
+
+    let targetUid: string;
+    let publicProfileSnap: FirebaseFirestore.DocumentSnapshot;
+
+    // Step 1: Try rawKey as a UID
+    const uidCheckSnap = await db.collection('publicProfiles').doc(rawKey).get();
+
+    if (uidCheckSnap.exists) {
+      // rawKey is a valid UID — use it directly
+      targetUid = rawKey;
+      publicProfileSnap = uidCheckSnap;
+      functions.logger.info(
+        `[getProfileForViewer] Resolved rawKey as UID: ${targetUid}`,
+        { rawKey, targetUid },
+      );
+    } else {
+      // Step 2: Try rawKey as a username
+      const normalized = normalizeUsername(rawKey);
+      if (!normalized) {
         throw new functions.https.HttpsError(
           'not-found',
           'Profile not found.',
         );
       }
-      const profile = selfDoc.data() as PublicProfileDoc;
+
+      const usernameSnap = await db.collection('usernames').doc(normalized).get();
+      if (!usernameSnap.exists) {
+        throw new functions.https.HttpsError(
+          'not-found',
+          'Profile not found.',
+        );
+      }
+
+      const usernameDoc = usernameSnap.data() as UsernameDoc;
+      targetUid = usernameDoc.uid;
+
+      functions.logger.info(
+        `[getProfileForViewer] Resolved username "${normalized}" → UID: ${targetUid}`,
+        { rawKey, normalized, targetUid },
+      );
+
+      // Load the actual profile for the resolved UID
+      publicProfileSnap = await db.collection('publicProfiles').doc(targetUid).get();
+      if (!publicProfileSnap.exists) {
+        // Username index points to a UID with no public profile — stale data
+        functions.logger.warn(
+          `[getProfileForViewer] Username "${normalized}" maps to UID ${targetUid} but publicProfiles/${targetUid} missing`,
+          { normalized, targetUid },
+        );
+        throw new functions.https.HttpsError(
+          'not-found',
+          'Profile not found or has been removed.',
+        );
+      }
+    }
+
+    // ── Self-view fast path ─────────────────────────────────────────────────────
+    // Owner sees all sections from their own public projection.
+    // No need to load privacySettings or social graph checks.
+    if (viewerUid === targetUid) {
+      const profile = publicProfileSnap.data() as PublicProfileDoc;
       return {
         profile,
         viewerState: {
@@ -337,10 +399,11 @@ export const getProfileForViewer = functions.https.onCall(
           viewerBlockedTarget: false,
         },
         isBlocked: false,
+        resolvedTargetUid: targetUid,
       };
     }
 
-    // ── Parallel reads: block checks (both directions) ────────────────────────
+    // ── Parallel reads: block checks (both directions) ────────────────────
     // These must be checked BEFORE loading the full profile.
     // If the target has blocked the viewer, we return a minimal stub immediately.
     const [
@@ -354,7 +417,7 @@ export const getProfileForViewer = functions.https.onCall(
     const targetBlockedViewer = targetBlockedViewerSnap.exists;
     const viewerBlockedTarget = viewerBlockedTargetSnap.exists;
 
-    // ── Block enforcement — target blocked viewer ─────────────────────────────
+    // ── Block enforcement — target blocked viewer ─────────────────────────
     if (targetBlockedViewer) {
       functions.logger.info(
         `[getProfileForViewer] Target ${targetUid} has blocked viewer ${viewerUid} — returning stub`,
@@ -370,33 +433,24 @@ export const getProfileForViewer = functions.https.onCall(
           viewerBlockedTarget,
         },
         isBlocked: true,
+        resolvedTargetUid: targetUid,
       };
     }
 
-    // ── Load base projection + follow graph ───────────────────────────────────
-    // Now we know the viewer is not blocked. Load the profile and follow state.
+    // ── Load privacy + follow graph ─────────────────────────────────────────
+    // publicProfileSnap is already loaded from the resolution step above.
     const [
-      publicProfileSnap,
       privacySettingsSnap,
       viewerFollowsTargetSnap,
     ] = await Promise.all([
-      db.collection('publicProfiles').doc(targetUid).get(),
       db.collection('privacySettings').doc(targetUid).get(),
       db.collection('follows').doc(viewerUid).collection('following').doc(targetUid).get(),
     ]);
 
-    // ── Profile not found ─────────────────────────────────────────────────────
-    if (!publicProfileSnap.exists) {
-      throw new functions.https.HttpsError(
-        'not-found',
-        'Profile not found or has been removed.',
-      );
-    }
-
     const baseProfile = publicProfileSnap.data() as PublicProfileDoc;
     const isFollower  = viewerFollowsTargetSnap.exists;
 
-    // ── Mutual-follow check (only if viewer follows target) ───────────────────
+    // ── Mutual-follow check (only if viewer follows target) ───────────────
     let isMutual = false;
     if (isFollower) {
       const targetFollowsViewerSnap = await db
@@ -408,7 +462,7 @@ export const getProfileForViewer = functions.https.onCall(
       isMutual = targetFollowsViewerSnap.exists;
     }
 
-    // ── Privacy-settings gate ─────────────────────────────────────────────────
+    // ── Privacy-settings gate ─────────────────────────────────────────────
     // If privacySettings document is missing, use permissive defaults.
     // This can happen if the CF hasn't written it yet (new user race condition).
     let privacy: PrivacySettingsDoc | null = privacySettingsSnap.exists
@@ -422,7 +476,7 @@ export const getProfileForViewer = functions.https.onCall(
       );
     }
 
-    // ── Apply section filters ─────────────────────────────────────────────────
+    // ── Apply section filters ─────────────────────────────────────────────
     let filtered: PublicProfileDoc;
     let hiddenSections: string[];
 
@@ -467,6 +521,7 @@ export const getProfileForViewer = functions.https.onCall(
       profile: filtered,
       viewerState,
       isBlocked: false,
+      resolvedTargetUid: targetUid,
       ...(hiddenSections.length > 0 ? { hiddenSections } : {}),
     };
   },
