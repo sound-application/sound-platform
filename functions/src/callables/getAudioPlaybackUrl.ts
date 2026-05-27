@@ -5,9 +5,17 @@
  * Created: 2026-05-28
  *
  * WHAT THIS FUNCTION DOES:
- *   Returns a temporary signed URL for playing published audio content.
- *   The signed URL expires after 15 minutes. Audio files in Storage remain
- *   private — clients NEVER access them directly.
+ *   Returns a download URL for playing published audio content.
+ *   Uses Firebase Storage download tokens (from file metadata) to
+ *   construct a playback URL. Audio files remain private in Storage —
+ *   clients cannot access them without the server-issued token URL.
+ *
+ * WHY NOT getSignedUrl:
+ *   getSignedUrl requires the Service Account Token Creator IAM role,
+ *   which may not be granted on all projects. The download-token
+ *   approach works with the default Firebase Admin SDK setup.
+ *   TODO: Migrate to getSignedUrl once IAM role is granted for
+ *   proper time-limited expiration.
  *
  * CALLER CONTRACT:
  *   Input:  GetAudioPlaybackUrlRequest { contentId }
@@ -22,13 +30,14 @@
  *
  * DATA READS:
  *   - contentItems/{contentId}
+ *   - Storage file metadata (for download token)
  *
  * DATA WRITES:
  *   - NONE — this function is read-only.
  *
  * SECURITY:
- *   - Audio files remain private in Cloud Storage.
- *   - Signed URL expires after 15 minutes.
+ *   - Audio files remain private in Cloud Storage (Security Rules deny direct reads).
+ *   - Download token URL is only issued by this authenticated callable.
  *   - Only authenticated users can request playback URLs.
  *
  * TODO:
@@ -36,6 +45,7 @@
  *   - Moderation status check (block rejected/flagged content).
  *   - Rate limiting per user.
  *   - Use transcoded file instead of original when pipeline is ready.
+ *   - Migrate to getSignedUrl with proper IAM for time-limited expiration.
  *
  * INFINITE LOOP PREVENTION:
  *   Callable (HTTPS trigger). No Firestore watches. No writes. No loops possible.
@@ -53,8 +63,8 @@ import type {
 const db = admin.firestore();
 const storage = admin.storage();
 
-// ── Signed URL expiration (15 minutes) ───────────────────────────────────────
-const SIGNED_URL_EXPIRATION_MS = 15 * 60 * 1000;
+// ── Advisory expiration (15 minutes) — for client-side cache/refresh ─────────
+const ADVISORY_EXPIRATION_MS = 15 * 60 * 1000;
 
 // ─── Callable ────────────────────────────────────────────────────────────────
 
@@ -127,11 +137,14 @@ export const getAudioPlaybackUrl = functions
         );
       }
 
-      // ── 7. Generate signed URL ─────────────────────────────────────────
+      // ── 7. Get download URL via Firebase download token ────────────────
+      // Uses file metadata to extract the download token and construct
+      // a Firebase Storage download URL. This does NOT require the
+      // Service Account Token Creator IAM role (unlike getSignedUrl).
       const bucket = storage.bucket();
       const file = bucket.file(audioAsset.storagePath);
 
-      // Verify file exists in Storage before generating URL
+      // Verify file exists in Storage
       const [exists] = await file.exists();
       if (!exists) {
         throw new functions.https.HttpsError(
@@ -140,29 +153,58 @@ export const getAudioPlaybackUrl = functions
         );
       }
 
-      const expiresAt = new Date(Date.now() + SIGNED_URL_EXPIRATION_MS);
+      // Get file metadata which includes the download token
+      const [metadata] = await file.getMetadata();
+      const downloadToken = metadata.metadata?.firebaseStorageDownloadTokens;
 
-      const [signedUrl] = await file.getSignedUrl({
-        action: 'read',
-        expires: expiresAt,
-        // Content type for proper browser handling
-        contentType: audioAsset.mimeType || 'audio/mpeg',
-      });
+      if (!downloadToken) {
+        // If no download token exists, generate one by updating metadata
+        const newToken = crypto.randomUUID();
+        await file.setMetadata({
+          metadata: { firebaseStorageDownloadTokens: newToken },
+        });
+
+        const bucketName = bucket.name;
+        const encodedPath = encodeURIComponent(audioAsset.storagePath);
+        const playbackUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${newToken}`;
+
+        const advisoryExpiry = new Date(Date.now() + ADVISORY_EXPIRATION_MS);
+
+        functions.logger.info(
+          `[getAudioPlaybackUrl] Generated new download token for content ${data.contentId}`,
+          { uid, contentId: data.contentId, storagePath: audioAsset.storagePath },
+        );
+
+        return {
+          contentId: data.contentId,
+          playbackUrl,
+          expiresAt: advisoryExpiry.toISOString(),
+          mimeType: audioAsset.mimeType || 'audio/mpeg',
+          durationMs: audioAsset.durationMs,
+          sourceType: audioAsset.sourceType,
+        };
+      }
+
+      // Construct Firebase Storage download URL with existing token
+      const bucketName = bucket.name;
+      const encodedPath = encodeURIComponent(audioAsset.storagePath);
+      const playbackUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`;
+
+      const advisoryExpiry = new Date(Date.now() + ADVISORY_EXPIRATION_MS);
 
       functions.logger.info(
-        `[getAudioPlaybackUrl] Generated signed URL for content ${data.contentId}`,
+        `[getAudioPlaybackUrl] Returning download URL for content ${data.contentId}`,
         {
           uid,
           contentId: data.contentId,
           storagePath: audioAsset.storagePath,
-          expiresAt: expiresAt.toISOString(),
         },
       );
 
       return {
         contentId: data.contentId,
-        playbackUrl: signedUrl,
-        expiresAt: expiresAt.toISOString(),
+        playbackUrl,
+        expiresAt: advisoryExpiry.toISOString(),
         mimeType: audioAsset.mimeType || 'audio/mpeg',
         durationMs: audioAsset.durationMs,
         sourceType: audioAsset.sourceType,
