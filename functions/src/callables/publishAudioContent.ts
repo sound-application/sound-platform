@@ -105,6 +105,20 @@ export const publishAudioContent = functions
         );
       }
 
+      // ── 3b. Duplicate-publish protection ───────────────────────────────
+      // If the draft was already published, return the existing content ID
+      // instead of creating a duplicate contentItems document.
+      if (draft.targetContentId) {
+        functions.logger.info(
+          `[publishAudioContent] Draft ${data.draftId} already published as ${draft.targetContentId}, returning existing.`,
+          { uid, contentId: draft.targetContentId, draftId: data.draftId },
+        );
+        return {
+          contentId: draft.targetContentId,
+          status: 'readyForUpload',
+        };
+      }
+
       // ── 4. Validate required publish fields ────────────────────────────────
       if (!draft.title) {
         throw new functions.https.HttpsError(
