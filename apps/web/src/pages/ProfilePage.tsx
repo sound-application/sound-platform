@@ -308,14 +308,37 @@ function ProfileLoaded({
     isSelf ? null : followTargetUid,
   );
 
-  // ── Optimistic count offset (Phase 7.2) ──────────────────────────────────
-  // Applied to followersCount while waiting for CF-driven count updates.
-  const [countOffset, setCountOffset] = useState(0);
+  // ── Stable local count (Phase 7.3) ────────────────────────────────────────
+  //
+  // WHY NOT a simple countOffset that resets on profile change?
+  //   The callable refetch can return stale publicProfiles data before
+  //   onFollowWrite + onUserProfileUpdate finish updating the counter.
+  //   If we reset countOffset to 0 on every profile change, the stale
+  //   refetch overwrites the optimistic count with the old server value.
+  //
+  // STRATEGY: Maintain a local display count separate from the server count.
+  //   - Initialize from server count on first load.
+  //   - On follow: +1 immediately.
+  //   - On unfollow: -1 immediately, min 0.
+  //   - On refetch: if the new server count differs from the last known
+  //     server count, reconcile (server has caught up). Otherwise keep
+  //     the optimistic local count (server is still stale).
+  //   - This guarantees no visual snap-back from stale refetches.
 
-  // Reset offset when the callable refetch returns new data
+  const serverFollowersCount = profile.generalProfile?.followersCount ?? 0;
+  const lastServerCountRef = useRef(serverFollowersCount);
+  const [localFollowersCount, setLocalFollowersCount] = useState(serverFollowersCount);
+
+  // Reconcile: when server count actually changes from its last known value,
+  // adopt the new server count. Stale refetches (same count) are ignored.
   useEffect(() => {
-    setCountOffset(0);
-  }, [profile]);
+    if (serverFollowersCount !== lastServerCountRef.current) {
+      // Server count has genuinely changed (CF finished updating).
+      // Adopt the new real count, discard optimistic offset.
+      lastServerCountRef.current = serverFollowersCount;
+      setLocalFollowersCount(serverFollowersCount);
+    }
+  }, [serverFollowersCount]);
 
   // ── Refetch timers ref (Phase 7.2) ───────────────────────────────────────
   const refetchTimersRef = useRef<ReturnType<typeof setTimeout>[]>([]);
@@ -327,24 +350,25 @@ function ProfileLoaded({
     };
   }, []);
 
-  // ── Refetch after follow toggle (Phase 7.2) ──────────────────────────────
-  // 3-step deterministic refetch sequence:
-  //   1. Immediately after toggle() resolves
-  //   2. After 800ms (typical CF mirror write latency)
-  //   3. After 2000ms (catch slow CF counter updates)
+  // ── Refetch after follow toggle (Phase 7.3) ──────────────────────────────
+  // 3-step deterministic refetch sequence for privacy-unlocked sections.
+  // The local count is updated optimistically; refetches are for section
+  // visibility changes (privacy gates), not for the count itself.
   const handleFollowToggle = useCallback(async () => {
     const wasFollowing = followState.isFollowing;
     await followState.toggle();
 
-    // Optimistic count adjustment
-    setCountOffset(wasFollowing ? -1 : 1);
+    // Optimistic local count update — immediate, no server round-trip.
+    setLocalFollowersCount((prev) =>
+      wasFollowing ? Math.max(0, prev - 1) : prev + 1,
+    );
 
     if (onFollowToggled) {
       // Clear any pending timers from previous clicks
       refetchTimersRef.current.forEach(clearTimeout);
       refetchTimersRef.current = [];
 
-      // Step 1: immediate refetch
+      // Step 1: immediate refetch (for privacy section updates)
       onFollowToggled();
 
       // Step 2: 800ms refetch
@@ -448,9 +472,9 @@ function ProfileLoaded({
     );
   }
 
-  // Compute adjusted followers count for optimistic UI
-  const rawFollowersCount = general?.followersCount ?? 0;
-  const displayFollowersCount = Math.max(0, rawFollowersCount + countOffset);
+  // Phase 7.3: Use the stable local count (already optimistic + reconciled).
+  // No offset computation needed — localFollowersCount IS the display value.
+  const displayFollowersCount = localFollowersCount;
 
   return (
     <div className="page profile-page">

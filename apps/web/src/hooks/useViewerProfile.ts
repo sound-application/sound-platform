@@ -80,7 +80,14 @@ export function useViewerProfile(
     }
 
     let cancelled = false;
-    setState({ status: 'loading' });
+
+    // Phase 7.3: Only show loading on initial mount or targetKey change,
+    // NOT on version-triggered refetches (follow/unfollow). This prevents
+    // the profile from disappearing while the callable re-runs.
+    if (version === 0) {
+      setState({ status: 'loading' });
+    }
+    // If version > 0 (refetch), keep the previous state visible.
 
     const functions = getFunctions(app, 'us-central1');
     const callable  = httpsCallable<GetProfileForViewerRequest, GetProfileForViewerResponse>(
