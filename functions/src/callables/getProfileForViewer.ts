@@ -400,6 +400,7 @@ export const getProfileForViewer = functions.https.onCall(
         },
         isBlocked: false,
         resolvedTargetUid: targetUid,
+        hiddenSections: [],
       };
     }
 
@@ -434,6 +435,7 @@ export const getProfileForViewer = functions.https.onCall(
         },
         isBlocked: true,
         resolvedTargetUid: targetUid,
+        hiddenSections: [],
       };
     }
 
@@ -522,7 +524,7 @@ export const getProfileForViewer = functions.https.onCall(
       viewerState,
       isBlocked: false,
       resolvedTargetUid: targetUid,
-      ...(hiddenSections.length > 0 ? { hiddenSections } : {}),
+      hiddenSections,
     };
   },
 );

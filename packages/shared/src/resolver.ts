@@ -133,10 +133,10 @@ export interface GetProfileForViewerResponse {
   viewerState: ViewerState;
   /**
    * Section keys hidden from the viewer due to privacy settings.
-   * Present only when at least one section was hidden.
-   * Debug-only in Phase 7 — may be removed in Phase 8+.
+   * Always present (empty array when no sections are hidden).
+   * Used by ProfilePage to gate tabs and show private state.
    */
-  hiddenSections?: string[];
+  hiddenSections: string[];
   /**
    * true if the target has blocked the viewer.
    * When true, profile is a minimal stub (displayName, uid, isBlocked=true).
