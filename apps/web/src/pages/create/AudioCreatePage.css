@@ -1,0 +1,754 @@
+/**
+ * Sound Platform — AudioCreatePage Styles
+ * =========================================
+ * Phase:   8-B (Audio Recording + Upload + Storage Attachment)
+ * Updated: 2026-05-27
+ *
+ * Dark/glass design consistent with existing app aesthetics.
+ */
+
+/* ── Page ──────────────────────────────────────────────────────────────────── */
+
+.acp-page {
+  max-width: 640px;
+  margin: 0 auto;
+  padding: 1.5rem 1rem 3rem;
+  min-height: 100vh;
+}
+
+/* ── Step indicator ────────────────────────────────────────────────────────── */
+
+.acp-steps {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 2rem;
+  margin-bottom: 2rem;
+  padding: 1rem;
+}
+
+.acp-step-dot {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.35rem;
+  opacity: 0.4;
+  transition: opacity 0.3s ease;
+}
+
+.acp-step-dot--active {
+  opacity: 1;
+}
+
+.acp-step-dot--done {
+  opacity: 0.7;
+}
+
+.acp-step-dot__num {
+  width: 2.2rem;
+  height: 2.2rem;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 700;
+  font-size: 0.95rem;
+  background: rgba(255, 255, 255, 0.06);
+  border: 2px solid rgba(255, 255, 255, 0.12);
+  color: rgba(255, 255, 255, 0.7);
+  transition: all 0.3s ease;
+}
+
+.acp-step-dot--active .acp-step-dot__num {
+  background: var(--color-primary, #7c5cfc);
+  border-color: var(--color-primary, #7c5cfc);
+  color: #fff;
+  box-shadow: 0 0 16px rgba(124, 92, 252, 0.4);
+}
+
+.acp-step-dot--done .acp-step-dot__num {
+  background: rgba(76, 175, 80, 0.2);
+  border-color: rgba(76, 175, 80, 0.5);
+  color: #4caf50;
+}
+
+.acp-step-dot__label {
+  font-size: 0.72rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 500;
+  white-space: nowrap;
+}
+
+.acp-step-dot--active .acp-step-dot__label {
+  color: rgba(255, 255, 255, 0.85);
+}
+
+/* ── Section ───────────────────────────────────────────────────────────────── */
+
+.acp-section {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 1rem;
+  padding: 1.5rem;
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+}
+
+.acp-section__title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 1.15rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.9);
+  margin-bottom: 1.5rem;
+}
+
+.acp-section__title .material-symbols-outlined {
+  font-size: 1.4rem;
+  color: var(--color-primary, #7c5cfc);
+}
+
+/* ── Form ──────────────────────────────────────────────────────────────────── */
+
+.acp-form {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.acp-label {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.acp-required {
+  color: #ef5350;
+}
+
+.acp-input,
+.acp-textarea,
+.acp-select {
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 0.6rem;
+  padding: 0.7rem 0.9rem;
+  font-size: 0.9rem;
+  color: rgba(255, 255, 255, 0.9);
+  font-family: inherit;
+  transition: border-color 0.2s;
+  direction: rtl;
+}
+
+.acp-input:focus,
+.acp-textarea:focus,
+.acp-select:focus {
+  outline: none;
+  border-color: var(--color-primary, #7c5cfc);
+  box-shadow: 0 0 0 2px rgba(124, 92, 252, 0.15);
+}
+
+.acp-textarea {
+  resize: vertical;
+  min-height: 3.5rem;
+}
+
+.acp-select {
+  cursor: pointer;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' fill='rgba(255,255,255,0.5)' viewBox='0 0 16 16'%3E%3Cpath d='M8 11L3 6h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: left 0.75rem center;
+  padding-left: 2rem;
+}
+
+.acp-select option {
+  background: #1a1a2e;
+  color: #fff;
+}
+
+/* ── Chips ──────────────────────────────────────────────────────────────────── */
+
+.acp-chips {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem;
+  margin-top: 0.25rem;
+}
+
+.acp-chip {
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 2rem;
+  padding: 0.4rem 1rem;
+  font-size: 0.82rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.7);
+  cursor: pointer;
+  transition: all 0.2s;
+  font-family: inherit;
+}
+
+.acp-chip:hover {
+  background: rgba(255, 255, 255, 0.08);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.acp-chip--selected {
+  background: rgba(124, 92, 252, 0.2);
+  border-color: var(--color-primary, #7c5cfc);
+  color: #fff;
+}
+
+/* ── Buttons ───────────────────────────────────────────────────────────────── */
+
+.acp-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.4rem;
+  padding: 0.65rem 1.2rem;
+  border-radius: 0.6rem;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+.acp-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.acp-btn--primary {
+  background: var(--color-primary, #7c5cfc);
+  color: #fff;
+  border-color: var(--color-primary, #7c5cfc);
+}
+
+.acp-btn--primary:hover:not(:disabled) {
+  background: #6a4ce0;
+  box-shadow: 0 4px 16px rgba(124, 92, 252, 0.3);
+}
+
+.acp-btn--danger {
+  background: rgba(239, 83, 80, 0.15);
+  color: #ef5350;
+  border-color: rgba(239, 83, 80, 0.3);
+}
+
+.acp-btn--danger:hover:not(:disabled) {
+  background: rgba(239, 83, 80, 0.25);
+}
+
+.acp-btn--ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.6);
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.acp-btn--ghost:hover:not(:disabled) {
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(255, 255, 255, 0.85);
+}
+
+.acp-btn--lg {
+  padding: 0.85rem 2rem;
+  font-size: 1rem;
+}
+
+.acp-btn--sm {
+  padding: 0.35rem 0.8rem;
+  font-size: 0.78rem;
+}
+
+/* ── Tabs ──────────────────────────────────────────────────────────────────── */
+
+.acp-tabs {
+  display: flex;
+  gap: 0.5rem;
+  margin-bottom: 1.25rem;
+  background: rgba(255, 255, 255, 0.03);
+  border-radius: 0.6rem;
+  padding: 0.25rem;
+}
+
+.acp-tab {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.6rem 0.8rem;
+  border-radius: 0.5rem;
+  font-size: 0.85rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.5);
+  cursor: pointer;
+  transition: all 0.2s;
+  background: transparent;
+  border: 1px solid transparent;
+  font-family: inherit;
+}
+
+.acp-tab:hover {
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.acp-tab--active {
+  background: rgba(124, 92, 252, 0.15);
+  color: #fff;
+  border-color: rgba(124, 92, 252, 0.3);
+}
+
+.acp-tab .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+/* ── Record panel ──────────────────────────────────────────────────────────── */
+
+.acp-record-panel {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 1rem 0;
+}
+
+.acp-record-btn {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 2rem 3rem;
+  border-radius: 1rem;
+  background: rgba(239, 83, 80, 0.08);
+  border: 2px dashed rgba(239, 83, 80, 0.3);
+  color: #ef5350;
+  cursor: pointer;
+  transition: all 0.3s;
+  font-family: inherit;
+  font-size: 0.95rem;
+  font-weight: 600;
+}
+
+.acp-record-btn:hover {
+  background: rgba(239, 83, 80, 0.15);
+  border-color: rgba(239, 83, 80, 0.5);
+  box-shadow: 0 0 24px rgba(239, 83, 80, 0.15);
+}
+
+.acp-record-btn__icon {
+  font-size: 3rem !important;
+}
+
+.acp-record-status {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+.acp-record-live {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.acp-record-pulse {
+  width: 4rem;
+  height: 4rem;
+  border-radius: 50%;
+  background: #ef5350;
+  animation: acp-pulse 1.5s ease-in-out infinite;
+}
+
+@keyframes acp-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; box-shadow: 0 0 0 0 rgba(239, 83, 80, 0.4); }
+  50%      { transform: scale(1.15); opacity: 0.85; box-shadow: 0 0 20px 8px rgba(239, 83, 80, 0.2); }
+}
+
+.acp-record-time {
+  font-size: 2rem;
+  font-weight: 700;
+  color: #ef5350;
+  font-variant-numeric: tabular-nums;
+  letter-spacing: 0.05em;
+}
+
+.acp-record-label {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+}
+
+/* ── Record preview ────────────────────────────────────────────────────────── */
+
+.acp-record-preview {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.75rem;
+  width: 100%;
+}
+
+.acp-record-preview__label {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.5);
+  font-weight: 600;
+}
+
+.acp-audio-player {
+  width: 100%;
+  max-width: 400px;
+  border-radius: 0.5rem;
+  filter: invert(0.85) hue-rotate(180deg);
+}
+
+.acp-record-preview__info {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.45);
+}
+
+.acp-record-preview__actions {
+  display: flex;
+  gap: 0.5rem;
+  margin-top: 0.5rem;
+}
+
+/* ── Upload panel ──────────────────────────────────────────────────────────── */
+
+.acp-upload-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+}
+
+.acp-drop-zone {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 2.5rem 1.5rem;
+  border: 2px dashed rgba(255, 255, 255, 0.12);
+  border-radius: 1rem;
+  cursor: pointer;
+  transition: all 0.2s;
+  color: rgba(255, 255, 255, 0.5);
+  text-align: center;
+}
+
+.acp-drop-zone:hover {
+  background: rgba(255, 255, 255, 0.03);
+  border-color: rgba(124, 92, 252, 0.3);
+  color: rgba(255, 255, 255, 0.7);
+}
+
+.acp-drop-zone__icon {
+  font-size: 2.5rem !important;
+  color: var(--color-primary, #7c5cfc);
+}
+
+.acp-drop-zone__hint {
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.3);
+}
+
+.acp-file-input {
+  display: none;
+}
+
+/* ── File info ─────────────────────────────────────────────────────────────── */
+
+.acp-file-info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  padding: 1rem;
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.75rem;
+}
+
+.acp-file-info__icon {
+  font-size: 2rem !important;
+  color: var(--color-primary, #7c5cfc);
+  flex-shrink: 0;
+}
+
+.acp-file-info__details {
+  flex: 1;
+  min-width: 0;
+}
+
+.acp-file-info__name {
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: rgba(255, 255, 255, 0.85);
+  word-break: break-all;
+}
+
+.acp-file-info__meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  margin-top: 0.3rem;
+  font-size: 0.75rem;
+  color: rgba(255, 255, 255, 0.4);
+}
+
+.acp-file-info__actions {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+  flex-shrink: 0;
+}
+
+/* ── Progress ──────────────────────────────────────────────────────────────── */
+
+.acp-progress {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  margin-top: 0.5rem;
+}
+
+.acp-progress__bar {
+  width: 100%;
+  height: 6px;
+  border-radius: 3px;
+  background: rgba(255, 255, 255, 0.08);
+  overflow: hidden;
+}
+
+.acp-progress__fill {
+  height: 100%;
+  border-radius: 3px;
+  background: linear-gradient(90deg, #7c5cfc, #a78bfa);
+  transition: width 0.3s ease;
+}
+
+.acp-progress__text {
+  font-size: 0.82rem;
+  color: rgba(255, 255, 255, 0.6);
+  font-variant-numeric: tabular-nums;
+}
+
+/* ── Status boxes ──────────────────────────────────────────────────────────── */
+
+.acp-error {
+  color: #ef5350;
+  font-size: 0.82rem;
+  font-weight: 500;
+}
+
+.acp-error-box {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.75rem 1rem;
+  background: rgba(239, 83, 80, 0.08);
+  border: 1px solid rgba(239, 83, 80, 0.2);
+  border-radius: 0.6rem;
+  color: #ef5350;
+  font-size: 0.85rem;
+}
+
+.acp-error-box .material-symbols-outlined {
+  font-size: 1.2rem;
+  flex-shrink: 0;
+}
+
+.acp-warning-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(255, 183, 77, 0.08);
+  border: 1px solid rgba(255, 183, 77, 0.2);
+  border-radius: 0.6rem;
+  color: #ffb74d;
+  font-size: 0.85rem;
+  text-align: center;
+}
+
+.acp-warning-box .material-symbols-outlined {
+  font-size: 1.5rem;
+}
+
+.acp-success-box {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 1rem;
+  background: rgba(76, 175, 80, 0.08);
+  border: 1px solid rgba(76, 175, 80, 0.2);
+  border-radius: 0.6rem;
+  color: #4caf50;
+  font-size: 0.88rem;
+  text-align: center;
+  margin-top: 0.75rem;
+}
+
+.acp-success-box .material-symbols-outlined {
+  font-size: 1.5rem;
+}
+
+.acp-asset-summary {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem;
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.5);
+  margin: 0.25rem 0;
+}
+
+/* ── Review ────────────────────────────────────────────────────────────────── */
+
+.acp-review {
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+  margin-bottom: 1.5rem;
+}
+
+.acp-review__group {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.75rem;
+  padding: 1rem;
+}
+
+.acp-review__group h3 {
+  font-size: 0.82rem;
+  font-weight: 700;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  margin-bottom: 0.75rem;
+}
+
+.acp-review__item {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  padding: 0.3rem 0;
+  font-size: 0.88rem;
+  color: rgba(255, 255, 255, 0.75);
+}
+
+.acp-review__item span:first-child {
+  font-size: 0.78rem;
+  color: rgba(255, 255, 255, 0.4);
+  min-width: 5rem;
+  flex-shrink: 0;
+}
+
+.acp-review__item code {
+  font-size: 0.75rem;
+  background: rgba(255, 255, 255, 0.06);
+  padding: 0.15rem 0.4rem;
+  border-radius: 0.3rem;
+  word-break: break-all;
+  color: rgba(255, 255, 255, 0.6);
+}
+
+/* ── Publish actions ───────────────────────────────────────────────────────── */
+
+.acp-publish-actions {
+  display: flex;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.acp-publish-success {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.acp-publish-success__icon {
+  font-size: 3rem !important;
+  color: #4caf50;
+}
+
+.acp-publish-success h2 {
+  font-size: 1.3rem;
+  color: rgba(255, 255, 255, 0.9);
+}
+
+.acp-publish-success__details {
+  background: rgba(255, 255, 255, 0.03);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 0.6rem;
+  padding: 0.75rem 1rem;
+  width: 100%;
+}
+
+/* ── Back button ───────────────────────────────────────────────────────────── */
+
+.acp-back {
+  margin-top: 1.5rem;
+}
+
+/* ── Spinner ───────────────────────────────────────────────────────────────── */
+
+.acp-spinner {
+  display: inline-block;
+  width: 1em;
+  height: 1em;
+  border: 2px solid rgba(255, 255, 255, 0.2);
+  border-top-color: currentColor;
+  border-radius: 50%;
+  animation: acp-spin 0.6s linear infinite;
+}
+
+@keyframes acp-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* ── Responsive ────────────────────────────────────────────────────────────── */
+
+@media (max-width: 480px) {
+  .acp-page {
+    padding: 1rem 0.75rem 3rem;
+  }
+
+  .acp-section {
+    padding: 1rem;
+  }
+
+  .acp-steps {
+    gap: 1rem;
+  }
+
+  .acp-record-btn {
+    padding: 1.5rem 2rem;
+  }
+
+  .acp-file-info {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .acp-file-info__actions {
+    flex-direction: row;
+    margin-top: 0.5rem;
+  }
+}

@@ -1,7 +1,7 @@
 /**
  * Sound Platform — publishAudioContent Callable Cloud Function
  * ==============================================================
- * Phase:   8-A (Audio Content Core Foundation)
+ * Phase:   8-B (Audio Recording + Upload + Storage Attachment)
  * Updated: 2026-05-27
  *
  * WHAT THIS FUNCTION DOES:
@@ -122,6 +122,14 @@ export const publishAudioContent = functions
         throw new functions.https.HttpsError(
           'failed-precondition',
           'Draft kind (audio type) is required for publishing.',
+        );
+      }
+
+      // ── 4b. Require audio asset (Phase 8-B) ────────────────────────────────
+      if (!draft.audioAsset || draft.audioAsset.uploadStatus !== 'uploaded') {
+        throw new functions.https.HttpsError(
+          'failed-precondition',
+          'Draft must have an uploaded audio asset before publishing. Record or upload audio first.',
         );
       }
 

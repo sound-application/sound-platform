@@ -26,6 +26,7 @@
  */
 
 import React, { useState } from 'react';
+import { useNavigate } from 'react-router-dom';
 import { useWorldNav } from '../../contexts/WorldNavContext';
 import { LOCKED_WORLDS, type LockedWorldKey } from '../../constants/lockedLabels';
 import '../Page.css';
@@ -43,6 +44,8 @@ interface ContextStep {
   label: string;
   note?: string;
   gated?: boolean;
+  /** If present, clicking this step navigates to this route (Phase 8-B) */
+  action?: string;
 }
 
 /** worlds allowed as On Road / Session targets — راديو and مسابقات excluded */
@@ -85,8 +88,8 @@ const CREATE_TYPES: CreateType[] = [
     accentVar: W.general,
     panelHeading: 'ما نوع المحتوى؟',
     steps: [
-      { icon: 'record_voice_over', label: 'صوت عام',          note: 'بودكاست، قراءة، حديث' },
-      { icon: 'workspace_premium', label: 'محتوى بلس',        note: 'محتوى حصري للمشتركين' },
+      { icon: 'record_voice_over', label: 'صوت عام',          note: 'بودكاست، قراءة، حديث', action: '/create/audio?source=upload' },
+      { icon: 'workspace_premium', label: 'محتوى بلس',        note: 'محتوى حصري للمشتركين', action: '/create/audio?source=upload' },
       { icon: 'music_note',        label: 'موسيقى / أغنية',   note: 'يفتح تدفق الحقوق والنشر الموسيقي' },
     ],
   },
@@ -98,8 +101,8 @@ const CREATE_TYPES: CreateType[] = [
     accentVar: W.general,
     panelHeading: 'وجهة التسجيل',
     steps: [
-      { icon: 'public',            label: 'صوت عام',          note: 'ينشر في عالم عام' },
-      { icon: 'workspace_premium', label: 'محتوى بلس',        note: 'ينشر حصرياً لمشتركي بلس' },
+      { icon: 'public',            label: 'صوت عام',          note: 'ينشر في عالم عام', action: '/create/audio?source=record' },
+      { icon: 'workspace_premium', label: 'محتوى بلس',        note: 'ينشر حصرياً لمشتركي بلس', action: '/create/audio?source=record' },
     ],
   },
   {
@@ -273,7 +276,7 @@ const WORLD_SUGGESTIONS: Partial<Record<LockedWorldKey, CreateTypeId[]>> = {
 
 // ─── ActionPanel ─────────────────────────────────────────────────────────────
 
-function ActionPanel({ type }: { type: CreateType }) {
+function ActionPanel({ type, onNavigate }: { type: CreateType; onNavigate: (path: string) => void }) {
   return (
     <div
       className="gch-panel"
@@ -317,7 +320,15 @@ function ActionPanel({ type }: { type: CreateType }) {
         {type.steps.map((step) => (
           <li
             key={step.label}
-            className={['gch-step', step.gated ? 'gch-step--gated' : ''].filter(Boolean).join(' ')}
+            className={[
+              'gch-step',
+              step.gated ? 'gch-step--gated' : '',
+              step.action ? 'gch-step--actionable' : '',
+            ].filter(Boolean).join(' ')}
+            onClick={step.action ? () => onNavigate(step.action!) : undefined}
+            role={step.action ? 'button' : undefined}
+            tabIndex={step.action ? 0 : undefined}
+            onKeyDown={step.action ? (e: React.KeyboardEvent) => { if (e.key === 'Enter') onNavigate(step.action!); } : undefined}
           >
             <span className="material-symbols-outlined gch-step__icon" aria-hidden="true">
               {step.icon}
@@ -361,11 +372,13 @@ function CreateCard({
   isSelected,
   isSuggested,
   onSelect,
+  onNavigate,
 }: {
   type: CreateType;
   isSelected: boolean;
   isSuggested: boolean;
   onSelect: (id: CreateTypeId) => void;
+  onNavigate: (path: string) => void;
 }) {
   return (
     <div
@@ -400,7 +413,7 @@ function CreateCard({
         </span>
       </button>
 
-      {isSelected && <ActionPanel type={type} />}
+      {isSelected && <ActionPanel type={type} onNavigate={onNavigate} />}
     </div>
   );
 }
@@ -409,6 +422,7 @@ function CreateCard({
 
 export function GlobalCreateHubPage() {
   const { world } = useWorldNav();
+  const navigate = useNavigate();
   const [openId, setOpenId] = useState<CreateTypeId | null>(null);
 
   const toggle = (id: CreateTypeId) =>
@@ -450,6 +464,7 @@ export function GlobalCreateHubPage() {
                     isSelected={openId === id}
                     isSuggested={suggestions.includes(id)}
                     onSelect={toggle}
+                    onNavigate={navigate}
                   />
                 );
               })}

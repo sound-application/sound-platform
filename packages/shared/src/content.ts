@@ -1,7 +1,7 @@
 /**
  * Sound Platform — Audio Content Schema
  * ========================================
- * Phase:   8-A (Audio Content Core Foundation)
+ * Phase:   8-B (Audio Recording + Upload + Storage Attachment)
  * Updated: 2026-05-27
  *
  * This is the AUDIO CONTENT CORE MODULE — not generic social content.
@@ -126,6 +126,17 @@ export interface AudioAssetMeta {
    * This field exists as a placeholder for the callable response shape.
    */
   playbackUrl?: string;
+
+  // ── Source & Upload tracking (Phase 8-B) ──────────────────────────────────
+
+  /** How the audio was acquired */
+  sourceType?: 'recorded' | 'uploaded';
+
+  /** Client-tracked upload lifecycle */
+  uploadStatus?: 'pending' | 'uploading' | 'uploaded' | 'failed';
+
+  /** ISO timestamp of upload completion */
+  uploadedAt?: string;
 }
 
 // ─── Owner Snapshot ──────────────────────────────────────────────────────────
@@ -289,6 +300,9 @@ export interface AudioDraftDoc {
   /** Audio asset ID if audio has been associated (Phase 8-B) */
   audioAssetId?: string;
 
+  /** Embedded audio asset metadata — attached after recording/upload (Phase 8-B) */
+  audioAsset?: AudioAssetMeta;
+
   /** UI creation wizard step tracker — e.g. 'info', 'record', 'effects', 'publish' */
   currentStep?: string;
 
@@ -340,6 +354,8 @@ export interface UpdateAudioDraftRequest {
   audience?: string;
   isExplicit?: boolean;
   currentStep?: string;
+  /** Audio asset metadata — attached after upload completes (Phase 8-B) */
+  audioAsset?: AudioAssetMeta;
 }
 
 /** Response payload for updateAudioDraft callable */

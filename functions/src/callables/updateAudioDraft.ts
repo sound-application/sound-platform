@@ -1,7 +1,7 @@
 /**
  * Sound Platform — updateAudioDraft Callable Cloud Function
  * ===========================================================
- * Phase:   8-A (Audio Content Core Foundation)
+ * Phase:   8-B (Audio Recording + Upload + Storage Attachment)
  * Updated: 2026-05-27
  *
  * WHAT THIS FUNCTION DOES:
@@ -35,6 +35,7 @@ import type {
   UpdateAudioDraftRequest,
   UpdateAudioDraftResponse,
   AudioDraftDoc,
+  AudioAssetMeta,
 } from '@sound/shared';
 import { validateAudioWorldKind } from '@sound/shared';
 
@@ -124,6 +125,38 @@ export const updateAudioDraft = functions
       if (data.audience !== undefined)      update.audience = data.audience;
       if (data.isExplicit !== undefined)    update.isExplicit = data.isExplicit;
       if (data.currentStep !== undefined)   update.currentStep = data.currentStep;
+
+      // ── 5b. Handle audioAsset attachment (Phase 8-B) ────────────────────────
+      if (data.audioAsset !== undefined) {
+        const asset = data.audioAsset as AudioAssetMeta;
+
+        // Validate storagePath belongs to this user
+        if (asset.storagePath && !asset.storagePath.startsWith(`audioUploads/${uid}/`)) {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'Audio asset storagePath must be under your own audioUploads directory.',
+          );
+        }
+
+        // Validate uploadStatus is 'uploaded'
+        if (asset.uploadStatus !== 'uploaded') {
+          throw new functions.https.HttpsError(
+            'invalid-argument',
+            'Audio asset uploadStatus must be "uploaded" when attaching to a draft.',
+          );
+        }
+
+        // Force server-only processing fields to pending
+        const sanitizedAsset: AudioAssetMeta = {
+          ...asset,
+          processingStatus: 'pending',
+          waveformStatus: 'pending',
+          transcriptStatus: 'pending',
+        };
+
+        update.audioAsset = sanitizedAsset;
+        update.audioAssetId = sanitizedAsset.assetId || null;
+      }
 
       // ── 6. Write update to Firestore ───────────────────────────────────────
       await draftRef.update(update);

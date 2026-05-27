@@ -63,6 +63,7 @@ import { PrivacySettingsPage } from '../pages/PrivacySettingsPage';
 import { NotFoundPage }       from '../pages/NotFoundPage';
 import { LoginPage }          from '../pages/LoginPage';
 import { SignUpPage }         from '../pages/SignUpPage';
+import { AudioCreatePage }    from '../pages/create/AudioCreatePage';
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
 
@@ -103,6 +104,9 @@ export function AppRouter() {
           {/* ── Root redirect ────────────────────────────────────────── */}
           {/* / → /general/home */}
           <Route index element={<Navigate to="/general/home" replace />} />
+
+          {/* ── Audio creation flow (Phase 8-B) ────────────────────── */}
+          <Route path="create/audio" element={<AudioCreatePage />} />
 
           {/* ── World + Tab routes: /:worldId/:tab ────────────────────── */}
           {/*

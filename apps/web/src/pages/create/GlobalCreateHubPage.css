@@ -264,6 +264,17 @@
   cursor: not-allowed;
 }
 
+.gch-step--actionable {
+  cursor: pointer;
+  border-color: color-mix(in srgb, var(--panel-accent, var(--color-accent)) 20%, transparent);
+}
+
+.gch-step--actionable:hover {
+  background: color-mix(in srgb, var(--panel-accent, var(--color-accent)) 15%, transparent) !important;
+  border-color: color-mix(in srgb, var(--panel-accent, var(--color-accent)) 45%, transparent);
+  box-shadow: 0 2px 12px color-mix(in srgb, var(--panel-accent, var(--color-accent)) 12%, transparent);
+}
+
 .gch-step__icon {
   font-size: 1rem;
   color: var(--panel-accent, var(--color-accent));

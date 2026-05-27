@@ -215,8 +215,8 @@ export function createAudioContentFromDraft(
     moderationStatus: 'pending',
     isExplicit: draft.isExplicit ?? false,
 
-    // Audio asset will be attached by the upload pipeline (Phase 8-B)
-    audioAsset: undefined,
+    // Audio asset — copied from draft (attached during recording/upload)
+    audioAsset: draft.audioAsset,
 
     // All counters start at zero
     listensCount: 0,
