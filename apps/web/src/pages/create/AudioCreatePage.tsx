@@ -24,6 +24,8 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { ref as storageRef, uploadBytesResumable } from 'firebase/storage';
+import { storage } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useAudioUpload } from '../../hooks/useAudioUpload';
@@ -162,6 +164,9 @@ export function AudioCreatePage() {
   // ── Step 3: Cover ─────────────────────────────────────────────────────────
   const [coverAsset, setCoverAsset] = useState<CoverAsset | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
+  const [coverUploading, setCoverUploading] = useState(false);
+  const [coverProgress, setCoverProgress] = useState(0);
+  const [coverError, setCoverError] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
   // ── Step 4: Captions ──────────────────────────────────────────────────────
@@ -338,13 +343,59 @@ export function AudioCreatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploader.state, uploader.storagePath, draftId]);
 
-  // ── Cover file select ─────────────────────────────────────────────────────
+  // ── Cover file select → upload to Storage ─────────────────────────────────
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
+
+    // Show local preview immediately
     const url = URL.createObjectURL(file);
     setCoverPreviewUrl(url);
-    setCoverAsset({ sourceType: 'uploaded', uploadedAt: new Date().toISOString() });
+    setCoverError(null);
+
+    // Must have a draft to upload
+    if (!draftId || !uid) {
+      setCoverError('يجب حفظ المسودة أولاً لرفع الغلاف.');
+      return;
+    }
+
+    // Upload to Storage
+    const coverPath = `audioUploads/${uid}/${draftId}/original/cover_${file.name}`;
+    const fileRef = storageRef(storage, coverPath);
+    setCoverUploading(true);
+    setCoverProgress(0);
+
+    const task = uploadBytesResumable(fileRef, file, {
+      contentType: file.type,
+      customMetadata: { uploadedBy: uid, draftId, purpose: 'cover' },
+    });
+
+    task.on(
+      'state_changed',
+      (snap) => setCoverProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      (err) => {
+        setCoverUploading(false);
+        setCoverError(err.message || 'فشل رفع الغلاف.');
+      },
+      async () => {
+        // Upload done → build coverAsset with storagePath
+        const asset: CoverAsset = {
+          sourceType: 'uploaded',
+          storagePath: coverPath,
+          uploadedAt: new Date().toISOString(),
+        };
+        setCoverAsset(asset);
+        setCoverUploading(false);
+        setCoverProgress(100);
+
+        // Persist to draft
+        try {
+          await callUpdateAudioDraft({ draftId, coverAsset: asset, currentStep: '3' });
+        } catch {
+          // Non-fatal — cover is uploaded, will be saved on next step transition
+        }
+      },
+    );
   };
 
   // ── Publish handler ────────────────────────────────────────────────────
@@ -517,9 +568,24 @@ export function AudioCreatePage() {
                 <img src={coverPreviewUrl} alt="معاينة الغلاف" className="acp-cover-preview__img" />
               </div>
             )}
+            {coverUploading && (
+              <div className="acp-progress">
+                <div className="acp-progress__bar">
+                  <div className="acp-progress__fill" style={{ width: `${coverProgress}%` }} />
+                </div>
+                <p className="acp-progress__text">جاري رفع الغلاف... {coverProgress}%</p>
+              </div>
+            )}
+            {coverError && <p className="acp-error">{coverError}</p>}
+            {coverAsset?.storagePath && !coverUploading && (
+              <p className="acp-hint">
+                <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">check_circle</span>
+                تم رفع الغلاف بنجاح.
+              </p>
+            )}
             <div className="acp-cover-actions">
-              <button className="acp-btn acp-btn--outline" onClick={() => coverInputRef.current?.click()} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">upload</span> رفع صورة
+              <button className="acp-btn acp-btn--outline" onClick={() => coverInputRef.current?.click()} type="button" disabled={coverUploading}>
+                <span className="material-symbols-outlined" aria-hidden="true">upload</span> {coverUploading ? 'جاري الرفع...' : 'رفع صورة'}
               </button>
               <input ref={coverInputRef} type="file" accept="image/*" onChange={handleCoverSelect} className="acp-file-input" tabIndex={-1} />
               <button className="acp-btn acp-btn--outline acp-btn--gated" disabled type="button">
@@ -539,7 +605,7 @@ export function AudioCreatePage() {
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
               </button>
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(4)} type="button">تخطي</button>
-              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(4)} disabled={saving}>
+              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(4)} disabled={saving || coverUploading}>
                 {saving ? 'حفظ...' : 'التالي'}
               </button>
             </div>

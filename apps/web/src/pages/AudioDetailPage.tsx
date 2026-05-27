@@ -1,35 +1,30 @@
 /**
  * Sound Platform — Audio Detail Player Page
  * ===========================================
- * Phase:   8-D (Audio Playback Foundation)
+ * Phase:   8-D.1 (Audio Playback Polish + Cover Fix)
  * Updated: 2026-05-28
  *
  * Route: /audio/:contentId
  *
- * Reads contentItems/{contentId} from Firestore and displays:
- *   - Cover (public image URL or default placeholder)
- *   - Title, owner, world, kind, category
- *   - Duration, audience, country
- *   - Real audio playback via signed URL from getAudioPlaybackUrl callable
- *   - Action bar (like/save/share — placeholder, no backend wiring)
+ * Features:
+ *   - Cover loaded from coverAsset.storagePath via public Storage reads
+ *   - Custom premium audio player (no native browser controls)
+ *   - Play/pause, seekable progress bar, time display
+ *   - Loading, buffering, error, ended states
+ *   - Source type badge and signed URL expiry note
+ *   - Metadata details, action bar (placeholder)
  *
  * State 13 of the canonical audio flow.
- *
- * PLAYBACK:
- *   - Calls getAudioPlaybackUrl Cloud Function to get a temporary signed URL.
- *   - Signed URL expires after 15 minutes.
- *   - Audio files remain PRIVATE in Storage — no direct reads.
- *   - Falls back to honest pending state if no audio asset or callable fails.
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDuration, formatFileSize } from '../lib/audioDuration';
 import { callGetAudioPlaybackUrl } from '../lib/callables';
-import type { AudioContentDoc, GetAudioPlaybackUrlResponse } from '@sound/shared';
+import type { AudioContentDoc } from '@sound/shared';
 import app from '../lib/firebase';
 import './Page.css';
 import './AudioDetailPage.css';
@@ -37,26 +32,43 @@ import './AudioDetailPage.css';
 const db = getFirestore(app);
 const storage = getStorage(app);
 
+// ── Time formatter for player ─────────────────────────────────────────────────
+function fmtTime(ms: number): string {
+  const totalSec = Math.floor(ms / 1000);
+  const m = Math.floor(totalSec / 60);
+  const s = totalSec % 60;
+  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+}
+
+// ── Player state enum ─────────────────────────────────────────────────────────
+type PlayerState = 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'ended' | 'error';
+
 export function AudioDetailPage() {
   const { contentId } = useParams<{ contentId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
 
+  // Content state
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<AudioContentDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  // Playback state
-  const [playbackLoading, setPlaybackLoading] = useState(false);
-  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
-  const [playbackMime, setPlaybackMime] = useState<string>('audio/mpeg');
-  const [playbackError, setPlaybackError] = useState<string | null>(null);
-  const [playbackExpiry, setPlaybackExpiry] = useState<string | null>(null);
-
   // Cover URL state
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
 
+  // Playback state
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [playbackExpiry, setPlaybackExpiry] = useState<string | null>(null);
+  const [playbackLoading, setPlaybackLoading] = useState(false);
+
+  // Player state
+  const [playerState, setPlayerState] = useState<PlayerState>('loading');
+  const [currentTime, setCurrentTime] = useState(0);
+  const [duration, setDuration] = useState(0);
+
   const audioRef = useRef<HTMLAudioElement>(null);
+  const progressRef = useRef<HTMLDivElement>(null);
 
   // ── Load content item ──────────────────────────────────────────────────
   useEffect(() => {
@@ -92,7 +104,6 @@ export function AudioDetailPage() {
         const url = await getDownloadURL(coverRef);
         setCoverUrl(url);
       } catch {
-        // Cover not available — fall back to default
         setCoverUrl(null);
       }
     };
@@ -107,21 +118,108 @@ export function AudioDetailPage() {
     const fetchPlaybackUrl = async () => {
       setPlaybackLoading(true);
       setPlaybackError(null);
+      setPlayerState('loading');
       try {
         const result = await callGetAudioPlaybackUrl({ contentId });
         const resp = result.data;
         setPlaybackUrl(resp.playbackUrl);
-        setPlaybackMime(resp.mimeType);
         setPlaybackExpiry(resp.expiresAt);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'فشل تحميل رابط التشغيل.';
         setPlaybackError(msg);
+        setPlayerState('error');
       } finally {
         setPlaybackLoading(false);
       }
     };
     fetchPlaybackUrl();
   }, [item, contentId, currentUser]);
+
+  // ── Audio event handlers ───────────────────────────────────────────────
+  useEffect(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+
+    const onLoadedMetadata = () => {
+      setDuration(audio.duration * 1000);
+      setPlayerState('ready');
+    };
+    const onTimeUpdate = () => setCurrentTime(audio.currentTime * 1000);
+    const onPlaying = () => setPlayerState('playing');
+    const onPause = () => {
+      if (!audio.ended) setPlayerState('paused');
+    };
+    const onWaiting = () => setPlayerState('buffering');
+    const onEnded = () => { setPlayerState('ended'); setCurrentTime(audio.duration * 1000); };
+    const onError = () => setPlayerState('error');
+
+    audio.addEventListener('loadedmetadata', onLoadedMetadata);
+    audio.addEventListener('timeupdate', onTimeUpdate);
+    audio.addEventListener('playing', onPlaying);
+    audio.addEventListener('pause', onPause);
+    audio.addEventListener('waiting', onWaiting);
+    audio.addEventListener('ended', onEnded);
+    audio.addEventListener('error', onError);
+
+    return () => {
+      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
+      audio.removeEventListener('timeupdate', onTimeUpdate);
+      audio.removeEventListener('playing', onPlaying);
+      audio.removeEventListener('pause', onPause);
+      audio.removeEventListener('waiting', onWaiting);
+      audio.removeEventListener('ended', onEnded);
+      audio.removeEventListener('error', onError);
+    };
+  }, [playbackUrl]);
+
+  // ── Play/pause toggle ─────────────────────────────────────────────────
+  const togglePlay = useCallback(() => {
+    const audio = audioRef.current;
+    if (!audio) return;
+    if (playerState === 'ended') {
+      audio.currentTime = 0;
+      audio.play();
+    } else if (audio.paused) {
+      audio.play();
+    } else {
+      audio.pause();
+    }
+  }, [playerState]);
+
+  // ── Seek on progress bar click ─────────────────────────────────────────
+  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
+    const audio = audioRef.current;
+    const bar = progressRef.current;
+    if (!audio || !bar || !duration) return;
+    const rect = bar.getBoundingClientRect();
+    // RTL: right edge = 0, left edge = 1
+    const clickRatio = (rect.right - e.clientX) / rect.width;
+    const clampedRatio = Math.max(0, Math.min(1, clickRatio));
+    audio.currentTime = clampedRatio * (duration / 1000);
+  }, [duration]);
+
+  // ── Retry playback URL ─────────────────────────────────────────────────
+  const retryPlayback = useCallback(async () => {
+    if (!contentId) return;
+    setPlaybackError(null);
+    setPlayerState('loading');
+    setPlaybackLoading(true);
+    try {
+      const result = await callGetAudioPlaybackUrl({ contentId });
+      setPlaybackUrl(result.data.playbackUrl);
+      setPlaybackExpiry(result.data.expiresAt);
+    } catch (err: unknown) {
+      setPlaybackError(err instanceof Error ? err.message : 'فشل.');
+      setPlayerState('error');
+    } finally {
+      setPlaybackLoading(false);
+    }
+  }, [contentId]);
+
+  // ── Computed values ────────────────────────────────────────────────────
+  const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const audioAsset = item?.audioAsset;
+  const hasAudio = !!audioAsset?.storagePath;
 
   // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {
@@ -153,17 +251,20 @@ export function AudioDetailPage() {
   // World/kind labels
   const worldLabel = item.world === 'plus' ? 'بلس' : 'عام';
   const kindLabels: Record<string, string> = {
-    longAudio: 'صوت طويل',
-    podcast: 'بودكاست',
-    shortAudio: 'مقطع قصير',
-    song: 'أغنية',
-    albumTrack: 'مسار ألبوم',
-    radioMoment: 'لحظة إذاعية',
+    longAudio: 'صوت طويل', podcast: 'بودكاست', shortAudio: 'مقطع قصير',
+    song: 'أغنية', albumTrack: 'مسار ألبوم', radioMoment: 'لحظة إذاعية',
     tournamentSubmissionAudio: 'مشاركة مسابقة',
   };
 
-  const audioAsset = item.audioAsset;
-  const hasAudio = !!audioAsset?.storagePath;
+  // Player icon
+  const getPlayerIcon = () => {
+    switch (playerState) {
+      case 'loading': case 'buffering': return null; // spinner shown instead
+      case 'playing': return 'pause';
+      case 'ended': return 'replay';
+      default: return 'play_arrow';
+    }
+  };
 
   return (
     <main className="page adp-page" dir="rtl">
@@ -196,29 +297,61 @@ export function AudioDetailPage() {
         <span className="adp-badge adp-badge--status">{item.status}</span>
       </div>
 
-      {/* ── Player area ───────────────────────────────────────── */}
+      {/* ── Custom Audio Player ───────────────────────────────── */}
       <div className="adp-player">
-        {/* Case 1: Signed URL ready — real playback */}
+        {/* Hidden audio element */}
         {playbackUrl && (
-          <div className="adp-player__live">
-            <audio
-              ref={audioRef}
-              controls
-              src={playbackUrl}
-              className="adp-player__audio"
-            />
-            {audioAsset?.durationMs ? (
-              <p className="adp-player__duration">
-                ⏱️ {formatDuration(audioAsset.durationMs)}
-                {audioAsset.sourceType && (
-                  <span> — {audioAsset.sourceType === 'recorded' ? '🎤 مسجّل' : '📁 مرفوع'}</span>
+          <audio ref={audioRef} src={playbackUrl} preload="metadata" style={{ display: 'none' }} />
+        )}
+
+        {/* Case 1: Signed URL ready — custom player */}
+        {playbackUrl && (
+          <div className="adp-custom-player">
+            {/* Player controls row */}
+            <div className="adp-player-controls">
+              <button
+                className={`adp-play-btn ${playerState === 'loading' || playerState === 'buffering' ? 'adp-play-btn--loading' : ''}`}
+                onClick={togglePlay}
+                disabled={playerState === 'loading'}
+                aria-label={playerState === 'playing' ? 'إيقاف' : 'تشغيل'}
+              >
+                {playerState === 'loading' || playerState === 'buffering' ? (
+                  <div className="adp-play-btn__spinner" />
+                ) : (
+                  <span className="material-symbols-outlined">{getPlayerIcon()}</span>
                 )}
+              </button>
+              <div className="adp-player-info">
+                <p className="adp-player-info__title">{item.title}</p>
+                {audioAsset?.sourceType && (
+                  <span className="adp-source-badge">
+                    {audioAsset.sourceType === 'recorded' ? '🎤 مسجّل' : '📁 مرفوع'}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Progress bar */}
+            <div className="adp-progress-bar" ref={progressRef} onClick={handleSeek}>
+              <div className="adp-progress-bar__track">
+                <div className="adp-progress-bar__fill" style={{ width: `${progressPct}%` }} />
+                <div className="adp-progress-bar__thumb" style={{ right: `${progressPct}%` }} />
+              </div>
+            </div>
+
+            {/* Time display */}
+            <div className="adp-time-row">
+              <span className="adp-time">{fmtTime(currentTime)}</span>
+              <span className="adp-time">{duration > 0 ? fmtTime(duration) : (audioAsset?.durationMs ? fmtTime(audioAsset.durationMs) : '--:--')}</span>
+            </div>
+
+            {/* Expiry note */}
+            {playbackExpiry && (
+              <p className="adp-expiry-note">
+                <span className="material-symbols-outlined">timer</span>
+                رابط تشغيل مؤقت — صالح حتى {new Date(playbackExpiry).toLocaleTimeString('ar')}
               </p>
-            ) : null}
-            <p className="adp-player__expiry">
-              <span className="material-symbols-outlined">timer</span>
-              رابط تشغيل مؤقت — صالح حتى {playbackExpiry ? new Date(playbackExpiry).toLocaleTimeString('ar') : '—'}
-            </p>
+            )}
           </div>
         )}
 
@@ -236,36 +369,18 @@ export function AudioDetailPage() {
             <span className="material-symbols-outlined">error_outline</span>
             <h3>فشل تحميل التشغيل</h3>
             <p>{playbackError}</p>
-            <button
-              className="adp-btn adp-btn--ghost"
-              onClick={() => {
-                setPlaybackError(null);
-                setPlaybackLoading(true);
-                callGetAudioPlaybackUrl({ contentId: contentId! })
-                  .then((r) => {
-                    setPlaybackUrl(r.data.playbackUrl);
-                    setPlaybackMime(r.data.mimeType);
-                    setPlaybackExpiry(r.data.expiresAt);
-                  })
-                  .catch((e) => setPlaybackError(e instanceof Error ? e.message : 'فشل تحميل رابط التشغيل.'))
-                  .finally(() => setPlaybackLoading(false));
-              }}
-            >
+            <button className="adp-btn adp-btn--ghost" onClick={retryPlayback}>
               <span className="material-symbols-outlined">refresh</span> إعادة المحاولة
             </button>
           </div>
         )}
 
-        {/* Case 4: No audio asset at all */}
+        {/* Case 4: No audio asset */}
         {!playbackUrl && !playbackLoading && !playbackError && !hasAudio && (
           <div className="adp-player__pending">
             <span className="material-symbols-outlined adp-player__pending-icon">hourglass_top</span>
             <h3>جاري معالجة الصوت...</h3>
-            <p>
-              الصوت غير متوفر للتشغيل حالياً.
-              <br />
-              خط المعالجة (الترميز، الموجة الصوتية، التحقق) لم يكتمل بعد.
-            </p>
+            <p>الصوت غير متوفر للتشغيل حالياً.<br />خط المعالجة لم يكتمل بعد.</p>
           </div>
         )}
 
