@@ -1,35 +1,41 @@
 /**
  * Sound Platform — Audio Detail Player Page
  * ===========================================
- * Phase:   8-C (Complete Audio Creation Flow Foundation)
- * Updated: 2026-05-27
+ * Phase:   8-D (Audio Playback Foundation)
+ * Updated: 2026-05-28
  *
  * Route: /audio/:contentId
  *
  * Reads contentItems/{contentId} from Firestore and displays:
- *   - Cover (or default placeholder)
+ *   - Cover (public image URL or default placeholder)
  *   - Title, owner, world, kind, category
  *   - Duration, audience, country
- *   - Audio state: honest "playback pipeline pending" if no signed URL
+ *   - Real audio playback via signed URL from getAudioPlaybackUrl callable
  *   - Action bar (like/save/share — placeholder, no backend wiring)
  *
  * State 13 of the canonical audio flow.
  *
- * IMPORTANT: Does NOT fake playback.
- * If signed URL is not available, shows honest pending state.
+ * PLAYBACK:
+ *   - Calls getAudioPlaybackUrl Cloud Function to get a temporary signed URL.
+ *   - Signed URL expires after 15 minutes.
+ *   - Audio files remain PRIVATE in Storage — no direct reads.
+ *   - Falls back to honest pending state if no audio asset or callable fails.
  */
 
-import React, { useState, useEffect } from 'react';
-import { useParams, useNavigate, Link } from 'react-router-dom';
+import React, { useState, useEffect, useRef } from 'react';
+import { useParams, useNavigate } from 'react-router-dom';
 import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDuration, formatFileSize } from '../lib/audioDuration';
-import type { AudioContentDoc } from '@sound/shared';
+import { callGetAudioPlaybackUrl } from '../lib/callables';
+import type { AudioContentDoc, GetAudioPlaybackUrlResponse } from '@sound/shared';
 import app from '../lib/firebase';
 import './Page.css';
 import './AudioDetailPage.css';
 
 const db = getFirestore(app);
+const storage = getStorage(app);
 
 export function AudioDetailPage() {
   const { contentId } = useParams<{ contentId: string }>();
@@ -40,6 +46,19 @@ export function AudioDetailPage() {
   const [item, setItem] = useState<AudioContentDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
 
+  // Playback state
+  const [playbackLoading, setPlaybackLoading] = useState(false);
+  const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
+  const [playbackMime, setPlaybackMime] = useState<string>('audio/mpeg');
+  const [playbackError, setPlaybackError] = useState<string | null>(null);
+  const [playbackExpiry, setPlaybackExpiry] = useState<string | null>(null);
+
+  // Cover URL state
+  const [coverUrl, setCoverUrl] = useState<string | null>(null);
+
+  const audioRef = useRef<HTMLAudioElement>(null);
+
+  // ── Load content item ──────────────────────────────────────────────────
   useEffect(() => {
     if (!contentId) return;
     const load = async () => {
@@ -64,6 +83,47 @@ export function AudioDetailPage() {
     load();
   }, [contentId]);
 
+  // ── Load cover image (public read) ─────────────────────────────────────
+  useEffect(() => {
+    if (!item?.coverAsset?.storagePath) { setCoverUrl(null); return; }
+    const loadCover = async () => {
+      try {
+        const coverRef = ref(storage, item.coverAsset!.storagePath!);
+        const url = await getDownloadURL(coverRef);
+        setCoverUrl(url);
+      } catch {
+        // Cover not available — fall back to default
+        setCoverUrl(null);
+      }
+    };
+    loadCover();
+  }, [item?.coverAsset?.storagePath]);
+
+  // ── Request signed playback URL ────────────────────────────────────────
+  useEffect(() => {
+    if (!item || !contentId || !currentUser) return;
+    if (!item.audioAsset?.storagePath) return;
+
+    const fetchPlaybackUrl = async () => {
+      setPlaybackLoading(true);
+      setPlaybackError(null);
+      try {
+        const result = await callGetAudioPlaybackUrl({ contentId });
+        const resp = result.data;
+        setPlaybackUrl(resp.playbackUrl);
+        setPlaybackMime(resp.mimeType);
+        setPlaybackExpiry(resp.expiresAt);
+      } catch (err: unknown) {
+        const msg = err instanceof Error ? err.message : 'فشل تحميل رابط التشغيل.';
+        setPlaybackError(msg);
+      } finally {
+        setPlaybackLoading(false);
+      }
+    };
+    fetchPlaybackUrl();
+  }, [item, contentId, currentUser]);
+
+  // ── Loading state ──────────────────────────────────────────────────────
   if (loading) {
     return (
       <main className="page adp-page" dir="rtl">
@@ -75,6 +135,7 @@ export function AudioDetailPage() {
     );
   }
 
+  // ── Error / not found ──────────────────────────────────────────────────
   if (error || !item) {
     return (
       <main className="page adp-page" dir="rtl">
@@ -89,10 +150,6 @@ export function AudioDetailPage() {
     );
   }
 
-  // Determine playback availability
-  const audioAsset = item.audioAsset;
-  const canPlay = audioAsset?.playbackUrl && audioAsset?.processingStatus === 'done';
-
   // World/kind labels
   const worldLabel = item.world === 'plus' ? 'بلس' : 'عام';
   const kindLabels: Record<string, string> = {
@@ -105,14 +162,15 @@ export function AudioDetailPage() {
     tournamentSubmissionAudio: 'مشاركة مسابقة',
   };
 
+  const audioAsset = item.audioAsset;
+  const hasAudio = !!audioAsset?.storagePath;
+
   return (
     <main className="page adp-page" dir="rtl">
       {/* ── Cover / Hero ──────────────────────────────────────── */}
       <div className="adp-hero">
-        {item.coverAsset?.storagePath ? (
-          <div className="adp-hero__cover adp-hero__cover--default">
-            <span className="material-symbols-outlined">music_note</span>
-          </div>
+        {coverUrl ? (
+          <img src={coverUrl} alt="غلاف" className="adp-hero__cover" />
         ) : (
           <div className="adp-hero__cover adp-hero__cover--default">
             <span className="material-symbols-outlined">music_note</span>
@@ -140,9 +198,66 @@ export function AudioDetailPage() {
 
       {/* ── Player area ───────────────────────────────────────── */}
       <div className="adp-player">
-        {canPlay ? (
-          <audio controls src={audioAsset!.playbackUrl!} className="adp-player__audio" />
-        ) : (
+        {/* Case 1: Signed URL ready — real playback */}
+        {playbackUrl && (
+          <div className="adp-player__live">
+            <audio
+              ref={audioRef}
+              controls
+              src={playbackUrl}
+              className="adp-player__audio"
+            />
+            {audioAsset?.durationMs ? (
+              <p className="adp-player__duration">
+                ⏱️ {formatDuration(audioAsset.durationMs)}
+                {audioAsset.sourceType && (
+                  <span> — {audioAsset.sourceType === 'recorded' ? '🎤 مسجّل' : '📁 مرفوع'}</span>
+                )}
+              </p>
+            ) : null}
+            <p className="adp-player__expiry">
+              <span className="material-symbols-outlined">timer</span>
+              رابط تشغيل مؤقت — صالح حتى {playbackExpiry ? new Date(playbackExpiry).toLocaleTimeString('ar') : '—'}
+            </p>
+          </div>
+        )}
+
+        {/* Case 2: Loading signed URL */}
+        {!playbackUrl && playbackLoading && (
+          <div className="adp-player__loading">
+            <div className="adp-spinner" />
+            <p>جاري تحميل رابط التشغيل...</p>
+          </div>
+        )}
+
+        {/* Case 3: Playback error */}
+        {!playbackUrl && !playbackLoading && playbackError && (
+          <div className="adp-player__error">
+            <span className="material-symbols-outlined">error_outline</span>
+            <h3>فشل تحميل التشغيل</h3>
+            <p>{playbackError}</p>
+            <button
+              className="adp-btn adp-btn--ghost"
+              onClick={() => {
+                setPlaybackError(null);
+                setPlaybackLoading(true);
+                callGetAudioPlaybackUrl({ contentId: contentId! })
+                  .then((r) => {
+                    setPlaybackUrl(r.data.playbackUrl);
+                    setPlaybackMime(r.data.mimeType);
+                    setPlaybackExpiry(r.data.expiresAt);
+                  })
+                  .catch((e) => setPlaybackError(e instanceof Error ? e.message : 'فشل تحميل رابط التشغيل.'))
+                  .finally(() => setPlaybackLoading(false));
+              }}
+            >
+              <span className="material-symbols-outlined">refresh</span> إعادة المحاولة
+            </button>
+          </div>
+        )}
+
+        {/* Case 4: No audio asset at all */}
+        {!playbackUrl && !playbackLoading && !playbackError && !hasAudio && (
           <div className="adp-player__pending">
             <span className="material-symbols-outlined adp-player__pending-icon">hourglass_top</span>
             <h3>جاري معالجة الصوت...</h3>
@@ -151,14 +266,15 @@ export function AudioDetailPage() {
               <br />
               خط المعالجة (الترميز، الموجة الصوتية، التحقق) لم يكتمل بعد.
             </p>
-            {audioAsset && (
-              <div className="adp-player__asset-info">
-                {audioAsset.originalFileName && <span>📄 {audioAsset.originalFileName}</span>}
-                {audioAsset.durationMs ? <span>⏱️ {formatDuration(audioAsset.durationMs)}</span> : null}
-                {audioAsset.sizeBytes ? <span>📦 {formatFileSize(audioAsset.sizeBytes)}</span> : null}
-                <span>📊 المعالجة: {audioAsset.processingStatus ?? 'قيد الانتظار'}</span>
-              </div>
-            )}
+          </div>
+        )}
+
+        {/* Case 5: Has audio but not logged in */}
+        {!playbackUrl && !playbackLoading && !playbackError && hasAudio && !currentUser && (
+          <div className="adp-player__pending">
+            <span className="material-symbols-outlined adp-player__pending-icon">lock</span>
+            <h3>يجب تسجيل الدخول</h3>
+            <p>سجّل دخولك للاستماع إلى هذا المحتوى.</p>
           </div>
         )}
       </div>

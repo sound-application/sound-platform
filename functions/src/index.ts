@@ -88,3 +88,6 @@ export { createAudioDraft }     from './callables/createAudioDraft';
 export { updateAudioDraft }     from './callables/updateAudioDraft';
 export { publishAudioContent }  from './callables/publishAudioContent';
 
+// ─── Phase 8-D — Audio Playback ─────────────────────────────────────────────
+export { getAudioPlaybackUrl }  from './callables/getAudioPlaybackUrl';
+

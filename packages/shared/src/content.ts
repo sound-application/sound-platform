@@ -472,6 +472,29 @@ export interface PublishAudioContentResponse {
   status: AudioContentStatus;
 }
 
+// ─── Phase 8-D — Audio Playback Types ────────────────────────────────────────
+
+/** Request payload for getAudioPlaybackUrl callable */
+export interface GetAudioPlaybackUrlRequest {
+  contentId: string;
+}
+
+/** Response payload for getAudioPlaybackUrl callable */
+export interface GetAudioPlaybackUrlResponse {
+  /** The content item ID */
+  contentId: string;
+  /** Temporary signed URL for audio playback */
+  playbackUrl: string;
+  /** ISO timestamp when the signed URL expires */
+  expiresAt: string;
+  /** MIME type of the audio file */
+  mimeType: string;
+  /** Duration in milliseconds (if known) */
+  durationMs?: number;
+  /** How the audio was acquired */
+  sourceType?: 'recorded' | 'uploaded';
+}
+
 // ─── Live Session Document (unchanged from Phase 4-H-1) ──────────────────────
 //
 // Stored in: liveSessions/{sessionId}

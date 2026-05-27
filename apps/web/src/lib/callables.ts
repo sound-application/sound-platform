@@ -18,6 +18,8 @@ import type {
   UpdateAudioDraftResponse,
   PublishAudioContentRequest,
   PublishAudioContentResponse,
+  GetAudioPlaybackUrlRequest,
+  GetAudioPlaybackUrlResponse,
 } from '@sound/shared';
 import app from './firebase';
 
@@ -40,3 +42,10 @@ export const callPublishAudioContent = httpsCallable<
   PublishAudioContentRequest,
   PublishAudioContentResponse
 >(functions, 'publishAudioContent');
+
+// ── Audio Playback Callables (Phase 8-D) ─────────────────────────────────────
+
+export const callGetAudioPlaybackUrl = httpsCallable<
+  GetAudioPlaybackUrlRequest,
+  GetAudioPlaybackUrlResponse
+>(functions, 'getAudioPlaybackUrl');
