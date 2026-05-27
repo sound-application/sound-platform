@@ -507,3 +507,23 @@ Do not delete UI requirements because of schema gaps. Mark gaps as `// SCHEMA GA
 ---
 
 *Last updated: 2026-05-19 | Source: Sound Codex Memory — full_system_map_2026-05-15.md, FULL_HANDOFF_TO_NEW_PROJECT_CHAT_2026-05-16.md, project_knowledge.md*
+
+## 11. AUDIO MODULE CREATION FLOW AUTHORITY
+
+**Status:** SOURCE OF TRUTH from 2026-05-27 owner correction. Overrides older audio-flow notes.
+
+Canonical flow:
+
+`Info -> Publish Details -> Cover (optional) -> Captions setup (optional) -> AutoCue (optional) -> Record/Upload -> Review -> Effects (optional) -> Mixing (optional) -> Final Preview with edit-back links -> Review Details -> Publish Result -> Audio Detail Player`
+
+Rules:
+
+- Create Hub may route into audio creation, but the audio flow itself owns the full sequence above.
+- Recording/upload is the first media-capture step, not the second screen overall.
+- Publish Details must happen before media capture so the item is defined before the creator records/uploads.
+- AutoCue must be before recording and must support reading script/lyrics during capture.
+- AutoCue recording mode changes the recorder layout: script/lyrics main, waveform/timer controls lower/smaller.
+- Cover and captions setup are optional but visible; skipping saves the draft and advances only one step.
+- Final Preview must be listener-realistic and must allow going back to edit previous sections.
+- Publish Result must link to Audio Detail Player when the item is published or available for playback.
+- Do not remove required UI inventory because schema or backend pieces are unfinished; mark schema/backend gaps clearly.
