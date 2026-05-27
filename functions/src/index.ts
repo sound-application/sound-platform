@@ -1,10 +1,30 @@
 /**
  * Sound Platform — Cloud Functions Entry Point
  * ===============================================
- * Phase:   7.1 (Username-Aware Profile Links)
+ * Phase:   8-A (Audio Content Core Foundation)
  * Updated: 2026-05-27
  *
- * Exports (Phase 7.1 additions):
+ * Exports (Phase 8-A additions):
+ *   createAudioDraft    — HTTPS callable.
+ *                         Creates drafts/{uid}/drafts/{auto-id}.
+ *                         Input:  CreateAudioDraftRequest
+ *                         Output: CreateAudioDraftResponse { draftId }
+ *                         Auth:   required
+ *
+ *   updateAudioDraft    — HTTPS callable.
+ *                         Updates drafts/{uid}/drafts/{draftId}.
+ *                         Input:  UpdateAudioDraftRequest
+ *                         Output: UpdateAudioDraftResponse { updatedAt }
+ *                         Auth:   required
+ *
+ *   publishAudioContent — HTTPS callable.
+ *                         Publishes draft → contentItems/{auto-id}.
+ *                         Validates world×kind, checks capabilities, builds owner snapshot.
+ *                         Input:  PublishAudioContentRequest { draftId }
+ *                         Output: PublishAudioContentResponse { contentId, status }
+ *                         Auth:   required
+ *
+ * Exports (Phase 7.1):
  *   getProfileForViewer — HTTPS callable.
  *                         Returns a viewer-filtered profile for the authenticated caller.
  *                         Enforces: followers / friends / onlyMe / block.
@@ -36,12 +56,15 @@
  *   - publicProfiles/{uid} is only writable via Admin SDK.
  *   - getProfileForViewer adds viewer-aware filtering on top of publicProfiles.
  *   - usernames/{normalizedUsername} maps username → UID (Phase 7.1).
- *   - No publishing, content creation, or capability-mutation functions yet.
+ *   - contentItems/{contentId} is the audio content storage collection (Phase 8-A).
+ *   - drafts/{uid}/drafts/{draftId} is the audio draft storage collection (Phase 8-A).
+ *   - No upload/transcoding/media pipeline functions yet (Phase 8-B).
  *
  * Infinite loop prevention:
  *   - onUserProfileUpdate watches users/{uid} and writes publicProfiles/{uid}.
  *   - These are different collections — no recursive trigger.
  *   - getProfileForViewer is a callable — no Firestore watches, no writes.
+ *   - Audio callables (create/update/publish) are callables — no watches, targeted writes.
  */
 
 import * as admin from 'firebase-admin';
@@ -54,7 +77,14 @@ if (admin.apps.length === 0) {
 }
 admin.firestore().settings({ ignoreUndefinedProperties: true });
 
+// ─── Phase 5-C / 6-B / 7.1 — Profile & Social ──────────────────────────────
 export { onUserCreate }         from './triggers/onUserCreate';
 export { onUserProfileUpdate }  from './triggers/onUserProfileUpdate';
 export { onFollowWrite }        from './triggers/onFollowWrite';
 export { getProfileForViewer }  from './callables/getProfileForViewer';
+
+// ─── Phase 8-A — Audio Content Core ─────────────────────────────────────────
+export { createAudioDraft }     from './callables/createAudioDraft';
+export { updateAudioDraft }     from './callables/updateAudioDraft';
+export { publishAudioContent }  from './callables/publishAudioContent';
+

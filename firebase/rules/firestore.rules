@@ -4,8 +4,8 @@ rules_version = '2';
 // Sound Platform — Cloud Firestore Security Rules
 // Project:  sound-platform-dev
 // Region:   europe-west1
-// Phase:    6-B (Social Graph Foundation: Follow / Block / Mute)
-// Updated:  2026-05-25
+// Phase:    8-A (Audio Content Core Foundation)
+// Updated:  2026-05-27
 //
 // CHANGELOG (Phase 6-B):
 //   - Replaced old flat follows/{followId} rule with subcollection-based social graph.
@@ -263,6 +263,80 @@ service cloud.firestore {
       allow read: if isAuth() && isPublished(resource.data);
       allow read: if isOwner(resource.data.get('ownerUid', '')) || isAdmin();
       allow write: if false; // Cloud Function only (capability check enforced there)
+    }
+
+    // ----------------------------------------------------------
+    // contentItems/{contentId}
+    // Audio content core — the canonical collection for all audio content.
+    // Phase 8-A: Audio Content Core Foundation.
+    //
+    // Read:
+    //   - Any authenticated user can read PUBLISHED content regardless of world.
+    //   - Owner can read own content regardless of status.
+    //   - Admin can read any content.
+    // Write:
+    //   - Owner can create content (ownerUid must match auth uid).
+    //   - Owner can update own draft/non-published metadata.
+    //   - Server-only fields (counters, moderation, processing, owner snapshot)
+    //     are protected from client writes.
+    //   - No client delete — soft-delete via status field, enforced by CF.
+    //
+    // Counter fields (listensCount, likesCount, savesCount, repostsCount,
+    // commentsCount, sharesCount) are Cloud Function only — never client-writable.
+    // moderationStatus, processingStatus, audioAsset.processingStatus are CF only.
+    // ----------------------------------------------------------
+    match /contentItems/{contentId} {
+      // Published content: any authenticated user
+      allow read: if isAuth() && isPublished(resource.data);
+      // Owner or admin: any status
+      allow read: if isOwner(resource.data.get('ownerUid', '')) || isAdmin();
+
+      // Owner can create — ownerUid must match auth uid
+      allow create: if isAuth()
+        && request.resource.data.ownerUid == request.auth.uid;
+
+      // Owner can update own non-server fields
+      // Protected: counters, moderationStatus, owner snapshot, timestamps set by CF
+      allow update: if isOwner(resource.data.get('ownerUid', ''))
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['ownerUid', 'createdAt', 'publishedAt',
+                     'listensCount', 'likesCount', 'savesCount',
+                     'repostsCount', 'commentsCount', 'sharesCount',
+                     'moderationStatus', 'owner']);
+
+      // No client delete — soft-delete via status field
+      allow delete: if false;
+    }
+
+    // ----------------------------------------------------------
+    // drafts/{uid}/drafts/{draftId}
+    // Audio draft storage — private per-user subcollection.
+    // Phase 8-A: Audio Content Core Foundation.
+    //
+    // Read:   owner only.
+    // Create: owner only (ownerUid must match auth uid).
+    // Update: owner only (ownerUid and createdAt immutable).
+    // Delete: owner only (can discard drafts).
+    //
+    // No other user can access another user's drafts.
+    // Admin access is via Admin SDK (bypasses rules).
+    // ----------------------------------------------------------
+    match /drafts/{uid}/drafts/{draftId} {
+      // Owner can read own drafts
+      allow read: if isOwner(uid);
+
+      // Owner can create a draft — ownerUid must match
+      allow create: if isOwner(uid)
+        && request.resource.data.ownerUid == uid;
+
+      // Owner can update — ownerUid and createdAt must not change
+      allow update: if isOwner(uid)
+        && request.resource.data.ownerUid == uid
+        && !request.resource.data.diff(resource.data).affectedKeys()
+            .hasAny(['ownerUid', 'createdAt']);
+
+      // Owner can delete own drafts
+      allow delete: if isOwner(uid);
     }
 
     // ----------------------------------------------------------
