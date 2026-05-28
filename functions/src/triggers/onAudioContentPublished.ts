@@ -1,40 +1,61 @@
 /**
  * Sound Platform — onAudioContentPublished Cloud Function
  * ========================================================
- * Phase:   8-E (Audio Processing Pipeline Foundation)
+ * Phase:   8-F (Real Audio Processing Worker)
  * Updated: 2026-05-28
  *
  * Trigger: Firestore document written on contentItems/{contentId}
  *
  * Fires when a content item is published with an audio asset.
- * Runs the processing pipeline:
- *   1. Mark as queued
- *   2. Generate synthetic waveform (real extraction deferred)
- *   3. Set captions processing status
- *   4. Auto-approve moderation (dev phase)
- *   5. Mark as originalFallback (NOT ready — no real transcoding)
+ * Runs the REAL processing pipeline:
+ *   1. Mark as processing
+ *   2. Download original from Storage to /tmp
+ *   3. Probe input (validate audio, get metadata)
+ *   4. Transcode to AAC/M4A at 128kbps, 44.1kHz (loudnorm best-effort)
+ *   5. Extract real waveform peaks from transcoded audio
+ *   6. Upload master.m4a to audioProcessed/{uid}/{contentId}/master/
+ *   7. Upload waveform.json to audioProcessed/{uid}/{contentId}/waveform/
+ *   8. Update Firestore: processedAudio, waveform, status=ready
  *
  * IDEMPOTENCY:
  *   - Only runs when contentProcessingStatus === 'uploaded'
- *   - Skips if processing already started (queued/processing/ready/failed/originalFallback)
+ *   - Skips if processing already started (processing/ready/failed/originalFallback)
  *   - The trigger writes back to the same document, but the idempotency check
  *     prevents infinite re-trigger loops
+ *
+ * FAILURE:
+ *   - Sets contentProcessingStatus = 'failed' with safe error message
+ *   - Original upload is NOT deleted — original fallback remains available
+ *   - /tmp files cleaned up in finally block
+ *
+ * RESOURCE CONFIG:
+ *   - Memory: 1 GiB (audio transcoding + PCM waveform extraction)
+ *   - Timeout: 540s (9 min max for event-driven v2 functions)
  */
 
 import { onDocumentWritten } from 'firebase-functions/v2/firestore';
 import * as admin from 'firebase-admin';
 import * as logger from 'firebase-functions/logger';
-import { generateSyntheticWaveform } from '@sound/shared';
+import * as os from 'os';
+import * as path from 'path';
+import * as fs from 'fs';
+import { probeAudio, transcodeToAAC, extractWaveformPeaks } from '../processing/audioProcessor';
+
+// ── Types from shared ────────────────────────────────────────────────────────
+import type { ProcessedAudioMeta, WaveformData } from '@sound/shared';
 
 export const onAudioContentPublished = onDocumentWritten(
-  'contentItems/{contentId}',
+  {
+    document: 'contentItems/{contentId}',
+    memory: '1GiB',
+    timeoutSeconds: 540,
+  },
   async (event) => {
     const contentId = event.params.contentId;
     const afterSnap = event.data?.after;
 
     // ── Guard: document must exist after the write ────────────────────────
     if (!afterSnap?.exists) {
-      logger.info(`[8E-pipeline] ${contentId}: document deleted, skipping.`);
       return;
     }
 
@@ -42,79 +63,169 @@ export const onAudioContentPublished = onDocumentWritten(
     if (!data) return;
 
     // ── Guard: must be published with an audio asset ─────────────────────
-    if (data.status !== 'published') {
-      return;
-    }
+    if (data.status !== 'published') return;
 
-    if (!data.audioAsset?.storagePath) {
-      logger.info(`[8E-pipeline] ${contentId}: no audioAsset.storagePath, skipping.`);
-      return;
-    }
+    const storagePath = data.audioAsset?.storagePath as string | undefined;
+    if (!storagePath) return;
 
     // ── IDEMPOTENCY: only process when status is 'uploaded' ──────────────
-    // This prevents infinite loops: after we update the doc, the trigger
-    // fires again, but contentProcessingStatus is no longer 'uploaded'.
-    if (data.contentProcessingStatus !== 'uploaded') {
-      return;
-    }
+    if (data.contentProcessingStatus !== 'uploaded') return;
 
+    const ownerUid = data.ownerUid as string;
     const db = admin.firestore();
+    const storage = admin.storage();
     const docRef = db.collection('contentItems').doc(contentId);
-    const now = new Date().toISOString();
+    const bucket = storage.bucket();
+
+    // Temp file paths
+    const tmpDir = os.tmpdir();
+    const originalExt = path.extname(storagePath) || '.audio';
+    const tmpOriginal = path.join(tmpDir, `${contentId}_original${originalExt}`);
+    const tmpMaster = path.join(tmpDir, `${contentId}_master.m4a`);
 
     try {
-      // ── Step 1: Mark as queued ───────────────────────────────────────────
-      logger.info(`[8E-pipeline] ${contentId}: processing started.`);
+      // ── Step 1: Mark as processing ─────────────────────────────────────
+      const processingStartedAt = new Date().toISOString();
+      logger.info(`[8F-pipeline] ${contentId}: processing started.`, { storagePath });
       await docRef.update({
-        contentProcessingStatus: 'queued',
-        processingStartedAt: now,
+        contentProcessingStatus: 'processing',
+        processingStartedAt,
       });
 
-      // ── Step 2: Generate synthetic waveform ─────────────────────────────
-      // Real waveform extraction (FFmpeg/audiowaveform) is deferred.
-      // Synthetic waveform is clearly marked as synthetic: true.
-      const waveform = generateSyntheticWaveform(contentId, 200);
-      logger.info(`[8E-pipeline] ${contentId}: synthetic waveform generated (${waveform.pointsCount} peaks).`);
+      // ── Step 2: Download original from Storage to /tmp ─────────────────
+      logger.info(`[8F-pipeline] ${contentId}: downloading original.`);
+      await bucket.file(storagePath).download({ destination: tmpOriginal });
 
-      // ── Step 3: Captions processing status ──────────────────────────────
-      // If captions were requested, leave as 'requested' (no AI provider yet).
-      // If not requested, leave as 'notRequested'.
-      // No mutation needed — already set by createAudioContentFromDraft.
+      const originalStat = fs.statSync(tmpOriginal);
+      logger.info(`[8F-pipeline] ${contentId}: downloaded ${originalStat.size} bytes.`);
 
-      // ── Step 4: Auto-approve moderation (dev phase) ─────────────────────
-      // In production, this would be replaced by AI moderation + human review.
-      const moderationStatus = 'approved';
+      if (originalStat.size === 0) {
+        throw new Error('Downloaded file is empty (0 bytes).');
+      }
 
-      // ── Step 5: Final update — mark as originalFallback ─────────────────
-      // NOT 'ready' — real transcoding has not happened.
-      // processedAudio remains undefined/null — no transcoded file exists.
-      const completedAt = new Date().toISOString();
+      // ── Step 3: Probe input ────────────────────────────────────────────
+      logger.info(`[8F-pipeline] ${contentId}: probing input.`);
+      const probe = await probeAudio(tmpOriginal);
+      logger.info(`[8F-pipeline] ${contentId}: probe result.`, {
+        durationMs: probe.durationMs,
+        codec: probe.codec,
+        sampleRate: probe.sampleRate,
+        channels: probe.channels,
+        bitrate: probe.bitrate,
+        format: probe.formatName,
+      });
+
+      // Validate: must have audio data
+      if (probe.durationMs < 100) {
+        throw new Error(`Audio too short or unreadable: ${probe.durationMs}ms.`);
+      }
+
+      // ── Step 4: Transcode to AAC/M4A ──────────────────────────────────
+      logger.info(`[8F-pipeline] ${contentId}: transcoding to AAC/M4A.`);
+      const transcode = await transcodeToAAC(tmpOriginal, tmpMaster);
+      logger.info(`[8F-pipeline] ${contentId}: transcode complete.`, {
+        sizeBytes: transcode.sizeBytes,
+        durationMs: transcode.durationMs,
+        codec: transcode.codec,
+        bitrate: transcode.bitrate,
+        loudnessLufs: transcode.loudnessLufs,
+      });
+
+      // ── Step 5: Extract real waveform peaks ────────────────────────────
+      logger.info(`[8F-pipeline] ${contentId}: extracting waveform.`);
+      const peaks = await extractWaveformPeaks(tmpMaster, 200);
+      logger.info(`[8F-pipeline] ${contentId}: waveform extracted (${peaks.length} peaks).`);
+
+      // ── Step 6: Upload master.m4a ──────────────────────────────────────
+      const masterStoragePath = `audioProcessed/${ownerUid}/${contentId}/master/master.m4a`;
+      logger.info(`[8F-pipeline] ${contentId}: uploading master.`, { masterStoragePath });
+      await bucket.upload(tmpMaster, {
+        destination: masterStoragePath,
+        metadata: {
+          contentType: 'audio/mp4',
+          metadata: {
+            processedBy: 'phase-8F-pipeline',
+            sourceOriginalPath: storagePath,
+            processedAt: new Date().toISOString(),
+          },
+        },
+      });
+
+      // ── Step 7: Upload waveform.json ───────────────────────────────────
+      const waveformStoragePath = `audioProcessed/${ownerUid}/${contentId}/waveform/waveform.json`;
+      const waveformJson = JSON.stringify({ peaks, pointsCount: peaks.length, sampleRate: 8000 });
+      const tmpWaveform = path.join(tmpDir, `${contentId}_waveform.json`);
+      fs.writeFileSync(tmpWaveform, waveformJson, 'utf-8');
+      await bucket.upload(tmpWaveform, {
+        destination: waveformStoragePath,
+        metadata: {
+          contentType: 'application/json',
+          metadata: { processedBy: 'phase-8F-pipeline' },
+        },
+      });
+
+      // ── Step 8: Update Firestore ───────────────────────────────────────
+      const processingCompletedAt = new Date().toISOString();
+
+      const processedAudio: ProcessedAudioMeta = {
+        storagePath: masterStoragePath,
+        mimeType: transcode.mimeType,
+        sizeBytes: transcode.sizeBytes,
+        durationMs: transcode.durationMs,
+        bitrate: transcode.bitrate,
+        codec: transcode.codec,
+        loudnessLufs: transcode.loudnessLufs,
+        createdAt: processingCompletedAt,
+        sourceOriginalPath: storagePath,
+      };
+
+      const waveform: WaveformData = {
+        status: 'ready',
+        peaks,
+        pointsCount: peaks.length,
+        sampleRate: 8000,
+        synthetic: false,
+        generatedAt: processingCompletedAt,
+      };
+
       await docRef.update({
-        contentProcessingStatus: 'originalFallback',
-        processingCompletedAt: completedAt,
+        contentProcessingStatus: 'ready',
+        processingCompletedAt,
+        processedAudio,
         waveform,
-        moderationStatus,
-        // processedAudio: NOT set — original upload is the only playable source
+        moderationStatus: 'approved', // dev auto-approve
       });
 
       logger.info(
-        `[8E-pipeline] ${contentId}: processing complete. ` +
-        `status=originalFallback, waveform=synthetic, moderation=approved.`,
+        `[8F-pipeline] ${contentId}: processing COMPLETE. ` +
+        `status=ready, source=processed, waveform=real (${peaks.length} peaks), ` +
+        `master=${transcode.sizeBytes} bytes, duration=${transcode.durationMs}ms.`,
       );
+
     } catch (err) {
-      // ── Error handling ────────────────────────────────────────────────
+      // ── Error handling ──────────────────────────────────────────────────
       const errorMessage = err instanceof Error ? err.message : String(err);
-      logger.error(`[8E-pipeline] ${contentId}: processing FAILED.`, err);
+      const safeError = errorMessage.slice(0, 500); // truncate for Firestore
+      logger.error(`[8F-pipeline] ${contentId}: processing FAILED.`, { error: safeError });
 
       try {
         await docRef.update({
           contentProcessingStatus: 'failed',
           processingCompletedAt: new Date().toISOString(),
-          'audioAsset.processingError': errorMessage,
+          'audioAsset.processingError': safeError,
         });
       } catch (updateErr) {
-        logger.error(`[8E-pipeline] ${contentId}: failed to update error status.`, updateErr);
+        logger.error(`[8F-pipeline] ${contentId}: failed to update error status.`, updateErr);
       }
+
+    } finally {
+      // ── Cleanup /tmp files ──────────────────────────────────────────────
+      for (const tmpFile of [tmpOriginal, tmpMaster]) {
+        try { fs.unlinkSync(tmpFile); } catch { /* ignore — may not exist */ }
+      }
+      // waveform json temp
+      const tmpWaveform = path.join(tmpDir, `${contentId}_waveform.json`);
+      try { fs.unlinkSync(tmpWaveform); } catch { /* ignore */ }
     }
   },
 );
