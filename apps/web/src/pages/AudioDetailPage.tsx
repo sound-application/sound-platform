@@ -636,23 +636,34 @@ export function AudioDetailPage() {
       {item.captionsSetup?.enabled && (
         <div className="adp-glass-card adp-captions">
           <h3 className="adp-section-title">النص</h3>
-          {captionsStatus === 'requested' || captionsStatus === 'processing' ? (
+          {captionsStatus === 'requested' || captionsStatus === 'queued' || captionsStatus === 'processing' ? (
             <p className="adp-captions__quote adp-captions__quote--pending">
               <span className="material-symbols-outlined">pending</span>
-              جاري إنشاء النص...
+              {captionsStatus === 'processing' ? 'جاري إنشاء النص...' : 'في انتظار بدء إنشاء النص...'}
+            </p>
+          ) : captionsStatus === 'pendingProvider' ? (
+            <p className="adp-captions__quote adp-captions__quote--pending-provider">
+              <span className="material-symbols-outlined">schedule</span>
+              في انتظار مزود النسخ — سيتم إنشاء النص عندما يتوفر المزود
             </p>
           ) : captionsStatus === 'failed' ? (
             <p className="adp-captions__quote adp-captions__quote--failed">
               <span className="material-symbols-outlined">error_outline</span>
               فشل إنشاء النص
             </p>
-          ) : (
+          ) : captionsStatus === 'ready' ? (
             <>
-              <p className="adp-captions__quote">
-                {item.caption || 'لا يوجد نص متاح حالياً...'}
+              <p className="adp-captions__quote adp-captions__quote--ready">
+                <span className="material-symbols-outlined">subtitles</span>
+                النص جاهز
               </p>
               <button className="adp-captions__link">عرض النص الكامل</button>
             </>
+          ) : (
+            <p className="adp-captions__quote adp-captions__quote--pending">
+              <span className="material-symbols-outlined">pending</span>
+              في انتظار المعالجة...
+            </p>
           )}
         </div>
       )}

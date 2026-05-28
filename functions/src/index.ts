@@ -93,3 +93,6 @@ export { getAudioPlaybackUrl }  from './callables/getAudioPlaybackUrl';
 
 // ─── Phase 8-F — Real Audio Processing Worker ───────────────────────────
 export { onAudioContentPublished } from './triggers/onAudioContentPublished';
+
+// ─── Phase 8-G — Audio Captions Pipeline ─────────────────────────────────
+export { getAudioCaptions }        from './callables/getAudioCaptions';

@@ -270,13 +270,47 @@ export interface WaveformData {
  */
 export interface CaptionsProcessing {
   /** Transcription pipeline status */
-  status: 'notRequested' | 'requested' | 'processing' | 'ready' | 'failed';
+  status:
+    | 'notRequested'     // creator did not enable captions
+    | 'requested'        // creator enabled captions, waiting for audio processing
+    | 'queued'           // audio processing done, captions queued
+    | 'processing'       // transcription in progress
+    | 'ready'            // transcription complete, captions available
+    | 'failed'           // transcription provider ran but failed
+    | 'pendingProvider'; // no transcription provider configured
   /** Language of the transcription */
   language?: string;
-  /** ISO timestamp when transcription completed */
+  /** Caption style preference (from CaptionsSetup) */
+  style?: 'standard' | 'karaoke' | 'subtitles';
+  /** ISO timestamp when captions processing started */
+  startedAt?: string;
+  /** ISO timestamp when captions processing completed */
+  completedAt?: string;
+  /** ISO timestamp when transcription completed (legacy alias for completedAt) */
   generatedAt?: string;
-  /** Error message if transcription failed */
+  /** Error message if transcription failed or provider missing */
   error?: string;
+  /** Machine-readable error code */
+  errorCode?: string;
+}
+
+/**
+ * Captions asset metadata — stored when transcription produces output.
+ * null/undefined until real transcription produces captions.
+ */
+export interface CaptionsAsset {
+  /** Cloud Storage path to captions file */
+  storagePath: string;
+  /** Captions file format */
+  format: 'vtt' | 'srt' | 'json';
+  /** Language of the captions */
+  language?: string;
+  /** ISO timestamp when captions were generated */
+  generatedAt: string;
+  /** Transcription provider name (e.g. 'google-stt', 'whisper') */
+  provider?: string;
+  /** Number of caption segments/cues */
+  segmentsCount?: number;
 }
 
 // ─── Owner Snapshot ──────────────────────────────────────────────────────────
@@ -412,6 +446,9 @@ export interface AudioContentDoc {
 
   /** Captions/transcription processing status (separate from captionsSetup) */
   captionsProcessing?: CaptionsProcessing;
+
+  /** Captions asset metadata — null until real transcription produces output */
+  captionsAsset?: CaptionsAsset;
 
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 

@@ -1,7 +1,7 @@
 /**
  * Sound Platform — onAudioContentPublished Cloud Function
  * ========================================================
- * Phase:   8-F (Real Audio Processing Worker)
+ * Phase:   8-G (Audio Captions Pipeline Foundation)
  * Updated: 2026-05-28
  *
  * Trigger: Firestore document written on contentItems/{contentId}
@@ -42,7 +42,7 @@ import * as fs from 'fs';
 import { probeAudio, transcodeToAAC, extractWaveformPeaks } from '../processing/audioProcessor';
 
 // ── Types from shared ────────────────────────────────────────────────────────
-import type { ProcessedAudioMeta, WaveformData } from '@sound/shared';
+import type { ProcessedAudioMeta, WaveformData, CaptionsProcessing } from '@sound/shared';
 
 export const onAudioContentPublished = onDocumentWritten(
   {
@@ -197,10 +197,79 @@ export const onAudioContentPublished = onDocumentWritten(
       });
 
       logger.info(
-        `[8F-pipeline] ${contentId}: processing COMPLETE. ` +
+        `[8F-pipeline] ${contentId}: audio processing COMPLETE. ` +
         `status=ready, source=processed, waveform=real (${peaks.length} peaks), ` +
         `master=${transcode.sizeBytes} bytes, duration=${transcode.durationMs}ms.`,
       );
+
+      // ── Phase 8-G: Captions pipeline ──────────────────────────────────────
+      // Run AFTER audio processing succeeds.
+      // Captions failure does NOT change contentProcessingStatus.
+      const captionsRequested = data.captionsProcessing?.status === 'requested';
+
+      if (captionsRequested) {
+        logger.info(`[8G-captions] ${contentId}: captions requested, starting pipeline.`);
+
+        try {
+          const captionsStartedAt = new Date().toISOString();
+          await docRef.update({
+            'captionsProcessing.status': 'processing',
+            'captionsProcessing.startedAt': captionsStartedAt,
+            'captionsProcessing.style': data.captionsSetup?.style || 'standard',
+          });
+
+          // ── Provider check ─────────────────────────────────────────────
+          // No transcription provider is currently configured.
+          // Mark as pendingProvider with machine-readable error code.
+          // To activate: add provider (e.g. Google Speech-to-Text),
+          // set env vars, and implement transcribeAudio() here.
+          const hasProvider = false; // TODO: check env for provider API key
+
+          if (!hasProvider) {
+            const captionsUpdate: Partial<CaptionsProcessing> = {
+              status: 'pendingProvider',
+              completedAt: new Date().toISOString(),
+              error: 'مزود النسخ غير متوفر حالياً',
+              errorCode: 'CAPTIONS_PROVIDER_NOT_CONFIGURED',
+            };
+
+            await docRef.update({
+              'captionsProcessing.status': captionsUpdate.status,
+              'captionsProcessing.completedAt': captionsUpdate.completedAt,
+              'captionsProcessing.error': captionsUpdate.error,
+              'captionsProcessing.errorCode': captionsUpdate.errorCode,
+            });
+
+            logger.info(
+              `[8G-captions] ${contentId}: no provider configured. ` +
+              `status=pendingProvider. Audio remains ready.`,
+            );
+          } else {
+            // ── Future: real transcription ──────────────────────────────
+            // 1. Read processed audio from Storage
+            // 2. Send to transcription API
+            // 3. Parse segments/cues
+            // 4. Write VTT/JSON to audioProcessed/{uid}/{contentId}/captions/
+            // 5. Update captionsProcessing.status = 'ready' + captionsAsset
+            logger.info(`[8G-captions] ${contentId}: provider found — transcription not yet implemented.`);
+          }
+        } catch (captionsErr) {
+          // Captions failure does NOT affect audio processing status
+          const captionsError = captionsErr instanceof Error ? captionsErr.message : String(captionsErr);
+          logger.error(`[8G-captions] ${contentId}: captions FAILED.`, { error: captionsError.slice(0, 300) });
+
+          try {
+            await docRef.update({
+              'captionsProcessing.status': 'failed',
+              'captionsProcessing.completedAt': new Date().toISOString(),
+              'captionsProcessing.error': captionsError.slice(0, 500),
+              'captionsProcessing.errorCode': 'CAPTIONS_PROCESSING_ERROR',
+            });
+          } catch { /* ignore nested error */ }
+        }
+      } else {
+        logger.info(`[8G-captions] ${contentId}: captions not requested, skipping.`);
+      }
 
     } catch (err) {
       // ── Error handling ──────────────────────────────────────────────────

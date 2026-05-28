@@ -306,7 +306,7 @@ service cloud.firestore {
                      'moderationStatus', 'owner',
                      'contentProcessingStatus', 'processingStartedAt',
                      'processingCompletedAt', 'processedAudio',
-                     'waveform', 'captionsProcessing']);
+                     'waveform', 'captionsProcessing', 'captionsAsset']);
 
       // No client delete — soft-delete via status field
       allow delete: if false;
