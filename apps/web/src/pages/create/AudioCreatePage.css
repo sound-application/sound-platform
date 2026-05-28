@@ -990,38 +990,54 @@
   top: 50%;
   left: 50%;
   transform: translate(-50%, -50%);
-  width: 3rem;
-  height: 3rem;
+  width: 4.5rem;
+  height: 4.5rem;
   border-radius: 50%;
-  background: rgba(0,0,0,0.5);
+  background: linear-gradient(135deg, rgba(123, 92, 250, 0.6), rgba(90, 60, 220, 0.45));
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1.5px solid rgba(255, 255, 255, 0.18);
+  box-shadow:
+    0 4px 24px rgba(123, 92, 250, 0.35),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
   display: flex;
   align-items: center;
   justify-content: center;
-  border: none;
   cursor: pointer;
-  transition: background 0.2s, transform 0.15s;
+  transition: transform 0.2s ease, box-shadow 0.25s ease, background 0.25s ease;
   z-index: 2;
 }
 .acp-preview-card__play-overlay:hover {
-  background: rgba(0,0,0,0.7);
-  transform: translate(-50%, -50%) scale(1.08);
+  transform: translate(-50%, -50%) scale(1.1);
+  box-shadow:
+    0 6px 32px rgba(123, 92, 250, 0.5),
+    0 0 0 1px rgba(255, 255, 255, 0.12) inset;
+  background: linear-gradient(135deg, rgba(123, 92, 250, 0.75), rgba(90, 60, 220, 0.6));
 }
 .acp-preview-card__play-overlay:active {
   transform: translate(-50%, -50%) scale(0.95);
 }
-.acp-preview-card__play-overlay .material-symbols-outlined { font-size: 1.5rem; color: #fff; }
-.acp-preview-card__play-overlay--playing {
-  background: var(--color-brand, #7b5cfa);
-  animation: acp-play-pulse 1.5s ease-in-out infinite;
+.acp-preview-card__play-overlay .material-symbols-outlined {
+  font-size: 2.2rem;
+  color: #fff;
+  filter: drop-shadow(0 1px 2px rgba(0,0,0,0.3));
 }
-@keyframes acp-play-pulse {
-  0%, 100% { box-shadow: 0 0 0 0 rgba(123, 92, 250, 0.4); }
-  50% { box-shadow: 0 0 0 8px rgba(123, 92, 250, 0); }
+.acp-preview-card__play-overlay--playing {
+  background: linear-gradient(135deg, rgba(123, 92, 250, 0.85), rgba(180, 80, 255, 0.7));
+  animation: acp-play-glow 2s ease-in-out infinite;
+}
+@keyframes acp-play-glow {
+  0%, 100% { box-shadow: 0 4px 24px rgba(123, 92, 250, 0.35), 0 0 0 0 rgba(123, 92, 250, 0.4); }
+  50% { box-shadow: 0 4px 32px rgba(123, 92, 250, 0.5), 0 0 0 10px rgba(123, 92, 250, 0); }
 }
 .acp-preview-card__play-overlay--disabled {
   cursor: default;
-  opacity: 0.3;
+  opacity: 0.25;
   pointer-events: none;
+  background: rgba(255, 255, 255, 0.06);
+  border-color: rgba(255, 255, 255, 0.08);
+  box-shadow: none;
+  backdrop-filter: blur(6px);
 }
 .acp-preview-card__timer-badge {
   position: absolute;
