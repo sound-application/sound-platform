@@ -211,7 +211,9 @@ export function AudioCreatePage() {
 
   // ── Step 2: Publish Details ───────────────────────────────────────────────
   const [categoryId, setCategoryId] = useState('');
+  const [categoryOpen, setCategoryOpen] = useState(false);
   const [subcategoryId, setSubcategoryId] = useState('');
+  const [subcategoryOpen, setSubcategoryOpen] = useState(false);
   const [tags, setTags] = useState('');
   const [language, setLanguage] = useState('ar');
   const [languageOpen, setLanguageOpen] = useState(false);
@@ -569,26 +571,42 @@ export function AudioCreatePage() {
             تفاصيل النشر
           </h1>
           <div className="acp-form">
-            {/* Category — chip selector */}
-            <label className="acp-label">
+            {/* Category — glass dropdown */}
+            <div className="acp-label">
               التصنيف
-              <div className="acp-chips">
-                {CATEGORIES.map((c) => (
-                  <button key={c.id} className={`acp-chip ${categoryId === c.id ? 'acp-chip--selected' : ''}`} onClick={() => setCategoryId(c.id)} type="button">{c.label}</button>
-                ))}
+              <div className="acp-glass-dropdown">
+                <button className="acp-glass-dropdown__trigger" onClick={() => { setCategoryOpen(!categoryOpen); setSubcategoryOpen(false); }} type="button">
+                  <span>{categoryId ? CATEGORIES.find((c) => c.id === categoryId)?.label : 'اختر التصنيف...'}</span>
+                  <span className="material-symbols-outlined">{categoryOpen ? 'expand_less' : 'expand_more'}</span>
+                </button>
+                {categoryOpen && (
+                  <div className="acp-glass-dropdown__menu">
+                    {CATEGORIES.map((c) => (
+                      <button key={c.id} className={`acp-glass-dropdown__option ${categoryId === c.id ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setCategoryId(c.id); setCategoryOpen(false); }} type="button">{c.label}</button>
+                    ))}
+                  </div>
+                )}
               </div>
-            </label>
+            </div>
 
-            {/* Subcategory — chips, only when category selected */}
+            {/* Subcategory — glass dropdown, only when category selected */}
             {categoryId && SUBCATEGORIES_BY_CATEGORY[categoryId] && (
-              <label className="acp-label">
+              <div className="acp-label">
                 التصنيف الفرعي
-                <div className="acp-chips">
-                  {SUBCATEGORIES_BY_CATEGORY[categoryId]!.map((sc) => (
-                    <button key={sc.id} className={`acp-chip ${subcategoryId === sc.id ? 'acp-chip--selected' : ''}`} onClick={() => setSubcategoryId(sc.id)} type="button">{sc.label}</button>
-                  ))}
+                <div className="acp-glass-dropdown">
+                  <button className="acp-glass-dropdown__trigger" onClick={() => { setSubcategoryOpen(!subcategoryOpen); setCategoryOpen(false); }} type="button">
+                    <span>{subcategoryId ? SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label : 'اختر التصنيف الفرعي...'}</span>
+                    <span className="material-symbols-outlined">{subcategoryOpen ? 'expand_less' : 'expand_more'}</span>
+                  </button>
+                  {subcategoryOpen && (
+                    <div className="acp-glass-dropdown__menu">
+                      {SUBCATEGORIES_BY_CATEGORY[categoryId]!.map((sc) => (
+                        <button key={sc.id} className={`acp-glass-dropdown__option ${subcategoryId === sc.id ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setSubcategoryId(sc.id); setSubcategoryOpen(false); }} type="button">{sc.label}</button>
+                      ))}
+                    </div>
+                  )}
                 </div>
-              </label>
+              </div>
             )}
 
             <label className="acp-label">
