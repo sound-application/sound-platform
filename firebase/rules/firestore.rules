@@ -722,5 +722,17 @@ service cloud.firestore {
       allow read, update, delete: if false; // moderation system only
     }
 
+    // ----------------------------------------------------------
+    // Phase 8-H.0 — Provider Configs (Backend Registry)
+    // providerConfigs/{featureId}
+    // Stores provider metadata (no secret values).
+    // Cloud Functions read/write via Admin SDK.
+    // All client access DENIED until admin module exists.
+    // ----------------------------------------------------------
+    match /providerConfigs/{featureId} {
+      allow read: if false;   // Admin SDK only
+      allow write: if false;  // Admin SDK only
+    }
+
   }
 }

@@ -12,3 +12,4 @@ export * from './audioHelpers';
 export * from './social';
 export * from './resolver';
 export * from './username';
+export * from './providers';

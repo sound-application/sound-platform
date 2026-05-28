@@ -42,7 +42,10 @@ import * as fs from 'fs';
 import { probeAudio, transcodeToAAC, extractWaveformPeaks } from '../processing/audioProcessor';
 
 // ── Types from shared ────────────────────────────────────────────────────────
-import type { ProcessedAudioMeta, WaveformData, CaptionsProcessing } from '@sound/shared';
+import type { ProcessedAudioMeta, WaveformData } from '@sound/shared';
+
+// ── Provider registry ──────────────────────────────────────────────────────
+import { resolveProvider } from '../helpers/providerRegistry';
 
 export const onAudioContentPublished = onDocumentWritten(
   {
@@ -218,40 +221,44 @@ export const onAudioContentPublished = onDocumentWritten(
             'captionsProcessing.style': data.captionsSetup?.style || 'standard',
           });
 
-          // ── Provider check ─────────────────────────────────────────────
-          // No transcription provider is currently configured.
-          // Mark as pendingProvider with machine-readable error code.
-          // To activate: add provider (e.g. Google Speech-to-Text),
-          // set env vars, and implement transcribeAudio() here.
-          const hasProvider = false; // TODO: check env for provider API key
+          // ── Provider check via registry ─────────────────────────────
+          // Phase 8-H.0: use provider registry instead of hardcoded check.
+          // To activate: seed providerConfigs + set env vars.
+          const providerResult = await resolveProvider('audio.transcription');
 
-          if (!hasProvider) {
-            const captionsUpdate: Partial<CaptionsProcessing> = {
-              status: 'pendingProvider',
-              completedAt: new Date().toISOString(),
-              error: 'مزود النسخ غير متوفر حالياً',
-              errorCode: 'CAPTIONS_PROVIDER_NOT_CONFIGURED',
-            };
-
+          if (!providerResult.available) {
             await docRef.update({
-              'captionsProcessing.status': captionsUpdate.status,
-              'captionsProcessing.completedAt': captionsUpdate.completedAt,
-              'captionsProcessing.error': captionsUpdate.error,
-              'captionsProcessing.errorCode': captionsUpdate.errorCode,
+              'captionsProcessing.status': 'pendingProvider',
+              'captionsProcessing.completedAt': new Date().toISOString(),
+              'captionsProcessing.error': providerResult.errorMessage || 'مزود النسخ غير متوفر حالياً',
+              'captionsProcessing.errorCode': providerResult.errorCode || 'PROVIDER_CONFIG_MISSING',
             });
 
             logger.info(
-              `[8G-captions] ${contentId}: no provider configured. ` +
-              `status=pendingProvider. Audio remains ready.`,
+              `[8G-captions] ${contentId}: provider not available. ` +
+              `status=${providerResult.status}, errorCode=${providerResult.errorCode}. ` +
+              `Audio remains ready.`,
             );
           } else {
             // ── Future: real transcription ──────────────────────────────
+            // Provider is configured. Implement actual transcription here:
             // 1. Read processed audio from Storage
-            // 2. Send to transcription API
+            // 2. Send to providerResult.selectedProvider (e.g. google-stt)
             // 3. Parse segments/cues
             // 4. Write VTT/JSON to audioProcessed/{uid}/{contentId}/captions/
             // 5. Update captionsProcessing.status = 'ready' + captionsAsset
-            logger.info(`[8G-captions] ${contentId}: provider found — transcription not yet implemented.`);
+            logger.info(
+              `[8G-captions] ${contentId}: provider ${providerResult.selectedProvider?.providerId} found ` +
+              `(fallback=${providerResult.isFallback}) — transcription not yet implemented.`,
+            );
+
+            // For now, mark as pendingProvider until transcription code is written
+            await docRef.update({
+              'captionsProcessing.status': 'pendingProvider',
+              'captionsProcessing.completedAt': new Date().toISOString(),
+              'captionsProcessing.error': 'كود التفريغ الصوتي غير مُفعّل بعد',
+              'captionsProcessing.errorCode': 'TRANSCRIPTION_NOT_IMPLEMENTED',
+            });
           }
         } catch (captionsErr) {
           // Captions failure does NOT affect audio processing status
