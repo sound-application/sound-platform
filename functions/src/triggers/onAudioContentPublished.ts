@@ -208,7 +208,17 @@ export const onAudioContentPublished = onDocumentWritten(
       // ── Phase 8-G: Captions pipeline ──────────────────────────────────────
       // Run AFTER audio processing succeeds.
       // Captions failure does NOT change contentProcessingStatus.
-      const captionsRequested = data.captionsProcessing?.status === 'requested';
+
+      // Phase 8-H.1: If creator authored captions, skip provider pipeline entirely.
+      // Creator captions are already set to 'ready' by createAudioContentFromDraft.
+      if (data.captionsData?.segments?.length) {
+        logger.info(
+          `[8G-captions] ${contentId}: creator-authored captions present ` +
+          `(${data.captionsData.segments.length} segments, source=${data.captionsData.source}). ` +
+          `Skipping provider pipeline.`,
+        );
+      } else {
+        const captionsRequested = data.captionsProcessing?.status === 'requested';
 
       if (captionsRequested) {
         logger.info(`[8G-captions] ${contentId}: captions requested, starting pipeline.`);
@@ -277,6 +287,7 @@ export const onAudioContentPublished = onDocumentWritten(
       } else {
         logger.info(`[8G-captions] ${contentId}: captions not requested, skipping.`);
       }
+      } // end else (no creator-authored captions)
 
     } catch (err) {
       // ── Error handling ──────────────────────────────────────────────────

@@ -313,6 +313,62 @@ export interface CaptionsAsset {
   segmentsCount?: number;
 }
 
+// ─── Phase 8-H.1: Creator-Authored Captions ─────────────────────────────────
+//
+// Captions are a creator-controlled content feature first.
+// Provider-generated captions are just one optional future source.
+//
+
+/** How captions were created */
+export type CaptionSource =
+  | 'manual'           // creator typed captions directly
+  | 'uploaded'         // creator uploaded SRT/VTT file
+  | 'autoCue'          // imported from AutoCue script
+  | 'generated'        // AI/provider generated (future)
+  | 'editedGenerated'; // user-edited provider output (future)
+
+/** A single caption segment/cue */
+export interface CaptionSegment {
+  /** Unique segment identifier */
+  id: string;
+  /** Start time in milliseconds — optional (unsynced if missing) */
+  startMs?: number;
+  /** End time in milliseconds — optional (unsynced if missing) */
+  endMs?: number;
+  /** Caption text content */
+  text: string;
+  /** Speaker label (optional) */
+  speaker?: string;
+  /** Segment-level style override (optional) */
+  style?: string;
+}
+
+/**
+ * Creator-authored captions data.
+ * Stored inline in drafts and published contentItems.
+ * Does NOT depend on provider registry.
+ */
+export interface CaptionsData {
+  /** How these captions were created */
+  source: CaptionSource;
+  /** Language of the captions */
+  language: string;
+  /** Display style preference */
+  style?: 'standard' | 'karaoke' | 'subtitles';
+  /** Caption segments/cues */
+  segments: CaptionSegment[];
+  /** Original raw text (manual entry or unparsed file content) */
+  rawText?: string;
+  /** Original filename for uploaded captions */
+  uploadedFileName?: string;
+  /** Format of uploaded file */
+  uploadedFormat?: 'srt' | 'vtt' | 'json';
+  /** ISO timestamp when captions were first created */
+  createdAt: string;
+  /** ISO timestamp when captions were last updated */
+  updatedAt: string;
+}
+
 // ─── Owner Snapshot ──────────────────────────────────────────────────────────
 //
 // Denormalized from publicProfiles/{uid} at publish time.
@@ -450,6 +506,9 @@ export interface AudioContentDoc {
   /** Captions asset metadata — null until real transcription produces output */
   captionsAsset?: CaptionsAsset;
 
+  /** Creator-authored captions data (Phase 8-H.1) — inline, no provider needed */
+  captionsData?: CaptionsData;
+
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 
   listensCount: number;
@@ -529,6 +588,8 @@ export interface AudioDraftDoc {
   publishToggles?: PublishToggles;
   coverAsset?: CoverAsset;
   captionsSetup?: CaptionsSetup;
+  /** Creator-authored captions data (Phase 8-H.1) */
+  captionsData?: CaptionsData;
   autoCue?: AutoCueConfig;
 
   /** Whether this is child-directed content (Phase 8-D.2) */
@@ -614,6 +675,8 @@ export interface UpdateAudioDraftRequest {
   publishToggles?: PublishToggles;
   coverAsset?: CoverAsset;
   captionsSetup?: CaptionsSetup;
+  /** Creator-authored captions data (Phase 8-H.1) */
+  captionsData?: CaptionsData;
   autoCue?: AutoCueConfig;
   isChildContent?: boolean;
   placementFeed?: PlacementFeed;

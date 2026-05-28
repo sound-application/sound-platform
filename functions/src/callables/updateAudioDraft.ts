@@ -132,6 +132,31 @@ export const updateAudioDraft = functions
       if (data.publishToggles !== undefined)   update.publishToggles = data.publishToggles;
       if (data.coverAsset !== undefined)       update.coverAsset = data.coverAsset;
       if (data.captionsSetup !== undefined)    update.captionsSetup = data.captionsSetup;
+
+      // Phase 8-H.1: Creator-authored captions data
+      if (data.captionsData !== undefined) {
+        if (data.captionsData === null) {
+          // Allow clearing captions
+          update.captionsData = admin.firestore.FieldValue.delete();
+        } else {
+          const cd = data.captionsData;
+          // Basic validation
+          const validSources = ['manual', 'uploaded', 'autoCue', 'generated', 'editedGenerated'];
+          if (!cd.source || !validSources.includes(cd.source)) {
+            throw new functions.https.HttpsError('invalid-argument', 'Invalid captionsData.source.');
+          }
+          if (!Array.isArray(cd.segments) || cd.segments.length > 500) {
+            throw new functions.https.HttpsError('invalid-argument', 'captionsData.segments must be an array (max 500).');
+          }
+          for (const seg of cd.segments) {
+            if (typeof seg.text !== 'string' || seg.text.length > 1000) {
+              throw new functions.https.HttpsError('invalid-argument', 'Segment text too long (max 1000 chars).');
+            }
+          }
+          update.captionsData = cd;
+        }
+      }
+
       if (data.autoCue !== undefined)          update.autoCue = data.autoCue;
       if (data.isChildContent !== undefined)  update.isChildContent = data.isChildContent;
       if (data.placementFeed !== undefined)   update.placementFeed = data.placementFeed;

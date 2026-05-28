@@ -37,7 +37,7 @@
 
 import * as functions from 'firebase-functions';
 import * as admin from 'firebase-admin';
-import type { AudioContentDoc } from '@sound/shared';
+import type { AudioContentDoc, CaptionSegment, CaptionSource } from '@sound/shared';
 
 // ── Admin references ─────────────────────────────────────────────────────────
 const db = admin.firestore();
@@ -56,7 +56,9 @@ export interface GetAudioCaptionsResponse {
   error?: string;
   /** Machine-readable error code */
   errorCode?: string;
-  /** Captions asset metadata (when ready) */
+  /** How captions were created (Phase 8-H.1) */
+  source?: CaptionSource;
+  /** Captions asset metadata (when provider-generated and ready) */
   captionsAsset?: {
     format: string;
     language?: string;
@@ -64,7 +66,12 @@ export interface GetAudioCaptionsResponse {
     provider?: string;
     segmentsCount?: number;
   };
-  // Future: segments/cues data for inline rendering
+  /** Creator-authored captions data (Phase 8-H.1) */
+  captionsData?: {
+    source: CaptionSource;
+    segments: CaptionSegment[];
+    rawText?: string;
+  };
 }
 
 // ─── Callable ────────────────────────────────────────────────────────────────
@@ -123,7 +130,30 @@ export const getAudioCaptions = functions
         );
       }
 
-      // ── 6. Return captions status ──────────────────────────────────────
+      // ── 6. Return captions ──────────────────────────────────────────────
+
+      // Phase 8-H.1: Creator-authored captions take priority
+      if (content.captionsData?.segments?.length) {
+        functions.logger.info(
+          `[getAudioCaptions] Returning creator-authored captions for ${data.contentId}`,
+          { uid, source: content.captionsData.source, segments: content.captionsData.segments.length },
+        );
+
+        return {
+          contentId: data.contentId,
+          status: 'ready',
+          language: content.captionsData.language,
+          style: content.captionsData.style,
+          source: content.captionsData.source,
+          captionsData: {
+            source: content.captionsData.source,
+            segments: content.captionsData.segments,
+            rawText: content.captionsData.rawText,
+          },
+        };
+      }
+
+      // Fall through to provider-pipeline status
       const captionsProcessing = content.captionsProcessing;
       const captionsAsset = content.captionsAsset;
 
@@ -152,7 +182,6 @@ export const getAudioCaptions = functions
           provider: captionsAsset.provider,
           segmentsCount: captionsAsset.segmentsCount,
         };
-        // Future: read captions file from Storage and return segments inline
       }
 
       functions.logger.info(

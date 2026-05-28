@@ -223,6 +223,7 @@ export function createAudioContentFromDraft(
     publishToggles: draft.publishToggles,
     coverAsset: draft.coverAsset,
     captionsSetup: draft.captionsSetup,
+    captionsData: draft.captionsData,
     autoCue: draft.autoCue,
 
     // Phase 8-D.2 fields
@@ -238,9 +239,15 @@ export function createAudioContentFromDraft(
     // Phase 8-E — Processing pipeline initial state
     contentProcessingStatus: 'uploaded',
     waveform: { status: 'pending', synthetic: false },
+    // Phase 8-H.1: If creator authored captions, mark ready immediately.
+    // Provider path only when captionsSetup.enabled but no captionsData.
     captionsProcessing: {
-      status: draft.captionsSetup?.enabled ? 'requested' : 'notRequested',
-      language: draft.captionsSetup?.language,
+      status: draft.captionsData?.segments?.length
+        ? 'ready'
+        : draft.captionsSetup?.enabled
+          ? 'requested'
+          : 'notRequested',
+      language: draft.captionsData?.language || draft.captionsSetup?.language,
     },
     // processedAudio: undefined — no transcoded output until real pipeline runs
 

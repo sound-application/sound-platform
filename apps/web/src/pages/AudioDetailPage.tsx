@@ -633,41 +633,83 @@ export function AudioDetailPage() {
       )}
 
       {/* ── 7. Captions Preview ───────────────────────────────── */}
-      {item.captionsSetup?.enabled && (
+      {(item.captionsData?.segments?.length || item.captionsSetup?.enabled) && (
         <div className="adp-glass-card adp-captions">
           <h3 className="adp-section-title">النص</h3>
-          {captionsStatus === 'requested' || captionsStatus === 'queued' || captionsStatus === 'processing' ? (
-            <p className="adp-captions__quote adp-captions__quote--pending">
-              <span className="material-symbols-outlined">pending</span>
-              {captionsStatus === 'processing' ? 'جاري إنشاء النص' : 'في قائمة الانتظار'}
-            </p>
-          ) : captionsStatus === 'pendingProvider' ? (
-            <div className="adp-captions__quote adp-captions__quote--pending-provider">
-              <span className="material-symbols-outlined">schedule</span>
-              <div>
-                <strong>مزود النسخ غير مفعل حالياً</strong>
-                <br />
-                <span className="adp-captions__sub">سيتم إنشاء النص تلقائياً بعد تفعيل مزود التفريغ الصوتي.</span>
-              </div>
-            </div>
-          ) : captionsStatus === 'failed' ? (
-            <p className="adp-captions__quote adp-captions__quote--failed">
-              <span className="material-symbols-outlined">error_outline</span>
-              تعذر إنشاء النص
-            </p>
-          ) : captionsStatus === 'ready' ? (
+
+          {/* Phase 8-H.1: Creator-authored captions take priority */}
+          {item.captionsData?.segments?.length ? (
             <>
-              <p className="adp-captions__quote adp-captions__quote--ready">
-                <span className="material-symbols-outlined">subtitles</span>
-                النص جاهز
-              </p>
-              <button className="adp-captions__link">عرض النص الكامل</button>
+              <div className="adp-captions__header">
+                <span className={`adp-captions__source-chip adp-captions__source-chip--${item.captionsData.source}`}>
+                  <span className="material-symbols-outlined">
+                    {item.captionsData.source === 'manual' ? 'edit_note'
+                      : item.captionsData.source === 'uploaded' ? 'upload_file'
+                      : item.captionsData.source === 'autoCue' ? 'teleprompter'
+                      : item.captionsData.source === 'generated' ? 'auto_awesome'
+                      : 'edit'}
+                  </span>
+                  {item.captionsData.source === 'manual' ? 'نص يدوي'
+                    : item.captionsData.source === 'uploaded' ? 'ملف مرفوع'
+                    : item.captionsData.source === 'autoCue' ? 'نص الملقن'
+                    : item.captionsData.source === 'generated' ? 'توليد تلقائي'
+                    : 'نص معدّل'}
+                </span>
+                <span className="adp-captions__count">
+                  {item.captionsData.segments.length} مقطع
+                  {item.captionsData.segments[0]?.startMs !== undefined ? '' : ' · غير متزامن'}
+                </span>
+              </div>
+              <div className="adp-captions__segments">
+                {item.captionsData.segments.map((seg) => (
+                  <div key={seg.id} className="adp-captions__segment">
+                    {seg.startMs !== undefined && (
+                      <span className="adp-captions__seg-time">
+                        {Math.floor(seg.startMs / 1000)}s
+                      </span>
+                    )}
+                    <span className="adp-captions__seg-text">{seg.text}</span>
+                  </div>
+                ))}
+              </div>
             </>
           ) : (
-            <p className="adp-captions__quote adp-captions__quote--pending">
-              <span className="material-symbols-outlined">pending</span>
-              في انتظار المعالجة...
-            </p>
+            /* Fall through to provider pipeline status */
+            <>
+              {captionsStatus === 'requested' || captionsStatus === 'queued' || captionsStatus === 'processing' ? (
+                <p className="adp-captions__quote adp-captions__quote--pending">
+                  <span className="material-symbols-outlined">pending</span>
+                  {captionsStatus === 'processing' ? 'جاري إنشاء النص' : 'في قائمة الانتظار'}
+                </p>
+              ) : captionsStatus === 'pendingProvider' ? (
+                <div className="adp-captions__quote adp-captions__quote--pending-provider">
+                  <span className="material-symbols-outlined">schedule</span>
+                  <div>
+                    <strong>مزود النسخ غير مفعل حالياً</strong>
+                    <br />
+                    <span className="adp-captions__sub">سيتم إنشاء النص تلقائياً بعد تفعيل مزود التفريغ الصوتي.</span>
+                  </div>
+                </div>
+              ) : captionsStatus === 'failed' ? (
+                <p className="adp-captions__quote adp-captions__quote--failed">
+                  <span className="material-symbols-outlined">error_outline</span>
+                  تعذر إنشاء النص
+                </p>
+              ) : captionsStatus === 'ready' ? (
+                <>
+                  <p className="adp-captions__quote adp-captions__quote--ready">
+                    <span className="material-symbols-outlined">subtitles</span>
+                    النص جاهز
+                  </p>
+                  <button className="adp-captions__link">عرض النص الكامل</button>
+                </>
+              ) : (
+                <p className="adp-captions__quote adp-captions__quote--pending">
+                  <span className="material-symbols-outlined">pending</span>
+                  في انتظار المعالجة...
+                </p>
+              )}
+            </>
           )}
         </div>
       )}

@@ -48,11 +48,15 @@ import type {
   AgeSuitability,
   CoverAsset,
   CaptionsSetup,
+  CaptionsData,
+  CaptionSegment,
+  CaptionSource,
   AutoCueConfig,
   PublishToggles,
   PlacementFeed,
   PlaylistIntent,
 } from '@sound/shared';
+import { parseSRT, parseVTT, splitTextToSegments } from '../../utils/captionsParsers';
 import type { WorldId } from '@sound/shared';
 import '../Page.css';
 import './AudioCreatePage.css';
@@ -243,6 +247,12 @@ export function AudioCreatePage() {
   const [captionLang, setCaptionLang] = useState('ar');
   const [captionLangOpen, setCaptionLangOpen] = useState(false);
   const [captionStyle, setCaptionStyle] = useState<'standard' | 'karaoke' | 'subtitles'>('standard');
+  // Phase 8-H.1: Creator-authored captions
+  const [captionSource, setCaptionSource] = useState<CaptionSource>('manual');
+  const [captionSegments, setCaptionSegments] = useState<CaptionSegment[]>([]);
+  const [captionRawText, setCaptionRawText] = useState('');
+  const [captionUploadedFile, setCaptionUploadedFile] = useState('');
+  const captionFileRef = useRef<HTMLInputElement>(null);
 
   // ── Step 5: AutoCue ───────────────────────────────────────────────────────
   const [autoCueEnabled, setAutoCueEnabled] = useState(false);
@@ -359,6 +369,22 @@ export function AudioCreatePage() {
         publishToggles,
         coverAsset: coverAsset ?? undefined,
         captionsSetup,
+        // Phase 8-H.1: Include creator-authored captions data
+        captionsData: captionsEnabled && captionSegments.length > 0
+          ? {
+              source: captionSource,
+              language: captionLang,
+              style: captionStyle,
+              segments: captionSegments,
+              rawText: captionRawText || undefined,
+              uploadedFileName: captionUploadedFile || undefined,
+              uploadedFormat: captionUploadedFile?.endsWith('.srt') ? 'srt' as const
+                : captionUploadedFile?.endsWith('.vtt') ? 'vtt' as const
+                : undefined,
+              createdAt: new Date().toISOString(),
+              updatedAt: new Date().toISOString(),
+            } as CaptionsData
+          : undefined,
         autoCue: autoCueConfig,
         currentStep: String(nextStep),
       };
@@ -854,13 +880,169 @@ export function AudioCreatePage() {
           <div className="acp-form">
             <label className="acp-label acp-label--row acp-toggle-main">
               <input type="checkbox" checked={captionsEnabled} onChange={(e) => setCaptionsEnabled(e.target.checked)} />
-              <span>تفعيل الترجمة التلقائية</span>
+              <span>تفعيل النصوص / الترجمة</span>
             </label>
             {captionsEnabled && (
               <>
-                {/* Caption language — glass dropdown */}
+                {/* Caption source mode selector */}
+                <label className="acp-label">مصدر النص</label>
+                <div className="acp-chips">
+                  {([
+                    { k: 'manual' as CaptionSource, l: 'كتابة يدوية', icon: 'edit_note' },
+                    { k: 'uploaded' as CaptionSource, l: 'رفع ملف', icon: 'upload_file' },
+                    { k: 'autoCue' as CaptionSource, l: 'استيراد من الملقن', icon: 'teleprompter' },
+                    { k: 'generated' as CaptionSource, l: 'توليد تلقائي', icon: 'auto_awesome' },
+                  ]).map((s) => (
+                    <button
+                      key={s.k}
+                      className={`acp-chip ${captionSource === s.k ? 'acp-chip--selected' : ''} ${s.k === 'generated' ? 'acp-chip--disabled' : ''}`}
+                      onClick={() => s.k !== 'generated' && setCaptionSource(s.k)}
+                      type="button"
+                      disabled={s.k === 'generated'}
+                    >
+                      <span className="material-symbols-outlined acp-chip__icon">{s.icon}</span>
+                      {s.l}
+                      {s.k === 'generated' && <span className="acp-badge acp-badge--soon">قريباً</span>}
+                    </button>
+                  ))}
+                </div>
+
+                {/* ── Manual mode ── */}
+                {captionSource === 'manual' && (
+                  <div className="acp-captions-editor">
+                    <label className="acp-label">اكتب النص (كل سطر = مقطع واحد)</label>
+                    <textarea
+                      className="acp-textarea acp-textarea--captions"
+                      rows={8}
+                      dir="auto"
+                      placeholder="اكتب النص هنا...
+كل سطر سيصبح مقطع منفصل"
+                      value={captionRawText}
+                      onChange={(e) => {
+                        setCaptionRawText(e.target.value);
+                        setCaptionSegments(splitTextToSegments(e.target.value));
+                      }}
+                    />
+                    {captionSegments.length > 0 && (
+                      <p className="acp-hint">
+                        <span className="material-symbols-outlined acp-hint__icon">segment</span>
+                        {captionSegments.length} مقطع — بدون توقيت (نص غير متزامن)
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Upload mode ── */}
+                {captionSource === 'uploaded' && (
+                  <div className="acp-captions-editor">
+                    <label className="acp-label">ارفع ملف ترجمة (SRT أو VTT)</label>
+                    <input
+                      ref={captionFileRef}
+                      type="file"
+                      accept=".srt,.vtt"
+                      className="acp-file-input"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (!file) return;
+                        setCaptionUploadedFile(file.name);
+                        const reader = new FileReader();
+                        reader.onload = () => {
+                          const text = reader.result as string;
+                          setCaptionRawText(text);
+                          const ext = file.name.toLowerCase();
+                          if (ext.endsWith('.srt')) {
+                            setCaptionSegments(parseSRT(text));
+                          } else if (ext.endsWith('.vtt')) {
+                            setCaptionSegments(parseVTT(text));
+                          } else {
+                            setCaptionSegments(splitTextToSegments(text));
+                          }
+                        };
+                        reader.readAsText(file);
+                      }}
+                    />
+                    {captionUploadedFile && (
+                      <p className="acp-hint">
+                        <span className="material-symbols-outlined acp-hint__icon">description</span>
+                        {captionUploadedFile}
+                      </p>
+                    )}
+                    {captionSegments.length > 0 && (
+                      <div className="acp-captions-preview">
+                        <p className="acp-hint">
+                          <span className="material-symbols-outlined acp-hint__icon">segment</span>
+                          {captionSegments.length} مقطع
+                          {captionSegments[0]?.startMs !== undefined ? ' — مع توقيت' : ' — بدون توقيت'}
+                        </p>
+                        <div className="acp-captions-preview__list">
+                          {captionSegments.slice(0, 5).map((seg) => (
+                            <div key={seg.id} className="acp-captions-preview__seg">
+                              {seg.startMs !== undefined && (
+                                <span className="acp-captions-preview__time">
+                                  {Math.floor(seg.startMs / 1000)}s
+                                </span>
+                              )}
+                              <span className="acp-captions-preview__text">{seg.text}</span>
+                            </div>
+                          ))}
+                          {captionSegments.length > 5 && (
+                            <p className="acp-hint">و{captionSegments.length - 5} مقطع آخر...</p>
+                          )}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                )}
+
+                {/* ── AutoCue import mode ── */}
+                {captionSource === 'autoCue' && (
+                  <div className="acp-captions-editor">
+                    {scriptText ? (
+                      <>
+                        <p className="acp-hint">
+                          <span className="material-symbols-outlined acp-hint__icon">teleprompter</span>
+                          يمكنك استيراد نص الملقن كنص ترجمة
+                        </p>
+                        <button
+                          className="acp-btn acp-btn--ghost"
+                          type="button"
+                          onClick={() => {
+                            setCaptionRawText(scriptText);
+                            setCaptionSegments(splitTextToSegments(scriptText));
+                          }}
+                        >
+                          <span className="material-symbols-outlined">content_copy</span>
+                          استيراد نص الملقن
+                        </button>
+                        {captionSegments.length > 0 && (
+                          <p className="acp-hint">
+                            <span className="material-symbols-outlined acp-hint__icon">check_circle</span>
+                            تم استيراد {captionSegments.length} مقطع (بدون توقيت)
+                          </p>
+                        )}
+                      </>
+                    ) : (
+                      <p className="acp-hint">
+                        <span className="material-symbols-outlined acp-hint__icon">info</span>
+                        لا يوجد نص ملقن. أضف نص الملقن في الخطوة 5 أولاً.
+                      </p>
+                    )}
+                  </div>
+                )}
+
+                {/* ── Generated mode (gated) ── */}
+                {captionSource === 'generated' && (
+                  <div className="acp-captions-editor">
+                    <p className="acp-hint">
+                      <span className="material-symbols-outlined acp-hint__icon">auto_awesome</span>
+                      قريباً — يتطلب مزود تفريغ صوتي
+                    </p>
+                  </div>
+                )}
+
+                {/* Language + Style selectors (shared across modes) */}
                 <div className="acp-label">
-                  لغة الترجمة
+                  لغة النص
                   <div className="acp-glass-dropdown">
                     <button className="acp-glass-dropdown__trigger" onClick={() => setCaptionLangOpen(!captionLangOpen)} type="button">
                       <span>{LANGUAGES.find((l) => l.code === captionLang)?.label}</span>
@@ -885,10 +1067,6 @@ export function AudioCreatePage() {
                 </label>
               </>
             )}
-            <p className="acp-hint">
-              <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-              مراجعة النص الفعلي ستتم بعد تسجيل/رفع الصوت.
-            </p>
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(3)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
