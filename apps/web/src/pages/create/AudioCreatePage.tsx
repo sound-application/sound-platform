@@ -1211,7 +1211,7 @@ export function AudioCreatePage() {
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> رجوع
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => setStep(9)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">skip_next</span> تخطي
+                <span className="material-symbols-outlined" aria-hidden="true">skip_previous</span> تخطي
               </button>
             </div>
           </div>
@@ -1321,7 +1321,7 @@ export function AudioCreatePage() {
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> رجوع
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => setStep(10)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">skip_next</span> تخطي
+                <span className="material-symbols-outlined" aria-hidden="true">skip_previous</span> تخطي
               </button>
             </div>
           </div>
@@ -1470,7 +1470,7 @@ export function AudioCreatePage() {
               <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> رجوع
             </button>
             <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(11)} disabled={saving} type="button">
-              {saving ? <><span className="acp-spinner" aria-hidden="true" /> حفظ...</> : <><span className="material-symbols-outlined" aria-hidden="true">send</span> تأكيد النشر</>}
+              {saving ? <><span className="acp-spinner" aria-hidden="true" /> حفظ...</> : <><span className="material-symbols-outlined" aria-hidden="true">publish</span> تأكيد النشر</>}
             </button>
           </div>
         </section>
