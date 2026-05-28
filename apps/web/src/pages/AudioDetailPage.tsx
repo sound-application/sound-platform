@@ -270,7 +270,7 @@ export function AudioDetailPage() {
           <span className="material-symbols-outlined adp-error__icon">error</span>
           <h2>{error || 'المحتوى غير موجود'}</h2>
           <button className="adp-btn adp-btn--ghost" onClick={() => navigate(-1)}>
-            <span className="material-symbols-outlined">arrow_forward</span> رجوع
+            <span className="material-symbols-outlined">arrow_back</span> رجوع
           </button>
         </div>
       </main>
@@ -590,7 +590,7 @@ export function AudioDetailPage() {
       {/* ── Back ──────────────────────────────────────────────── */}
       <div style={{ padding: '0 1rem' }}>
         <button className="adp-btn adp-btn--ghost" onClick={() => navigate(-1)}>
-          <span className="material-symbols-outlined">arrow_forward</span> رجوع
+          <span className="material-symbols-outlined">arrow_back</span> رجوع
         </button>
       </div>
     </main>
