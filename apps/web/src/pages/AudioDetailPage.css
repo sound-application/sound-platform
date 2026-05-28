@@ -15,8 +15,6 @@
   max-width: 640px;
   margin-inline: auto;
   width: 100%;
-  background: #171309;
-  font-family: 'Tajawal', sans-serif;
 }
 
 /* ─── Loading ─────────────────────────────────────────────────────────────── */
@@ -35,7 +33,7 @@
   width: 1.5rem;
   height: 1.5rem;
   border: 2.5px solid rgba(255,255,255,0.1);
-  border-top-color: #facc15;
+  border-top-color: var(--color-brand);
   border-radius: 50%;
   animation: adp-spin 0.6s linear infinite;
 }
@@ -77,11 +75,11 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(23,19,9,0.8);
+  background: var(--color-bg-elevated);
 }
 .adp-hero__cover--default .material-symbols-outlined {
   font-size: 5rem;
-  color: #facc15;
+  color: var(--color-brand);
   opacity: 0.2;
 }
 
@@ -91,8 +89,8 @@
   inset: 0;
   background: linear-gradient(
     to top,
-    rgba(23,19,9,0.85) 0%,
-    rgba(23,19,9,0.3) 40%,
+    var(--color-bg) 0%,
+    rgba(12,12,14,0.3) 40%,
     transparent 70%
   );
   pointer-events: none;
@@ -114,7 +112,7 @@
 .adp-hero__waveform-bar {
   width: 4px;
   border-radius: 2px;
-  background: #5de6ff;
+  background: var(--color-brand-light);
   animation: adp-wave 1.4s ease-in-out infinite;
 }
 .adp-hero__waveform-bar:nth-child(1) { height: 30%; animation-delay: 0s; }
@@ -142,12 +140,11 @@
   gap: 0.3rem;
   padding: 0.3rem 0.65rem;
   border-radius: 999px;
-  background: rgba(250,204,21,0.15);
-  border: 1px solid rgba(250,204,21,0.25);
-  color: #facc15;
+  background: var(--color-brand-dim);
+  border: 1px solid rgba(124,58,237,0.25);
+  color: var(--color-brand);
   font-size: 0.7rem;
   font-weight: 600;
-  font-family: 'Tajawal', sans-serif;
   backdrop-filter: blur(8px);
   -webkit-backdrop-filter: blur(8px);
 }
@@ -166,23 +163,23 @@
   height: 80px;
   border-radius: 50%;
   border: none;
-  background: rgba(250,204,21,0.9);
-  color: #171309;
+  background: var(--color-brand);
+  color: var(--color-bg);
   display: flex;
   align-items: center;
   justify-content: center;
   cursor: pointer;
   z-index: 2;
   box-shadow:
-    0 0 30px rgba(250,204,21,0.4),
-    0 0 60px rgba(250,204,21,0.15);
+    0 0 30px rgba(124,58,237,0.4),
+    0 0 60px rgba(124,58,237,0.15);
   transition: all 0.2s ease;
 }
 .adp-hero__play:hover {
   transform: translateX(-50%) scale(1.06);
   box-shadow:
-    0 0 40px rgba(250,204,21,0.55),
-    0 0 80px rgba(250,204,21,0.2);
+    0 0 40px rgba(124,58,237,0.55),
+    0 0 80px rgba(124,58,237,0.2);
 }
 .adp-hero__play:active { transform: translateX(-50%) scale(0.96); }
 .adp-hero__play .material-symbols-outlined {
@@ -190,16 +187,16 @@
   font-variation-settings: 'FILL' 1;
 }
 .adp-hero__play--loading {
-  background: rgba(250,204,21,0.3);
+  background: var(--color-brand-dim);
   cursor: default;
-  box-shadow: 0 0 20px rgba(250,204,21,0.15);
+  box-shadow: 0 0 20px rgba(124,58,237,0.15);
 }
 
 .adp-hero__play-spinner {
   width: 28px;
   height: 28px;
-  border: 3px solid rgba(23,19,9,0.25);
-  border-top-color: #171309;
+  border: 3px solid rgba(12,12,14,0.25);
+  border-top-color: var(--color-bg);
   border-radius: 50%;
   animation: adp-spin 0.6s linear infinite;
 }
@@ -214,7 +211,7 @@
   margin: 0;
   font-size: 1.5rem;
   font-weight: 700;
-  color: #facc15;
+  color: var(--color-text-primary);
   line-height: 1.4;
 }
 
@@ -261,13 +258,13 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: rgba(250,204,21,0.1);
-  border: 1.5px solid rgba(255,255,255,0.12);
+  background: var(--color-brand-dim);
+  border: 1.5px solid var(--color-border);
   flex-shrink: 0;
 }
 .adp-creator__avatar--default .material-symbols-outlined {
   font-size: 1.5rem;
-  color: #facc15;
+  color: var(--color-brand);
   opacity: 0.5;
 }
 
@@ -324,7 +321,7 @@
   top: 0;
   right: 0;
   height: 100%;
-  background: #facc15;
+  background: var(--color-brand);
   border-radius: 2px;
   transition: width 0.1s linear;
 }
@@ -336,8 +333,8 @@
   width: 12px;
   height: 12px;
   border-radius: 50%;
-  background: #facc15;
-  box-shadow: 0 0 8px rgba(250,204,21,0.4);
+  background: var(--color-brand);
+  box-shadow: 0 0 8px rgba(124,58,237,0.4);
   opacity: 0;
   transition: opacity 0.15s ease;
 }
@@ -386,18 +383,18 @@
 .adp-player__btn--main {
   width: 80px;
   height: 80px;
-  background: #facc15;
-  color: #171309;
+  background: var(--color-brand);
+  color: var(--color-bg);
   box-shadow:
-    0 0 30px rgba(250,204,21,0.35),
-    0 0 60px rgba(250,204,21,0.12);
+    0 0 30px rgba(124,58,237,0.35),
+    0 0 60px rgba(124,58,237,0.12);
 }
 .adp-player__btn--main:hover {
   transform: scale(1.06);
   box-shadow:
-    0 0 40px rgba(250,204,21,0.5),
-    0 0 80px rgba(250,204,21,0.18);
-  color: #171309;
+    0 0 40px rgba(124,58,237,0.5),
+    0 0 80px rgba(124,58,237,0.18);
+  color: var(--color-bg);
 }
 .adp-player__btn--main:active { transform: scale(0.96); }
 .adp-player__btn--main .material-symbols-outlined {
@@ -406,16 +403,16 @@
 }
 
 .adp-player__btn--main-loading {
-  background: rgba(250,204,21,0.3);
-  box-shadow: 0 0 15px rgba(250,204,21,0.1);
+  background: var(--color-brand-dim);
+  box-shadow: 0 0 15px rgba(124,58,237,0.1);
   cursor: default;
 }
 
 .adp-player__btn-spinner {
   width: 24px;
   height: 24px;
-  border: 3px solid rgba(23,19,9,0.2);
-  border-top-color: #171309;
+  border: 3px solid rgba(12,12,14,0.2);
+  border-top-color: var(--color-bg);
   border-radius: 50%;
   animation: adp-spin 0.6s linear infinite;
 }
@@ -513,16 +510,14 @@
   color: rgba(255,255,255,0.85);
 }
 .adp-action .material-symbols-outlined { font-size: 1.3rem; }
-.adp-action--secondary { color: #5de6ff; }
-.adp-action--secondary:hover { color: #33e4ff; }
+.adp-action--secondary { color: var(--color-brand-light); }
+.adp-action--secondary:hover { color: var(--color-brand); }
 
 /* ─── Glass Card ──────────────────────────────────────────────────────────── */
 
 .adp-glass-card {
-  background: rgba(23,19,9,0.6);
-  backdrop-filter: blur(20px);
-  -webkit-backdrop-filter: blur(20px);
-  border: 1px solid rgba(255,255,255,0.1);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
   border-radius: 12px;
   padding: 1rem;
   margin: 0 1rem;
@@ -557,14 +552,14 @@
   font-style: italic;
   color: rgba(255,255,255,0.55);
   line-height: 1.6;
-  border-right: 3px solid #5de6ff;
+  border-right: 3px solid var(--color-brand-light);
   padding-right: 0.75rem;
 }
 .adp-captions__link {
   display: inline-block;
   margin-top: 0.5rem;
   font-size: 0.72rem;
-  color: #5de6ff;
+  color: var(--color-brand-light);
   cursor: pointer;
   border: none;
   background: none;
