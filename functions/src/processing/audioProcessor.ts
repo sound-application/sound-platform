@@ -3,6 +3,7 @@
  * ================================
  * Phase:   8-F (Real Audio Processing Worker)
  * Created: 2026-05-28
+ * Updated: 2026-05-28 — fix probeAudio stderr parsing
  *
  * Wraps FFmpeg via child_process.spawn using the ffmpeg-static binary.
  * No fluent-ffmpeg — explicit command args for full control and logging.
@@ -47,11 +48,10 @@ export interface TranscodeResult {
   loudnessLufs?: number;
 }
 
-// ── Helper: run FFmpeg/ffprobe as child process ──────────────────────────────
+// ── Helper: run FFmpeg as child process (strict — rejects on non-zero) ───────
 
 function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    // Log command args (safe — no signed URLs or secrets in local file paths)
     logger.info('[audioProcessor] FFmpeg command:', {
       binary: path.basename(ffmpegPath),
       args: args.map(a => a.startsWith('/tmp') ? '/tmp/***' : a),
@@ -69,7 +69,7 @@ function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> 
       if (code === 0) {
         resolve({ stdout, stderr });
       } else {
-        const safeStderr = stderr.slice(0, 2000); // truncate for logging
+        const safeStderr = stderr.slice(0, 2000);
         reject(new Error(`FFmpeg exited with code ${code}: ${safeStderr}`));
       }
     });
@@ -80,56 +80,90 @@ function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> 
   });
 }
 
+// ── Helper: run FFmpeg and return stdout/stderr regardless of exit code ──────
+// Used by probeAudio where ffmpeg always exits non-zero.
+
+function runFFmpegRaw(args: string[]): Promise<{ stdout: string; stderr: string; exitCode: number | null }> {
+  return new Promise((resolve, reject) => {
+    logger.info('[audioProcessor] FFmpeg probe command:', {
+      binary: path.basename(ffmpegPath),
+      args: args.map(a => a.startsWith('/tmp') ? '/tmp/***' : a),
+    });
+
+    const proc = spawn(ffmpegPath, args, { stdio: ['pipe', 'pipe', 'pipe'] });
+
+    let stdout = '';
+    let stderr = '';
+
+    proc.stdout.on('data', (chunk: Buffer) => { stdout += chunk.toString(); });
+    proc.stderr.on('data', (chunk: Buffer) => { stderr += chunk.toString(); });
+
+    proc.on('close', (code) => {
+      resolve({ stdout, stderr, exitCode: code });
+    });
+
+    proc.on('error', (err) => {
+      reject(new Error(`FFmpeg spawn error: ${err.message}`));
+    });
+  });
+}
+
 // ── probeAudio ───────────────────────────────────────────────────────────────
 /**
- * Uses ffprobe (via ffmpeg -i) to extract audio metadata.
- * ffmpeg-static only ships ffmpeg, not ffprobe, so we parse
- * the stderr output from `ffmpeg -i <file> -f null -`.
+ * Extract audio metadata using `ffmpeg -i <file>` (no output).
+ *
+ * ffmpeg-static only ships ffmpeg, not ffprobe.
+ * `ffmpeg -i <file>` with no output always exits code 1 but prints
+ * all container/stream metadata to stderr. We parse that stderr.
+ *
+ * IMPORTANT: Do NOT use `-f null -` — that makes FFmpeg actually decode
+ * the file and may exit 0, returning no metadata in the catch path.
  */
 export async function probeAudio(inputPath: string): Promise<AudioProbeResult> {
-  try {
-    await runFFmpeg(['-i', inputPath, '-f', 'null', '-']);
-  } catch (err) {
-    // ffmpeg -i with -f null always exits non-zero for probe.
-    // We parse the stderr for metadata. Re-throw only if truly broken.
-    const msg = err instanceof Error ? err.message : String(err);
+  // ffmpeg -i <file> — always exits 1, prints metadata to stderr
+  const { stderr, exitCode } = await runFFmpegRaw(['-i', inputPath]);
 
-    // Extract duration: "Duration: HH:MM:SS.ms"
-    const durMatch = msg.match(/Duration:\s*(\d+):(\d+):(\d+)\.(\d+)/);
-    if (!durMatch) {
-      throw new Error(`Cannot probe audio: no duration found. ${msg.slice(0, 500)}`);
-    }
+  logger.info('[audioProcessor] Probe stderr length:', {
+    stderrLength: stderr.length,
+    exitCode,
+    stderrPreview: stderr.slice(0, 500),
+  });
 
-    const hours = parseInt(durMatch[1]!, 10);
-    const minutes = parseInt(durMatch[2]!, 10);
-    const seconds = parseInt(durMatch[3]!, 10);
-    const centiseconds = parseInt(durMatch[4]!, 10);
-    const durationMs = ((hours * 3600 + minutes * 60 + seconds) * 1000) + (centiseconds * 10);
-
-    // Extract codec: "Audio: aac" or "Audio: pcm_s16le"
-    const codecMatch = msg.match(/Audio:\s*(\w+)/);
-    const codec = codecMatch ? codecMatch[1]! : 'unknown';
-
-    // Extract sample rate: "44100 Hz"
-    const srMatch = msg.match(/(\d+)\s*Hz/);
-    const sampleRate = srMatch ? parseInt(srMatch[1]!, 10) : 44100;
-
-    // Extract channels: "stereo" = 2, "mono" = 1
-    const channels = msg.includes('stereo') ? 2 : msg.includes('mono') ? 1 : 2;
-
-    // Extract bitrate: "bitrate: 128 kb/s" or from stream
-    const brMatch = msg.match(/bitrate:\s*(\d+)\s*kb/);
-    const bitrate = brMatch ? parseInt(brMatch[1]!, 10) : 0;
-
-    // Extract format: "Input #0, mp3," or "Input #0, wav,"
-    const fmtMatch = msg.match(/Input\s*#\d+,\s*(\w+)/);
-    const formatName = fmtMatch ? fmtMatch[1]! : 'unknown';
-
-    return { durationMs, codec, sampleRate, channels, bitrate, formatName };
+  // Extract duration: "Duration: HH:MM:SS.cc"
+  const durMatch = stderr.match(/Duration:\s*(\d+):(\d+):(\d+)\.(\d+)/);
+  if (!durMatch) {
+    throw new Error(`Cannot probe audio: no duration found in FFmpeg output. stderr=${stderr.slice(0, 500)}`);
   }
 
-  // If somehow ffmpeg exits 0 for probe, return defaults
-  return { durationMs: 0, codec: 'unknown', sampleRate: 44100, channels: 2, bitrate: 0, formatName: 'unknown' };
+  const hours = parseInt(durMatch[1]!, 10);
+  const minutes = parseInt(durMatch[2]!, 10);
+  const seconds = parseInt(durMatch[3]!, 10);
+  const centiseconds = parseInt(durMatch[4]!, 10);
+  const durationMs = ((hours * 3600 + minutes * 60 + seconds) * 1000) + (centiseconds * 10);
+
+  // Extract codec: "Audio: mp3" or "Audio: aac" or "Audio: pcm_s16le"
+  const codecMatch = stderr.match(/Audio:\s*(\w+)/);
+  const codec = codecMatch ? codecMatch[1]! : 'unknown';
+
+  // Extract sample rate: "44100 Hz"
+  const srMatch = stderr.match(/(\d+)\s*Hz/);
+  const sampleRate = srMatch ? parseInt(srMatch[1]!, 10) : 44100;
+
+  // Extract channels: "stereo" = 2, "mono" = 1, "5.1" etc
+  const channels = stderr.includes('stereo') ? 2 : stderr.includes('mono') ? 1 : 2;
+
+  // Extract bitrate: "bitrate: 128 kb/s" (container level)
+  const brMatch = stderr.match(/bitrate:\s*(\d+)\s*kb/);
+  const bitrate = brMatch ? parseInt(brMatch[1]!, 10) : 0;
+
+  // Extract format: "Input #0, mp3," or "Input #0, mp4,"
+  const fmtMatch = stderr.match(/Input\s*#\d+,\s*(\w+)/);
+  const formatName = fmtMatch ? fmtMatch[1]! : 'unknown';
+
+  const result = { durationMs, codec, sampleRate, channels, bitrate, formatName };
+  logger.info('[audioProcessor] Probe result:', result);
+
+  return result;
 }
 
 // ── transcodeToAAC ───────────────────────────────────────────────────────────
@@ -144,7 +178,6 @@ export async function transcodeToAAC(
   inputPath: string,
   outputPath: string,
 ): Promise<TranscodeResult> {
-  // First attempt: with loudnorm filter
   const baseArgs = [
     '-y',                    // overwrite output
     '-i', inputPath,         // input
