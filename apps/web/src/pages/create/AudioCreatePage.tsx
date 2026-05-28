@@ -266,6 +266,38 @@ export function AudioCreatePage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // ── Step 10: Preview playback ──────────────────────────────────────────────
+  const previewAudioRef = useRef<HTMLAudioElement>(null);
+  const [previewPlaying, setPreviewPlaying] = useState(false);
+
+  // Compute preview audio URL: recording blob URL or file object URL
+  const previewAudioUrl = React.useMemo(() => {
+    if (recorder.audioUrl) return recorder.audioUrl;
+    if (selectedFile) return URL.createObjectURL(selectedFile);
+    return null;
+  }, [recorder.audioUrl, selectedFile]);
+
+  // Cleanup file object URL on unmount
+  useEffect(() => {
+    return () => {
+      if (selectedFile && previewAudioUrl && !recorder.audioUrl) {
+        URL.revokeObjectURL(previewAudioUrl);
+      }
+    };
+  }, [previewAudioUrl, selectedFile, recorder.audioUrl]);
+
+  const togglePreviewPlayback = () => {
+    const audio = previewAudioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      audio.play();
+      setPreviewPlaying(true);
+    } else {
+      audio.pause();
+      setPreviewPlaying(false);
+    }
+  };
+
   // ── Step 12: Publish ──────────────────────────────────────────────────────
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ contentId: string; status: string } | null>(null);
@@ -1346,9 +1378,31 @@ export function AudioCreatePage() {
                   <span className="material-symbols-outlined">music_note</span>
                 </div>
               )}
-              <div className="acp-preview-card__play-overlay">
-                <span className="material-symbols-outlined">play_arrow</span>
-              </div>
+              {previewAudioUrl && (
+                <>
+                  <audio
+                    ref={previewAudioRef}
+                    src={previewAudioUrl}
+                    onEnded={() => setPreviewPlaying(false)}
+                    style={{ display: 'none' }}
+                  />
+                  <button
+                    className={`acp-preview-card__play-overlay${previewPlaying ? ' acp-preview-card__play-overlay--playing' : ''}`}
+                    onClick={togglePreviewPlayback}
+                    type="button"
+                    aria-label={previewPlaying ? 'إيقاف' : 'تشغيل'}
+                  >
+                    <span className="material-symbols-outlined">
+                      {previewPlaying ? 'pause' : 'play_arrow'}
+                    </span>
+                  </button>
+                </>
+              )}
+              {!previewAudioUrl && (
+                <div className="acp-preview-card__play-overlay acp-preview-card__play-overlay--disabled">
+                  <span className="material-symbols-outlined">play_arrow</span>
+                </div>
+              )}
               {audioAsset?.durationMs ? (
                 <span className="acp-preview-card__timer-badge">{formatDuration(audioAsset.durationMs)}</span>
               ) : null}
