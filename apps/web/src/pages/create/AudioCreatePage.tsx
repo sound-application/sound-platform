@@ -1,12 +1,13 @@
 /**
  * Sound Platform — Audio Create Page (Canonical 12-Step Wizard)
  * ==============================================================
- * Phase:   8-C (Complete Audio Creation Flow Foundation)
- * Updated: 2026-05-27
+ * Phase:   8-D.2 (Enhanced Audio Creation Flow)
+ * Updated: 2026-05-28
  *
  * Canonical flow (13 states, 12 in-wizard + exit to detail player):
  *   1.  Info — title, description, world, kind
- *   2.  Publish Details — category, tags, language, country, age, audience, toggles
+ *   2.  Publish Details — category, subcategory, tags, language, country, age,
+ *       child content, audience, placement, playlist, toggles
  *   3.  Cover (optional) — upload / camera / AI / skip
  *   4.  Captions setup (optional) — enable, language, style
  *   5.  AutoCue (optional) — script, speed, font, mode, delay, highlight
@@ -49,6 +50,8 @@ import type {
   CaptionsSetup,
   AutoCueConfig,
   PublishToggles,
+  PlacementFeed,
+  PlaylistIntent,
 } from '@sound/shared';
 import type { WorldId } from '@sound/shared';
 import '../Page.css';
@@ -97,27 +100,63 @@ const KINDS_BY_WORLD: Record<string, { key: AudioContentKind; label: string }[]>
 };
 
 const CATEGORIES = [
-  { id: 'talk', label: 'حوار' },
+  { id: 'culture', label: 'ثقافة' },
+  { id: 'entertainment', label: 'ترفيه' },
   { id: 'education', label: 'تعليم' },
-  { id: 'story', label: 'قصة / رواية' },
   { id: 'religion', label: 'ديني' },
-  { id: 'news', label: 'أخبار' },
-  { id: 'comedy', label: 'كوميديا' },
   { id: 'sports', label: 'رياضة' },
-  { id: 'tech', label: 'تقنية' },
-  { id: 'health', label: 'صحة' },
+  { id: 'news', label: 'أخبار' },
+  { id: 'technology', label: 'تقنية' },
   { id: 'other', label: 'أخرى' },
 ];
 
-const AUDIENCE_OPTIONS: { key: AudienceType; label: string }[] = [
-  { key: 'public', label: 'عام — الجميع' },
-  { key: 'followers', label: 'المتابعون فقط' },
-  { key: 'following', label: 'من أتابعهم فقط' },
-  { key: 'friends', label: 'الأصدقاء فقط' },
-  { key: 'specificList', label: 'قائمة محددة' },
-  { key: 'listExcept', label: 'الجميع عدا قائمة' },
-  { key: 'selectedPeople', label: 'أشخاص مختارون' },
-  { key: 'onlyMe', label: 'أنا فقط' },
+const SUBCATEGORIES_BY_CATEGORY: Record<string, { id: string; label: string }[]> = {
+  culture: [
+    { id: 'creativity', label: 'إبداع وهدوء' },
+    { id: 'visual_arts', label: 'فنون بصرية' },
+    { id: 'literature', label: 'أدب وشعر' },
+  ],
+  entertainment: [
+    { id: 'comedy', label: 'كوميديا' },
+    { id: 'drama', label: 'دراما' },
+    { id: 'talk_shows', label: 'برامج حوارية' },
+  ],
+  education: [
+    { id: 'science', label: 'علوم' },
+    { id: 'technology', label: 'تقنية' },
+    { id: 'languages', label: 'لغات' },
+  ],
+  religion: [
+    { id: 'quran', label: 'قرآن' },
+    { id: 'lectures', label: 'دروس ومحاضرات' },
+    { id: 'stories', label: 'قصص دينية' },
+  ],
+  sports: [
+    { id: 'football', label: 'كرة قدم' },
+    { id: 'fitness', label: 'لياقة وصحة' },
+    { id: 'analysis', label: 'تحليل رياضي' },
+  ],
+  news: [
+    { id: 'local', label: 'محلي' },
+    { id: 'international', label: 'دولي' },
+    { id: 'economy', label: 'اقتصاد' },
+  ],
+  technology: [
+    { id: 'ai', label: 'ذكاء اصطناعي' },
+    { id: 'programming', label: 'برمجة' },
+    { id: 'reviews', label: 'مراجعات' },
+  ],
+};
+
+const AUDIENCE_OPTIONS: { key: AudienceType; label: string; icon: string }[] = [
+  { key: 'public', label: 'عام — الجميع', icon: 'visibility' },
+  { key: 'followers', label: 'المتابعون فقط', icon: 'group' },
+  { key: 'following', label: 'من أتابعهم فقط', icon: 'person_add' },
+  { key: 'friends', label: 'الأصدقاء فقط', icon: 'handshake' },
+  { key: 'specificList', label: 'قائمة محددة', icon: 'list' },
+  { key: 'listExcept', label: 'الجميع عدا قائمة', icon: 'block' },
+  { key: 'selectedPeople', label: 'أشخاص مختارون', icon: 'person_search' },
+  { key: 'onlyMe', label: 'أنا فقط', icon: 'person' },
 ];
 
 const LANGUAGES = [
@@ -127,6 +166,28 @@ const LANGUAGES = [
   { code: 'es', label: 'Español' },
   { code: 'other', label: 'أخرى' },
 ];
+
+// ── Effects & mixing data ─────────────────────────────────────────────────────
+
+const EFFECT_CATEGORIES = ['الكل', 'تحسين', 'بيئة', 'صوتيات', 'ديناميك', 'إبداعي'];
+
+const EFFECT_LIBRARY = [
+  { id: 'noise_reduction', name: 'إزالة الضوضاء', desc: 'تنقية الصوت من التشويش', icon: 'noise_aware', gate: 'حسب الباقة' },
+  { id: 'eq', name: 'معادل الصوت', desc: 'تعديل الترددات المنخفضة والعالية', icon: 'equalizer', gate: 'حسب الباقة' },
+  { id: 'reverb', name: 'صدى', desc: 'إضافة عمق وبُعد مكاني', icon: 'surround_sound', gate: 'مرحلة لاحقة' },
+  { id: 'compressor', name: 'ضاغط ديناميك', desc: 'توحيد مستوى الصوت', icon: 'compress', gate: 'حسب الباقة' },
+  { id: 'pitch', name: 'تعديل النبرة', desc: 'رفع أو خفض حدة الصوت', icon: 'music_note', gate: 'مرحلة لاحقة' },
+  { id: 'normalize', name: 'تطبيع', desc: 'ضبط مستوى الصوت العام', icon: 'tune', gate: 'حسب الباقة' },
+];
+
+const MIXING_TOOLS = [
+  { id: 'crossfade', name: 'مزج تدريجي', icon: 'transition_fade' },
+  { id: 'trim', name: 'قص وتقليم', icon: 'content_cut' },
+  { id: 'fade_in', name: 'تلاشي دخول', icon: 'signal_cellular_alt' },
+  { id: 'loudness', name: 'معايرة الصوت', icon: 'volume_up' },
+];
+
+const MIXING_PRESETS = ['بودكاست', 'راديو', 'قصة', 'تأمل'];
 
 // ── Page Component ───────────────────────────────────────────────────────────
 
@@ -150,13 +211,19 @@ export function AudioCreatePage() {
 
   // ── Step 2: Publish Details ───────────────────────────────────────────────
   const [categoryId, setCategoryId] = useState('');
+  const [subcategoryId, setSubcategoryId] = useState('');
   const [tags, setTags] = useState('');
   const [language, setLanguage] = useState('ar');
+  const [languageOpen, setLanguageOpen] = useState(false);
   const [countryMode, setCountryMode] = useState<CountryMode>('all');
   const [countryCodes, setCountryCodes] = useState('');
   const [ageSuitability, setAgeSuitability] = useState<AgeSuitability>('everyone');
   const [isExplicit, setIsExplicit] = useState(false);
+  const [isChildContent, setIsChildContent] = useState(false);
   const [audience, setAudience] = useState<AudienceType>('public');
+  const [placementFeed, setPlacementFeed] = useState<PlacementFeed>('main');
+  const [playlistIntent, setPlaylistIntent] = useState<PlaylistIntent>('none');
+  const [newPlaylistName, setNewPlaylistName] = useState('');
   const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [giftsEnabled, setGiftsEnabled] = useState(true);
   const [sharingEnabled, setSharingEnabled] = useState(true);
@@ -172,6 +239,7 @@ export function AudioCreatePage() {
   // ── Step 4: Captions ──────────────────────────────────────────────────────
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [captionLang, setCaptionLang] = useState('ar');
+  const [captionLangOpen, setCaptionLangOpen] = useState(false);
   const [captionStyle, setCaptionStyle] = useState<'standard' | 'karaoke' | 'subtitles'>('standard');
 
   // ── Step 5: AutoCue ───────────────────────────────────────────────────────
@@ -209,6 +277,11 @@ export function AudioCreatePage() {
     }
   }, [world, kind]);
 
+  // ── Reset subcategory when category changes ───────────────────────────────
+  useEffect(() => {
+    setSubcategoryId('');
+  }, [categoryId]);
+
   // ── Save draft helper ─────────────────────────────────────────────────────
   const saveDraft = async (nextStep: WizardStep) => {
     setSaving(true);
@@ -234,6 +307,8 @@ export function AudioCreatePage() {
         kind,
         categoryId: categoryId || undefined,
         categoryLabel: CATEGORIES.find((c) => c.id === categoryId)?.label,
+        subcategoryId: subcategoryId || undefined,
+        subcategoryLabel: SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label,
         language,
         tags: tags.trim() ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
         countryMode,
@@ -242,6 +317,10 @@ export function AudioCreatePage() {
           : [],
         ageSuitability,
         isExplicit,
+        isChildContent,
+        placementFeed,
+        playlistIntent,
+        newPlaylistName: newPlaylistName || undefined,
         audience,
         publishToggles,
         coverAsset: coverAsset ?? undefined,
@@ -417,6 +496,12 @@ export function AudioCreatePage() {
     }
   };
 
+  // ── Helper: generate decorative waveform bars ─────────────────────────────
+  const waveformBars = Array.from({ length: 40 }, (_, i) => {
+    const h = 20 + Math.sin(i * 0.5) * 30 + Math.random() * 50;
+    return Math.round(h);
+  });
+
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
@@ -428,7 +513,9 @@ export function AudioCreatePage() {
             key={s}
             className={`acp-rail__dot ${step === s ? 'acp-rail__dot--active' : ''} ${step > s ? 'acp-rail__dot--done' : ''}`}
           >
-            <span className="acp-rail__num">{step > s ? '✓' : s}</span>
+            <span className="acp-rail__num">
+              {step > s ? <span className="material-symbols-outlined">check</span> : s}
+            </span>
             <span className="acp-rail__label">{STEP_LABELS[s]}</span>
           </div>
         ))}
@@ -482,23 +569,51 @@ export function AudioCreatePage() {
             تفاصيل النشر
           </h1>
           <div className="acp-form">
+            {/* Category — chip selector */}
             <label className="acp-label">
               التصنيف
-              <select className="acp-select" value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
-                <option value="">— اختر تصنيفاً —</option>
-                {CATEGORIES.map((c) => <option key={c.id} value={c.id}>{c.label}</option>)}
-              </select>
+              <div className="acp-chips">
+                {CATEGORIES.map((c) => (
+                  <button key={c.id} className={`acp-chip ${categoryId === c.id ? 'acp-chip--selected' : ''}`} onClick={() => setCategoryId(c.id)} type="button">{c.label}</button>
+                ))}
+              </div>
             </label>
+
+            {/* Subcategory — chips, only when category selected */}
+            {categoryId && SUBCATEGORIES_BY_CATEGORY[categoryId] && (
+              <label className="acp-label">
+                التصنيف الفرعي
+                <div className="acp-chips">
+                  {SUBCATEGORIES_BY_CATEGORY[categoryId]!.map((sc) => (
+                    <button key={sc.id} className={`acp-chip ${subcategoryId === sc.id ? 'acp-chip--selected' : ''}`} onClick={() => setSubcategoryId(sc.id)} type="button">{sc.label}</button>
+                  ))}
+                </div>
+              </label>
+            )}
+
             <label className="acp-label">
               الوسوم (مفصولة بفواصل)
               <input type="text" className="acp-input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="بودكاست, تقنية, حوار..." />
             </label>
-            <label className="acp-label">
+
+            {/* Language — glass dropdown */}
+            <div className="acp-label">
               اللغة
-              <select className="acp-select" value={language} onChange={(e) => setLanguage(e.target.value)}>
-                {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-              </select>
-            </label>
+              <div className="acp-glass-dropdown">
+                <button className="acp-glass-dropdown__trigger" onClick={() => setLanguageOpen(!languageOpen)} type="button">
+                  <span>{LANGUAGES.find((l) => l.code === language)?.label}</span>
+                  <span className="material-symbols-outlined">{languageOpen ? 'expand_less' : 'expand_more'}</span>
+                </button>
+                {languageOpen && (
+                  <div className="acp-glass-dropdown__menu">
+                    {LANGUAGES.map((l) => (
+                      <button key={l.code} className={`acp-glass-dropdown__option ${language === l.code ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setLanguage(l.code); setLanguageOpen(false); }} type="button">{l.label}</button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+
             <label className="acp-label">
               الدول المستهدفة
               <div className="acp-chips">
@@ -515,6 +630,8 @@ export function AudioCreatePage() {
                 <input type="text" className="acp-input" value={countryCodes} onChange={(e) => setCountryCodes(e.target.value)} placeholder="SA, AE, EG, KW" maxLength={20} />
               </label>
             )}
+
+            {/* Age suitability */}
             <label className="acp-label">
               الفئة العمرية
               <div className="acp-chips">
@@ -523,22 +640,85 @@ export function AudioCreatePage() {
                 ))}
               </div>
             </label>
+
             <label className="acp-label acp-label--row">
               <input type="checkbox" checked={isExplicit} onChange={(e) => setIsExplicit(e.target.checked)} />
               محتوى صريح (Explicit)
             </label>
-            <label className="acp-label">
+
+            {/* Child content toggle */}
+            <div className="acp-toggle-row">
+              <span className="material-symbols-outlined">child_care</span>
+              <span>محتوى أطفال</span>
+              <button className={`acp-toggle ${isChildContent ? 'acp-toggle--on' : ''}`} onClick={() => setIsChildContent(!isChildContent)} type="button">
+                <span className="acp-toggle__knob" />
+              </button>
+            </div>
+
+            {/* Audience — card list with icons */}
+            <div className="acp-label">
               الجمهور / الخصوصية
-              <select className="acp-select" value={audience} onChange={(e) => setAudience(e.target.value as AudienceType)}>
-                {AUDIENCE_OPTIONS.map((a) => <option key={a.key} value={a.key}>{a.label}</option>)}
-              </select>
-            </label>
+              <div className="acp-audience-list">
+                {AUDIENCE_OPTIONS.map((a) => (
+                  <button key={a.key} className={`acp-audience-item ${audience === a.key ? 'acp-audience-item--selected' : ''}`} onClick={() => setAudience(a.key)} type="button">
+                    <span className="material-symbols-outlined">{a.icon}</span>
+                    {a.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Placement feed */}
+            <div className="acp-label">
+              موضع النشر
+              <div className="acp-cards-row">
+                <button className={`acp-card-btn ${placementFeed === 'main' ? 'acp-card-btn--selected' : ''}`} onClick={() => setPlacementFeed('main')} type="button">
+                  <span className="material-symbols-outlined">home</span>
+                  <span>الرئيسية</span>
+                </button>
+                <button className={`acp-card-btn ${placementFeed === 'shorts' ? 'acp-card-btn--selected' : ''}`} onClick={() => setPlacementFeed('shorts')} type="button">
+                  <span className="material-symbols-outlined">movie</span>
+                  <span>لقطات</span>
+                </button>
+              </div>
+            </div>
+
+            {/* Playlist intent */}
+            <div className="acp-label">
+              قائمة التشغيل
+              <div className="acp-playlist-cards">
+                <button className={`acp-playlist-card ${playlistIntent === 'none' ? 'acp-playlist-card--selected' : ''}`} onClick={() => setPlaylistIntent('none')} type="button">
+                  <span className="material-symbols-outlined">playlist_remove</span>
+                  بدون قائمة
+                </button>
+                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
+                  <span className="material-symbols-outlined">playlist_add</span>
+                  إضافة لقائمة موجودة
+                  <span className="acp-gate-badge">مرحلة لاحقة</span>
+                </button>
+                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
+                  <span className="material-symbols-outlined">queue_music</span>
+                  إنشاء قائمة جديدة
+                  <span className="acp-gate-badge">مرحلة لاحقة</span>
+                </button>
+              </div>
+            </div>
 
             <div className="acp-toggles-group">
               <h3 className="acp-toggles-group__title">إعدادات النشر</h3>
               <label className="acp-label acp-label--row"><input type="checkbox" checked={commentsEnabled} onChange={(e) => setCommentsEnabled(e.target.checked)} /> السماح بالتعليقات</label>
               <label className="acp-label acp-label--row"><input type="checkbox" checked={giftsEnabled} onChange={(e) => setGiftsEnabled(e.target.checked)} /> السماح بالهدايا</label>
               <label className="acp-label acp-label--row"><input type="checkbox" checked={sharingEnabled} onChange={(e) => setSharingEnabled(e.target.checked)} /> السماح بالمشاركة</label>
+
+              {/* Schedule — disabled with gate badge */}
+              <div className="acp-toggle-row" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
+                <span className="material-symbols-outlined">schedule_send</span>
+                <span>جدولة النشر</span>
+                <span className="acp-gate-badge">حسب الباقة</span>
+                <button className="acp-toggle acp-toggle--disabled" disabled type="button">
+                  <span className="acp-toggle__knob" />
+                </button>
+              </div>
             </div>
 
             {saveError && <p className="acp-error">{saveError}</p>}
@@ -628,12 +808,23 @@ export function AudioCreatePage() {
             </label>
             {captionsEnabled && (
               <>
-                <label className="acp-label">
+                {/* Caption language — glass dropdown */}
+                <div className="acp-label">
                   لغة الترجمة
-                  <select className="acp-select" value={captionLang} onChange={(e) => setCaptionLang(e.target.value)}>
-                    {LANGUAGES.map((l) => <option key={l.code} value={l.code}>{l.label}</option>)}
-                  </select>
-                </label>
+                  <div className="acp-glass-dropdown">
+                    <button className="acp-glass-dropdown__trigger" onClick={() => setCaptionLangOpen(!captionLangOpen)} type="button">
+                      <span>{LANGUAGES.find((l) => l.code === captionLang)?.label}</span>
+                      <span className="material-symbols-outlined">{captionLangOpen ? 'expand_less' : 'expand_more'}</span>
+                    </button>
+                    {captionLangOpen && (
+                      <div className="acp-glass-dropdown__menu">
+                        {LANGUAGES.map((l) => (
+                          <button key={l.code} className={`acp-glass-dropdown__option ${captionLang === l.code ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setCaptionLang(l.code); setCaptionLangOpen(false); }} type="button">{l.label}</button>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                </div>
                 <label className="acp-label">
                   نمط العرض
                   <div className="acp-chips">
@@ -876,9 +1067,11 @@ export function AudioCreatePage() {
               <span className="material-symbols-outlined">check_circle</span>
               <p>تم ربط الملف الصوتي بالمسودة بنجاح!</p>
               <div className="acp-asset-summary">
-                <span>📄 {audioAsset.originalFileName}</span>
-                {audioAsset.durationMs ? <span>⏱️ {formatDuration(audioAsset.durationMs)}</span> : null}
-                {audioAsset.sizeBytes ? <span>📦 {formatFileSize(audioAsset.sizeBytes)}</span> : null}
+                <span className="acp-asset-summary__item">
+                  <span className="material-symbols-outlined">description</span> {audioAsset.originalFileName}
+                </span>
+                {audioAsset.durationMs ? <span className="acp-asset-summary__item"><span className="material-symbols-outlined">schedule</span> {formatDuration(audioAsset.durationMs)}</span> : null}
+                {audioAsset.sizeBytes ? <span className="acp-asset-summary__item"><span className="material-symbols-outlined">inventory_2</span> {formatFileSize(audioAsset.sizeBytes)}</span> : null}
               </div>
               <button className="acp-btn acp-btn--primary" onClick={() => setStep(7)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> متابعة
@@ -908,8 +1101,16 @@ export function AudioCreatePage() {
                 <div className="acp-review__item"><span>الملف:</span> <strong>{audioAsset.originalFileName}</strong></div>
                 {audioAsset.durationMs ? <div className="acp-review__item"><span>المدة:</span> {formatDuration(audioAsset.durationMs)}</div> : null}
                 {audioAsset.sizeBytes ? <div className="acp-review__item"><span>الحجم:</span> {formatFileSize(audioAsset.sizeBytes)}</div> : null}
-                <div className="acp-review__item"><span>المصدر:</span> {audioAsset.sourceType === 'recorded' ? '🎤 مسجّل' : '📁 مرفوع'}</div>
-                <div className="acp-review__item"><span>الحالة:</span> ✅ مرفوع</div>
+                <div className="acp-review__item">
+                  <span>المصدر:</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>{audioAsset.sourceType === 'recorded' ? 'mic' : 'upload_file'}</span>
+                  {audioAsset.sourceType === 'recorded' ? ' مسجّل' : ' مرفوع'}
+                </div>
+                <div className="acp-review__item">
+                  <span>الحالة:</span>
+                  <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: '#22c55e' }}>check_circle</span>
+                  مرفوع
+                </div>
               </div>
             ) : (
               <div className="acp-warning-box">
@@ -938,18 +1139,61 @@ export function AudioCreatePage() {
             <span className="acp-badge acp-badge--optional">اختياري</span>
           </h1>
           <div className="acp-form">
-            <div className="acp-gate-card">
-              <span className="material-symbols-outlined acp-gate-card__icon">lock</span>
-              <h3>تحسين الصوت والمؤثرات</h3>
-              <p>تحسين الجودة، إزالة الضوضاء، معادل الصوت (EQ)، وفلاتر متقدمة.</p>
-              <p className="acp-gate-card__note">ميزة مقفلة — ستتوفر في مرحلة المعالجة. لن يتم تطبيق أي معالجة على هذا النشر.</p>
+            {/* Audio preview with waveform */}
+            <div className="acp-effects-preview">
+              <div className="acp-waveform-bars">
+                {waveformBars.map((h, i) => (
+                  <div key={i} className="acp-waveform-bars__bar" style={{ height: `${h}%` }} />
+                ))}
+              </div>
+              <div className="acp-ab-toggle">
+                <button className="acp-ab-toggle__btn acp-ab-toggle__btn--active" type="button">A أصلي</button>
+                <button className="acp-ab-toggle__btn" type="button">B معالج</button>
+              </div>
             </div>
+
+            {/* Effect category chips */}
+            <div className="acp-chips">
+              {EFFECT_CATEGORIES.map((cat, i) => (
+                <button key={cat} className={`acp-chip ${i === 0 ? 'acp-chip--selected' : ''}`} type="button" disabled={i > 0} style={i > 0 ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>{cat}</button>
+              ))}
+            </div>
+
+            {/* Empty effects stack */}
+            <div className="acp-effects-empty">
+              <span className="material-symbols-outlined">layers_clear</span>
+              <p>لا توجد مؤثرات مطبقة</p>
+            </div>
+
+            {/* Effect library grid */}
+            <div className="acp-label" style={{ gap: '0.4rem' }}>
+              مكتبة المؤثرات
+              <div className="acp-effects-grid">
+                {EFFECT_LIBRARY.map((fx) => (
+                  <div key={fx.id} className="acp-effect-card acp-effect-card--gated">
+                    <div className="acp-effect-card__header">
+                      <span className="material-symbols-outlined">lock</span>
+                      <span className="material-symbols-outlined">{fx.icon}</span>
+                      <span className="acp-effect-card__name">{fx.name}</span>
+                    </div>
+                    <p className="acp-effect-card__desc">{fx.desc}</p>
+                    <span className="acp-gate-badge acp-effect-card__badge">{fx.gate}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <p className="acp-hint">
+              <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
+              توفر المؤثرات يعتمد على باقتك الحالية. بعض المؤثرات ستتوفر في مراحل لاحقة.
+            </p>
+
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(7)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => setStep(9)} type="button">
-                تخطي <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                <span className="material-symbols-outlined" aria-hidden="true">skip_next</span> تخطي
               </button>
             </div>
           </div>
@@ -965,18 +1209,101 @@ export function AudioCreatePage() {
             <span className="acp-badge acp-badge--optional">اختياري</span>
           </h1>
           <div className="acp-form">
-            <div className="acp-gate-card">
-              <span className="material-symbols-outlined acp-gate-card__icon">lock</span>
-              <h3>دمج المسارات والخلط</h3>
-              <p>موسيقى خلفية، مسارات إضافية، ومستوى الصوت المستهدف.</p>
-              <p className="acp-gate-card__note">ميزة مقفلة — ستتوفر في مرحلة المعالجة. لن يتم تطبيق أي خلط على هذا النشر.</p>
+            {/* Multi-track visual */}
+            <div className="acp-tracks">
+              <div className="acp-track-row">
+                <span className="acp-track-row__label">الصوت</span>
+                <div className="acp-track-row__bar acp-track-row__bar--voice" style={{ width: '80%' }} />
+              </div>
+              <div className="acp-track-row">
+                <span className="acp-track-row__label">الموسيقى</span>
+                <div className="acp-track-row__bar acp-track-row__bar--music" style={{ width: '0%' }} />
+              </div>
+              <div className="acp-track-row">
+                <span className="acp-track-row__label">المؤثرات</span>
+                <div className="acp-track-row__bar acp-track-row__bar--effects" style={{ width: '0%' }} />
+              </div>
             </div>
+
+            {/* Track mixer */}
+            <div className="acp-track-mixer">
+              <h3 className="acp-track-mixer__title">مستوى الصوت</h3>
+              <div className="acp-slider-row">
+                <span className="acp-slider-row__label">الصوت</span>
+                <input type="range" className="acp-slider-row__slider" min={0} max={100} value={80} disabled />
+                <span className="acp-slider-row__value">80%</span>
+              </div>
+              <div className="acp-slider-row">
+                <span className="acp-slider-row__label">الموسيقى</span>
+                <input type="range" className="acp-slider-row__slider" min={0} max={100} value={0} disabled />
+                <span className="acp-slider-row__value">0%</span>
+              </div>
+              <div className="acp-slider-row">
+                <span className="acp-slider-row__label">المؤثرات</span>
+                <input type="range" className="acp-slider-row__slider" min={0} max={100} value={0} disabled />
+                <span className="acp-slider-row__value">0%</span>
+              </div>
+            </div>
+
+            {/* Background music — gated options */}
+            <div className="acp-label" style={{ gap: '0.4rem' }}>
+              الموسيقى الخلفية
+              <div className="acp-playlist-cards">
+                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
+                  <span className="material-symbols-outlined">library_music</span>
+                  مكتبة Sound
+                  <span className="acp-gate-badge">حسب الباقة</span>
+                </button>
+                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
+                  <span className="material-symbols-outlined">upload_file</span>
+                  رفع ملف موسيقى
+                  <span className="acp-gate-badge">حسب الباقة</span>
+                </button>
+                <button className="acp-playlist-card acp-playlist-card--selected" type="button">
+                  <span className="material-symbols-outlined">music_off</span>
+                  بدون موسيقى
+                </button>
+              </div>
+            </div>
+
+            {/* Advanced tools — all disabled */}
+            <div className="acp-label" style={{ gap: '0.4rem' }}>
+              أدوات متقدمة
+              <div className="acp-effects-grid">
+                {MIXING_TOOLS.map((tool) => (
+                  <div key={tool.id} className="acp-effect-card acp-effect-card--gated">
+                    <div className="acp-effect-card__header">
+                      <span className="material-symbols-outlined">lock</span>
+                      <span className="material-symbols-outlined">{tool.icon}</span>
+                      <span className="acp-effect-card__name">{tool.name}</span>
+                    </div>
+                    <span className="acp-gate-badge acp-effect-card__badge">حسب الباقة</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* Presets — all disabled */}
+            <div className="acp-label" style={{ gap: '0.4rem' }}>
+              إعدادات مسبقة
+              <div className="acp-chips">
+                {MIXING_PRESETS.map((preset) => (
+                  <button key={preset} className="acp-chip" type="button" disabled style={{ opacity: 0.4, cursor: 'not-allowed' }}>{preset}</button>
+                ))}
+              </div>
+            </div>
+
+            <p className="acp-hint">
+              <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
+              أدوات المكساج والدمج متاحة حسب باقتك. لن يتم تطبيق أي خلط على هذا النشر.
+            </p>
+
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(8)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => setStep(10)} type="button">
-                تخطي <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                <span className="material-symbols-outlined" aria-hidden="true">skip_next</span> تخطي
               </button>
             </div>
           </div>
@@ -990,14 +1317,24 @@ export function AudioCreatePage() {
             <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
             المعاينة النهائية
           </h1>
+
+          {/* Preview card with cover, play overlay, timer */}
           <div className="acp-preview-card">
-            {coverPreviewUrl ? (
-              <img src={coverPreviewUrl} alt="غلاف" className="acp-preview-card__cover" />
-            ) : (
-              <div className="acp-preview-card__cover acp-preview-card__cover--default">
-                <span className="material-symbols-outlined">music_note</span>
+            <div className="acp-preview-card__cover-wrap">
+              {coverPreviewUrl ? (
+                <img src={coverPreviewUrl} alt="غلاف" className="acp-preview-card__cover" />
+              ) : (
+                <div className="acp-preview-card__cover--default">
+                  <span className="material-symbols-outlined">music_note</span>
+                </div>
+              )}
+              <div className="acp-preview-card__play-overlay">
+                <span className="material-symbols-outlined">play_arrow</span>
               </div>
-            )}
+              {audioAsset?.durationMs ? (
+                <span className="acp-preview-card__timer-badge">{formatDuration(audioAsset.durationMs)}</span>
+              ) : null}
+            </div>
             <div className="acp-preview-card__body">
               <h2 className="acp-preview-card__title">{title || 'بدون عنوان'}</h2>
               <p className="acp-preview-card__owner">{currentUser?.displayName || 'المؤلف'}</p>
@@ -1006,17 +1343,97 @@ export function AudioCreatePage() {
                 <span className="acp-preview-card__badge">{(KINDS_BY_WORLD[world] ?? []).find((k) => k.key === kind)?.label}</span>
                 {categoryId && <span className="acp-preview-card__badge">{CATEGORIES.find((c) => c.id === categoryId)?.label}</span>}
               </div>
-              {audioAsset?.durationMs ? <p className="acp-preview-card__duration">⏱️ {formatDuration(audioAsset.durationMs)}</p> : null}
-              <div className="acp-preview-card__details">
-                <div className="acp-preview-card__detail"><span>الجمهور:</span> {AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}</div>
-                <div className="acp-preview-card__detail"><span>الدول:</span> {countryMode === 'all' ? 'جميع الدول' : countryCodes || '—'}</div>
-                <div className="acp-preview-card__detail"><span>الفئة العمرية:</span> {ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13' : '+18'}</div>
-                <div className="acp-preview-card__detail"><span>الترجمة:</span> {captionsEnabled ? 'مفعّلة' : 'معطّلة'}</div>
-                <div className="acp-preview-card__detail"><span>الملقن:</span> {autoCueEnabled ? 'مفعّل' : 'معطّل'}</div>
-                <div className="acp-preview-card__detail"><span>الصوت:</span> {audioAsset ? '✅ مرفق' : '❌ غير مرفق'}</div>
-              </div>
             </div>
           </div>
+
+          {/* Preview tabs (visual only) */}
+          <div className="acp-preview-tabs">
+            <button className={`acp-preview-tab ${placementFeed === 'main' || placementFeed === 'both' ? 'acp-preview-tab--active' : ''}`} type="button">
+              <span className="material-symbols-outlined">home</span> الرئيسية
+            </button>
+            <button className={`acp-preview-tab ${placementFeed === 'shorts' || placementFeed === 'both' ? 'acp-preview-tab--active' : ''}`} type="button">
+              <span className="material-symbols-outlined">movie</span> لقطات
+            </button>
+          </div>
+
+          {/* Bento grid — publish summary */}
+          <div className="acp-bento-grid">
+            <div className="acp-bento-cell">
+              <div className="acp-bento-cell__label">
+                <span className="material-symbols-outlined">public</span> نطاق النشر
+              </div>
+              <span className="acp-bento-cell__value">{WORLDS.find((w) => w.key === world)?.label}</span>
+            </div>
+            <div className="acp-bento-cell">
+              <div className="acp-bento-cell__label">
+                <span className="material-symbols-outlined">visibility</span> الخصوصية
+              </div>
+              <span className="acp-bento-cell__value">{AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}</span>
+            </div>
+            <div className="acp-bento-cell">
+              <div className="acp-bento-cell__label">
+                <span className="material-symbols-outlined">category</span> القسم
+              </div>
+              <span className="acp-bento-cell__value">{CATEGORIES.find((c) => c.id === categoryId)?.label || '—'}</span>
+            </div>
+            <div className="acp-bento-cell">
+              <div className="acp-bento-cell__label">
+                <span className="material-symbols-outlined">segment</span> القسم الفرعي
+              </div>
+              <span className="acp-bento-cell__value">{SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label || '—'}</span>
+            </div>
+            <div className="acp-bento-cell">
+              <div className="acp-bento-cell__label">
+                <span className="material-symbols-outlined">face</span> العمر المناسب
+              </div>
+              <span className="acp-bento-cell__value">{ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13' : '+18'}</span>
+            </div>
+            <div className="acp-bento-cell">
+              <div className="acp-bento-cell__label">
+                <span className="material-symbols-outlined">language</span> البلد
+              </div>
+              <span className="acp-bento-cell__value">{countryMode === 'all' ? 'جميع الدول' : countryCodes || '—'}</span>
+            </div>
+          </div>
+
+          {/* Status chips */}
+          <div className="acp-status-chips">
+            <span className={`acp-status-chip ${captionsEnabled ? 'acp-status-chip--ok' : 'acp-status-chip--skip'}`}>
+              <span className="material-symbols-outlined">{captionsEnabled ? 'check_circle' : 'skip_next'}</span>
+              الكابشن: {captionsEnabled ? 'جاهز' : 'تم التخطي'}
+            </span>
+            <span className={`acp-status-chip ${coverAsset ? 'acp-status-chip--ok' : 'acp-status-chip--skip'}`}>
+              <span className="material-symbols-outlined">{coverAsset ? 'check_circle' : 'image'}</span>
+              الغلاف: {coverAsset ? 'جاهز' : 'افتراضي'}
+            </span>
+            <span className="acp-status-chip acp-status-chip--skip">
+              <span className="material-symbols-outlined">skip_next</span>
+              المؤثرات: تم التخطي
+            </span>
+            <span className="acp-status-chip acp-status-chip--skip">
+              <span className="material-symbols-outlined">skip_next</span>
+              المكساج: تم التخطي
+            </span>
+          </div>
+
+          {/* Safety / review checklist */}
+          <div className="acp-safety-list">
+            <h3 className="acp-safety-list__title">قائمة التحقق</h3>
+            <div className="acp-safety-item">
+              <span className="material-symbols-outlined">check</span>
+              المحتوى يتوافق مع سياسة الاستخدام
+            </div>
+            <div className="acp-safety-item">
+              <span className="material-symbols-outlined">check</span>
+              لا يحتوي على مواد محمية بحقوق ملكية
+            </div>
+            <div className="acp-safety-item">
+              <span className="material-symbols-outlined">check</span>
+              الفئة العمرية مناسبة للمحتوى
+            </div>
+          </div>
+
+          {/* Edit-back links */}
           <div className="acp-editback">
             <h3 className="acp-editback__title">تعديل الأقسام</h3>
             <div className="acp-editback__links">
@@ -1028,12 +1445,14 @@ export function AudioCreatePage() {
               <button className="acp-editback__link" onClick={() => { setAudioAsset(null); uploader.reset(); recorder.reset(); setStep(6); }}><span className="material-symbols-outlined">mic</span> التسجيل</button>
             </div>
           </div>
+
+          {/* Bottom navigation */}
           <div className="acp-nav-row">
             <button className="acp-btn acp-btn--ghost" onClick={() => setStep(9)} type="button">
               <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
             </button>
-            <button className="acp-btn acp-btn--primary" onClick={() => setStep(11)} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> متابعة للتأكيد
+            <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(11)} disabled={saving} type="button">
+              {saving ? <><span className="acp-spinner" aria-hidden="true" /> حفظ...</> : <><span className="material-symbols-outlined" aria-hidden="true">send</span> تأكيد النشر</>}
             </button>
           </div>
         </section>
@@ -1073,34 +1492,68 @@ export function AudioCreatePage() {
             <div className="acp-rd-card">
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> تفاصيل النشر</h3>
               <div className="acp-rd-card__row"><span>التصنيف:</span> {CATEGORIES.find((c) => c.id === categoryId)?.label || '— لم يُحدد —'}</div>
+              {subcategoryId && <div className="acp-rd-card__row"><span>الفرعي:</span> {SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label || '—'}</div>}
               <div className="acp-rd-card__row"><span>الوسوم:</span> {tags || '— بدون وسوم —'}</div>
               <div className="acp-rd-card__row"><span>اللغة:</span> {LANGUAGES.find((l) => l.code === language)?.label}</div>
               <div className="acp-rd-card__row"><span>الدول:</span> {countryMode === 'all' ? 'جميع الدول' : countryCodes || '—'}</div>
               <div className="acp-rd-card__row"><span>الفئة العمرية:</span> {ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13 مراهقين' : '+18 بالغين'}</div>
               <div className="acp-rd-card__row"><span>محتوى صريح:</span> {isExplicit ? 'نعم' : 'لا'}</div>
+              <div className="acp-rd-card__row"><span>محتوى أطفال:</span> {isChildContent ? 'نعم' : 'لا'}</div>
+              <div className="acp-rd-card__row"><span>موضع النشر:</span> {placementFeed === 'main' ? 'الرئيسية' : placementFeed === 'shorts' ? 'لقطات' : 'كلاهما'}</div>
             </div>
 
             {/* ── Audience card ────────────────────────────────────── */}
             <div className="acp-rd-card">
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">group</span> الجمهور والإعدادات</h3>
               <div className="acp-rd-card__row"><span>الجمهور:</span> {AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}</div>
-              <div className="acp-rd-card__row"><span>التعليقات:</span> {commentsEnabled ? '✅ مسموحة' : '❌ مغلقة'}</div>
-              <div className="acp-rd-card__row"><span>الهدايا:</span> {giftsEnabled ? '✅ مسموحة' : '❌ مغلقة'}</div>
-              <div className="acp-rd-card__row"><span>المشاركة:</span> {sharingEnabled ? '✅ مسموحة' : '❌ مغلقة'}</div>
+              <div className="acp-rd-card__row">
+                <span>التعليقات:</span>
+                <span className="material-symbols-outlined" style={{ color: commentsEnabled ? '#22c55e' : '#ef4444' }}>{commentsEnabled ? 'check_circle' : 'cancel'}</span>
+                {commentsEnabled ? 'مسموحة' : 'مغلقة'}
+              </div>
+              <div className="acp-rd-card__row">
+                <span>الهدايا:</span>
+                <span className="material-symbols-outlined" style={{ color: giftsEnabled ? '#22c55e' : '#ef4444' }}>{giftsEnabled ? 'check_circle' : 'cancel'}</span>
+                {giftsEnabled ? 'مسموحة' : 'مغلقة'}
+              </div>
+              <div className="acp-rd-card__row">
+                <span>المشاركة:</span>
+                <span className="material-symbols-outlined" style={{ color: sharingEnabled ? '#22c55e' : '#ef4444' }}>{sharingEnabled ? 'check_circle' : 'cancel'}</span>
+                {sharingEnabled ? 'مسموحة' : 'مغلقة'}
+              </div>
             </div>
 
             {/* ── Cover card ───────────────────────────────────────── */}
             <div className="acp-rd-card">
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">image</span> الغلاف</h3>
               <div className="acp-rd-card__row">
-                <span>الحالة:</span> {coverAsset ? (coverAsset.sourceType === 'uploaded' ? '📷 صورة مرفوعة' : coverAsset.sourceType === 'ai' ? '🤖 غلاف ذكي (مقفل)' : '📷 مرفوع') : '🖼️ افتراضي — لم يُرفق غلاف'}
+                <span>الحالة:</span>
+                {coverAsset ? (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: '#22c55e' }}>
+                      {coverAsset.sourceType === 'uploaded' ? 'image' : coverAsset.sourceType === 'ai' ? 'auto_awesome' : 'image'}
+                    </span>
+                    {coverAsset.sourceType === 'uploaded' ? 'صورة مرفوعة' : coverAsset.sourceType === 'ai' ? 'غلاف ذكي (مقفل)' : 'مرفوع'}
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined">image</span>
+                    افتراضي — لم يُرفق غلاف
+                  </>
+                )}
               </div>
             </div>
 
             {/* ── Captions card ────────────────────────────────────── */}
             <div className="acp-rd-card">
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">subtitles</span> الترجمة</h3>
-              <div className="acp-rd-card__row"><span>الحالة:</span> {captionsEnabled ? '✅ مفعّلة' : '⏭️ تم التخطي'}</div>
+              <div className="acp-rd-card__row">
+                <span>الحالة:</span>
+                <span className="material-symbols-outlined" style={{ color: captionsEnabled ? '#22c55e' : '#94a3b8' }}>
+                  {captionsEnabled ? 'check_circle' : 'skip_next'}
+                </span>
+                {captionsEnabled ? 'مفعّلة' : 'تم التخطي'}
+              </div>
               {captionsEnabled && <div className="acp-rd-card__row"><span>اللغة:</span> {LANGUAGES.find((l) => l.code === captionLang)?.label}</div>}
               {captionsEnabled && <div className="acp-rd-card__row"><span>النمط:</span> {captionStyle === 'standard' ? 'عادي' : captionStyle === 'karaoke' ? 'كاريوكي' : 'ترجمة سفلية'}</div>}
             </div>
@@ -1108,7 +1561,13 @@ export function AudioCreatePage() {
             {/* ── AutoCue card ─────────────────────────────────────── */}
             <div className="acp-rd-card">
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">teleprompter</span> الملقن</h3>
-              <div className="acp-rd-card__row"><span>الحالة:</span> {autoCueEnabled ? '✅ مفعّل' : '⏭️ تم التخطي'}</div>
+              <div className="acp-rd-card__row">
+                <span>الحالة:</span>
+                <span className="material-symbols-outlined" style={{ color: autoCueEnabled ? '#22c55e' : '#94a3b8' }}>
+                  {autoCueEnabled ? 'check_circle' : 'skip_next'}
+                </span>
+                {autoCueEnabled ? 'مفعّل' : 'تم التخطي'}
+              </div>
               {autoCueEnabled && (
                 <>
                   <div className="acp-rd-card__row"><span>مصدر النص:</span> يدوي</div>
@@ -1128,21 +1587,35 @@ export function AudioCreatePage() {
               {audioAsset ? (
                 <>
                   <div className="acp-rd-card__row"><span>الملف:</span> {audioAsset.originalFileName}</div>
-                  <div className="acp-rd-card__row"><span>المصدر:</span> {audioAsset.sourceType === 'recorded' ? '🎤 مسجّل' : '📁 مرفوع'}</div>
+                  <div className="acp-rd-card__row">
+                    <span>المصدر:</span>
+                    <span className="material-symbols-outlined">{audioAsset.sourceType === 'recorded' ? 'mic' : 'upload_file'}</span>
+                    {audioAsset.sourceType === 'recorded' ? 'مسجّل' : 'مرفوع'}
+                  </div>
                   {audioAsset.durationMs ? <div className="acp-rd-card__row"><span>المدة:</span> {formatDuration(audioAsset.durationMs)}</div> : null}
                   {audioAsset.sizeBytes ? <div className="acp-rd-card__row"><span>الحجم:</span> {formatFileSize(audioAsset.sizeBytes)}</div> : null}
                   <div className="acp-rd-card__row"><span>النوع:</span> {audioAsset.mimeType}</div>
                 </>
               ) : (
-                <div className="acp-rd-card__row acp-rd-card__row--warn"><span>❌</span> لا يوجد ملف صوتي — لا يمكن النشر.</div>
+                <div className="acp-rd-card__row acp-rd-card__row--warn">
+                  <span className="material-symbols-outlined">cancel</span> لا يوجد ملف صوتي — لا يمكن النشر.
+                </div>
               )}
             </div>
 
             {/* ── Effects & Mixing card ────────────────────────────── */}
             <div className="acp-rd-card">
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> المؤثرات والمكساج</h3>
-              <div className="acp-rd-card__row"><span>المؤثرات:</span> ⏭️ تم التخطي — لم يتم تطبيق أي معالجة</div>
-              <div className="acp-rd-card__row"><span>المكساج:</span> ⏭️ تم التخطي — لم يتم تطبيق أي خلط</div>
+              <div className="acp-rd-card__row">
+                <span>المؤثرات:</span>
+                <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
+                تم التخطي — لم يتم تطبيق أي معالجة
+              </div>
+              <div className="acp-rd-card__row">
+                <span>المكساج:</span>
+                <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
+                تم التخطي — لم يتم تطبيق أي خلط
+              </div>
             </div>
 
             {/* ── Moderation notice ────────────────────────────────── */}
@@ -1166,28 +1639,100 @@ export function AudioCreatePage() {
       {/* ═══════════════ STEP 12: PUBLISH RESULT ═════════════════ */}
       {step === 12 && publishResult && (
         <section className="acp-section">
-          <div className="acp-publish-success">
-            <span className="material-symbols-outlined acp-publish-success__icon">celebration</span>
-            <h2>تم النشر بنجاح! 🎉</h2>
-            <div className="acp-publish-success__details">
-              <div className="acp-review__item"><span>معرّف المحتوى:</span> <code>{publishResult.contentId}</code></div>
-              <div className="acp-review__item"><span>الحالة:</span> {publishResult.status}</div>
+          {/* Hero section with animated ping */}
+          <div className="acp-publish-hero">
+            <div className="acp-publish-hero__icon-wrap">
+              <span className="acp-publish-hero__ping" />
+              <span className="material-symbols-outlined">check_circle</span>
             </div>
-            <div className="acp-publish-notice acp-publish-notice--info">
-              <span className="material-symbols-outlined" aria-hidden="true">hourglass_top</span>
-              <p>التشغيل المباشر غير متوفر حالياً — خط المعالجة (الترميز، الموجة الصوتية) لم يكتمل بعد. صفحة المحتوى ستظهر حالة "جاري المعالجة".</p>
+            <h2>تم إرسال الصوت</h2>
+            <p className="acp-publish-hero__subtitle">سنخبرك بحالة النشر فوراً</p>
+          </div>
+
+          {/* Status card */}
+          <div className="acp-status-card">
+            <span className="acp-status-card__badge">
+              <span className="material-symbols-outlined">hourglass_empty</span>
+              قيد المراجعة
+            </span>
+            <p className="acp-status-card__desc">
+              تم استلام المحتوى بنجاح. سيتم مراجعته وفقاً لسياسة الاستخدام قبل النشر العلني.
+            </p>
+            <div className="acp-reason-chips">
+              {categoryId && <span className="acp-reason-chip">{CATEGORIES.find((c) => c.id === categoryId)?.label}</span>}
+              <span className="acp-reason-chip">{ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13' : '+18'}</span>
+              <span className="acp-reason-chip">{WORLDS.find((w) => w.key === world)?.label}</span>
+              <span className="acp-reason-chip">مراجعة تلقائية</span>
             </div>
-            <div className="acp-publish-success__actions">
-              <button className="acp-btn acp-btn--primary" onClick={() => navigate(`/audio/${publishResult.contentId}`)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">play_circle</span> فتح صفحة المحتوى
-              </button>
-              <button className="acp-btn acp-btn--ghost" onClick={() => navigate('/create/audio')} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">add</span> إنشاء محتوى جديد
-              </button>
-              <button className="acp-btn acp-btn--ghost" onClick={() => navigate(-1)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
-              </button>
+          </div>
+
+          {/* Post summary card */}
+          <div className="acp-post-summary">
+            {coverPreviewUrl ? (
+              <img src={coverPreviewUrl} alt="غلاف" className="acp-post-summary__cover" />
+            ) : (
+              <div className="acp-post-summary__cover--default">
+                <span className="material-symbols-outlined">music_note</span>
+              </div>
+            )}
+            <div className="acp-post-summary__body">
+              <h3 className="acp-post-summary__title">{title || 'بدون عنوان'}</h3>
+              <div className="acp-post-summary__meta">
+                {audioAsset?.durationMs ? (
+                  <span className="acp-post-summary__meta-item">
+                    <span className="material-symbols-outlined">schedule</span>
+                    {formatDuration(audioAsset.durationMs)}
+                  </span>
+                ) : null}
+                <span className="acp-post-summary__meta-item">
+                  <span className="material-symbols-outlined">{captionsEnabled ? 'subtitles' : 'subtitles_off'}</span>
+                  {captionsEnabled ? 'ترجمة' : 'بدون ترجمة'}
+                </span>
+                <span className="acp-post-summary__meta-item">
+                  <span className="material-symbols-outlined">{AUDIENCE_OPTIONS.find((a) => a.key === audience)?.icon || 'visibility'}</span>
+                  {AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}
+                </span>
+              </div>
             </div>
+          </div>
+
+          {/* Timeline */}
+          <div className="acp-timeline">
+            <div className="acp-timeline__step acp-timeline__step--done">
+              <div className="acp-timeline__dot"><span className="material-symbols-outlined">check</span></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">تم رفع الملف الصوتي</p></div>
+            </div>
+            <div className="acp-timeline__step acp-timeline__step--done">
+              <div className="acp-timeline__dot"><span className="material-symbols-outlined">check</span></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">تم حفظ البيانات</p></div>
+            </div>
+            <div className="acp-timeline__step acp-timeline__step--active">
+              <div className="acp-timeline__dot"><span className="material-symbols-outlined">hourglass_empty</span></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">جاري الفحص والمعالجة</p></div>
+            </div>
+            <div className="acp-timeline__step acp-timeline__step--pending">
+              <div className="acp-timeline__dot"><span className="material-symbols-outlined">schedule</span></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">النشر العلني</p></div>
+            </div>
+          </div>
+
+          {/* Info note */}
+          <div className="acp-publish-notice acp-publish-notice--info">
+            <span className="material-symbols-outlined" aria-hidden="true">info</span>
+            <p>بعض الحسابات تتمتع بميزة النشر الفوري. حالة النشر يمكن متابعتها من صفحة المحتوى.</p>
+          </div>
+
+          {/* Action buttons */}
+          <div className="acp-nav-row" style={{ justifyContent: 'center' }}>
+            <button className="acp-btn acp-btn--primary" onClick={() => navigate(`/audio/${publishResult.contentId}`)} type="button">
+              <span className="material-symbols-outlined" aria-hidden="true">play_circle</span> عرض المسودة
+            </button>
+            <button className="acp-btn acp-btn--ghost" onClick={() => navigate(-1)} type="button">
+              <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+            </button>
+            <button className="acp-btn acp-btn--ghost" onClick={() => navigate('/create/audio')} type="button">
+              <span className="material-symbols-outlined" aria-hidden="true">add</span> إنشاء محتوى جديد
+            </button>
           </div>
         </section>
       )}

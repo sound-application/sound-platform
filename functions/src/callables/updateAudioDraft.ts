@@ -133,6 +133,11 @@ export const updateAudioDraft = functions
       if (data.coverAsset !== undefined)       update.coverAsset = data.coverAsset;
       if (data.captionsSetup !== undefined)    update.captionsSetup = data.captionsSetup;
       if (data.autoCue !== undefined)          update.autoCue = data.autoCue;
+      if (data.isChildContent !== undefined)  update.isChildContent = data.isChildContent;
+      if (data.placementFeed !== undefined)   update.placementFeed = data.placementFeed;
+      if (data.playlistIntent !== undefined)  update.playlistIntent = data.playlistIntent;
+      if (data.playlistId !== undefined)      update.playlistId = data.playlistId;
+      if (data.newPlaylistName !== undefined) update.newPlaylistName = data.newPlaylistName;
       if (data.currentStep !== undefined)      update.currentStep = data.currentStep;
 
       // ── 5b. Handle audioAsset attachment (Phase 8-B) ────────────────────────

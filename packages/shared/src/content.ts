@@ -147,6 +147,12 @@ export type CountryMode = 'all' | 'one' | 'upToFour';
 /** Age suitability rating */
 export type AgeSuitability = 'everyone' | 'teen' | 'mature';
 
+/** Placement feed for content appearance */
+export type PlacementFeed = 'main' | 'shorts' | 'both';
+
+/** Playlist intent during creation */
+export type PlaylistIntent = 'none' | 'existing' | 'new';
+
 /** Full audience/privacy options */
 export type AudienceType =
   | 'public'
@@ -276,6 +282,21 @@ export interface AudioContentDoc {
   /** AutoCue teleprompter config (Phase 8-C) */
   autoCue?: AutoCueConfig;
 
+  // ── Phase 8-D.2 Fields ─────────────────────────────────────────────────────
+
+  /** Whether this is child-directed content */
+  isChildContent?: boolean;
+
+  /** Placement feed: main feed, shorts/clips, or both */
+  placementFeed?: PlacementFeed;
+
+  /** Playlist intent: none, add to existing, or create new */
+  playlistIntent?: PlaylistIntent;
+  /** Existing playlist ID when playlistIntent === 'existing' */
+  playlistId?: string;
+  /** New playlist name when playlistIntent === 'new' */
+  newPlaylistName?: string;
+
   // ── Visibility & Status ────────────────────────────────────────────────────
 
   /** Audience/privacy setting: 'public' | 'followers' | 'friends' | 'onlyMe' | 'custom' */
@@ -376,6 +397,17 @@ export interface AudioDraftDoc {
   captionsSetup?: CaptionsSetup;
   autoCue?: AutoCueConfig;
 
+  /** Whether this is child-directed content (Phase 8-D.2) */
+  isChildContent?: boolean;
+  /** Placement feed (Phase 8-D.2) */
+  placementFeed?: PlacementFeed;
+  /** Playlist intent (Phase 8-D.2) */
+  playlistIntent?: PlaylistIntent;
+  /** Existing playlist ID (Phase 8-D.2) */
+  playlistId?: string;
+  /** New playlist name (Phase 8-D.2) */
+  newPlaylistName?: string;
+
   // ── Draft Status ───────────────────────────────────────────────────────────
 
   /** Draft lifecycle: 'draft' (editing) or 'readyForUpload' (info complete) */
@@ -449,6 +481,11 @@ export interface UpdateAudioDraftRequest {
   coverAsset?: CoverAsset;
   captionsSetup?: CaptionsSetup;
   autoCue?: AutoCueConfig;
+  isChildContent?: boolean;
+  placementFeed?: PlacementFeed;
+  playlistIntent?: PlaylistIntent;
+  playlistId?: string;
+  newPlaylistName?: string;
   currentStep?: string;
   /** Audio asset metadata — attached after upload completes (Phase 8-B) */
   audioAsset?: AudioAssetMeta;

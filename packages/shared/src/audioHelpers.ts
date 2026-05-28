@@ -224,6 +224,13 @@ export function createAudioContentFromDraft(
     captionsSetup: draft.captionsSetup,
     autoCue: draft.autoCue,
 
+    // Phase 8-D.2 fields
+    isChildContent: draft.isChildContent,
+    placementFeed: draft.placementFeed,
+    playlistIntent: draft.playlistIntent,
+    playlistId: draft.playlistId,
+    newPlaylistName: draft.newPlaylistName,
+
     // Audio asset — copied from draft (attached during recording/upload)
     audioAsset: draft.audioAsset,
 
