@@ -1,7 +1,7 @@
 /**
  * Sound Platform — getAudioPlaybackUrl Callable Cloud Function
  * ==============================================================
- * Phase:   8-D (Audio Playback Foundation)
+ * Phase:   8-E (Audio Processing Pipeline Foundation)
  * Created: 2026-05-28
  *
  * WHAT THIS FUNCTION DOES:
@@ -127,22 +127,46 @@ export const getAudioPlaybackUrl = functions
         );
       }
 
-      // ── 6. Verify audio asset ──────────────────────────────────────────
+      // ── 6. Determine which audio file to serve ──────────────────────────
+      // Phase 8-E: prefer processedAudio if available, fallback to original.
       const audioAsset = content.audioAsset;
+      const processedAudio = content.processedAudio;
 
-      if (!audioAsset?.storagePath) {
-        throw new functions.https.HttpsError(
-          'failed-precondition',
-          'Content has no audio file attached. Audio may still be processing.',
-        );
+      let targetPath: string | undefined;
+      let targetMime: string | undefined;
+      let targetDurationMs: number | undefined;
+      let source: 'processed' | 'original' | 'none';
+
+      if (processedAudio?.storagePath) {
+        targetPath = processedAudio.storagePath;
+        targetMime = processedAudio.mimeType;
+        targetDurationMs = processedAudio.durationMs;
+        source = 'processed';
+      } else if (audioAsset?.storagePath) {
+        targetPath = audioAsset.storagePath;
+        targetMime = audioAsset.mimeType;
+        targetDurationMs = audioAsset.durationMs;
+        source = 'original';
+      } else {
+        // No audio file available at all
+        return {
+          contentId: data.contentId,
+          source: 'none' as const,
+          processingStatus: content.contentProcessingStatus || 'uploaded',
+          waveform: content.waveform,
+          captionsStatus: content.captionsProcessing?.status,
+          sourceType: audioAsset?.sourceType,
+        } as GetAudioPlaybackUrlResponse;
       }
 
+      // Phase 8-E enrichment data
+      const processingStatus = content.contentProcessingStatus || 'uploaded';
+      const waveform = content.waveform;
+      const captionsStatus = content.captionsProcessing?.status;
+
       // ── 7. Get download URL via Firebase download token ────────────────
-      // Uses file metadata to extract the download token and construct
-      // a Firebase Storage download URL. This does NOT require the
-      // Service Account Token Creator IAM role (unlike getSignedUrl).
       const bucket = storage.bucket();
-      const file = bucket.file(audioAsset.storagePath);
+      const file = bucket.file(targetPath);
 
       // Verify file exists in Storage
       const [exists] = await file.exists();
@@ -165,49 +189,53 @@ export const getAudioPlaybackUrl = functions
         });
 
         const bucketName = bucket.name;
-        const encodedPath = encodeURIComponent(audioAsset.storagePath);
+        const encodedPath = encodeURIComponent(targetPath);
         const playbackUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${newToken}`;
 
         const advisoryExpiry = new Date(Date.now() + ADVISORY_EXPIRATION_MS);
 
         functions.logger.info(
-          `[getAudioPlaybackUrl] Generated new download token for content ${data.contentId}`,
-          { uid, contentId: data.contentId, storagePath: audioAsset.storagePath },
+          `[getAudioPlaybackUrl] Generated new download token for content ${data.contentId} (source=${source})`,
+          { uid, contentId: data.contentId, storagePath: targetPath, source },
         );
 
         return {
           contentId: data.contentId,
           playbackUrl,
           expiresAt: advisoryExpiry.toISOString(),
-          mimeType: audioAsset.mimeType || 'audio/mpeg',
-          durationMs: audioAsset.durationMs,
-          sourceType: audioAsset.sourceType,
-        };
+          mimeType: targetMime || 'audio/mpeg',
+          durationMs: targetDurationMs,
+          sourceType: audioAsset?.sourceType,
+          source,
+          processingStatus,
+          waveform,
+          captionsStatus,
+        } as GetAudioPlaybackUrlResponse;
       }
 
       // Construct Firebase Storage download URL with existing token
       const bucketName = bucket.name;
-      const encodedPath = encodeURIComponent(audioAsset.storagePath);
+      const encodedPath = encodeURIComponent(targetPath);
       const playbackUrl = `https://firebasestorage.googleapis.com/v0/b/${bucketName}/o/${encodedPath}?alt=media&token=${downloadToken}`;
 
       const advisoryExpiry = new Date(Date.now() + ADVISORY_EXPIRATION_MS);
 
       functions.logger.info(
-        `[getAudioPlaybackUrl] Returning download URL for content ${data.contentId}`,
-        {
-          uid,
-          contentId: data.contentId,
-          storagePath: audioAsset.storagePath,
-        },
+        `[getAudioPlaybackUrl] Returning download URL for content ${data.contentId} (source=${source})`,
+        { uid, contentId: data.contentId, storagePath: targetPath, source },
       );
 
       return {
         contentId: data.contentId,
         playbackUrl,
         expiresAt: advisoryExpiry.toISOString(),
-        mimeType: audioAsset.mimeType || 'audio/mpeg',
-        durationMs: audioAsset.durationMs,
-        sourceType: audioAsset.sourceType,
-      };
+        mimeType: targetMime || 'audio/mpeg',
+        durationMs: targetDurationMs,
+        sourceType: audioAsset?.sourceType,
+        source,
+        processingStatus,
+        waveform,
+        captionsStatus,
+      } as GetAudioPlaybackUrlResponse;
     },
   );

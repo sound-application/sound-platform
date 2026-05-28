@@ -1,8 +1,8 @@
 /**
  * Sound Platform — Audio Content Schema
  * ========================================
- * Phase:   8-C (Complete Audio Creation Flow Foundation)
- * Updated: 2026-05-27
+ * Phase:   8-E (Audio Processing Pipeline Foundation)
+ * Updated: 2026-05-28
  *
  * This is the AUDIO CONTENT CORE MODULE — not generic social content.
  * `contentItems/{contentId}` is the unified storage collection, but the
@@ -200,6 +200,85 @@ export interface PublishToggles {
   scheduledAt?: string;
 }
 
+// ─── Phase 8-E: Processing Pipeline Types ────────────────────────────────────
+
+/**
+ * Overall content processing status.
+ * Tracks the state of the server-side processing pipeline
+ * after an audio item is published.
+ */
+export type ContentProcessingStatus =
+  | 'uploaded'           // original file uploaded, no processing started
+  | 'queued'             // processing queued
+  | 'processing'         // actively processing
+  | 'ready'              // all processing complete (real transcode done)
+  | 'originalFallback'   // original is playable, real processing deferred/unavailable
+  | 'partial'            // some steps done, others pending
+  | 'failed';            // critical failure
+
+/**
+ * Processed/transcoded audio output metadata.
+ * null/undefined until real transcoding produces an output file.
+ */
+export interface ProcessedAudioMeta {
+  /** Cloud Storage path to processed file */
+  storagePath: string;
+  /** MIME type of processed audio (e.g. 'audio/aac') */
+  mimeType: string;
+  /** Processed file size in bytes */
+  sizeBytes: number;
+  /** Duration in milliseconds */
+  durationMs: number;
+  /** Bitrate in kbps */
+  bitrate?: number;
+  /** Codec name (e.g. 'aac', 'opus') */
+  codec?: string;
+  /** EBU R128 integrated loudness in LUFS */
+  loudnessLufs?: number;
+  /** ISO timestamp when processing completed */
+  createdAt: string;
+  /** Reference back to the original upload path */
+  sourceOriginalPath: string;
+}
+
+/**
+ * Waveform data — peaks array + metadata.
+ * When synthetic === true, peaks are placeholder data
+ * that will be replaced by real extraction later.
+ */
+export interface WaveformData {
+  /** Waveform generation status */
+  status: 'pending' | 'processing' | 'ready' | 'failed';
+  /** Normalized amplitude peaks (0.0–1.0), typically 200 points */
+  peaks?: number[];
+  /** Number of peak points */
+  pointsCount?: number;
+  /** Original audio sample rate in Hz */
+  sampleRate?: number;
+  /** true = generated placeholder, false = real extraction from audio */
+  synthetic: boolean;
+  /** ISO timestamp when waveform was generated */
+  generatedAt?: string;
+  /** Error message if generation failed */
+  error?: string;
+}
+
+/**
+ * Captions processing status.
+ * Separate from CaptionsSetup (which is creator intent/preferences).
+ * This tracks the server-side transcription pipeline.
+ */
+export interface CaptionsProcessing {
+  /** Transcription pipeline status */
+  status: 'notRequested' | 'requested' | 'processing' | 'ready' | 'failed';
+  /** Language of the transcription */
+  language?: string;
+  /** ISO timestamp when transcription completed */
+  generatedAt?: string;
+  /** Error message if transcription failed */
+  error?: string;
+}
+
 // ─── Owner Snapshot ──────────────────────────────────────────────────────────
 //
 // Denormalized from publicProfiles/{uid} at publish time.
@@ -315,6 +394,24 @@ export interface AudioContentDoc {
 
   /** Embedded audio asset metadata (1:1 with content item) */
   audioAsset?: AudioAssetMeta;
+
+  // ── Processing Pipeline (Phase 8-E) ────────────────────────────────────────
+
+  /** Overall processing pipeline status */
+  contentProcessingStatus?: ContentProcessingStatus;
+  /** ISO timestamp — when processing was queued/started */
+  processingStartedAt?: string;
+  /** ISO timestamp — when processing completed (success or failure) */
+  processingCompletedAt?: string;
+
+  /** Processed/transcoded audio output — null until real transcoding runs */
+  processedAudio?: ProcessedAudioMeta;
+
+  /** Waveform peaks data (may be synthetic placeholder) */
+  waveform?: WaveformData;
+
+  /** Captions/transcription processing status (separate from captionsSetup) */
+  captionsProcessing?: CaptionsProcessing;
 
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 
@@ -509,27 +606,38 @@ export interface PublishAudioContentResponse {
   status: AudioContentStatus;
 }
 
-// ─── Phase 8-D — Audio Playback Types ────────────────────────────────────────
+// ─── Phase 8-D/8-E — Audio Playback Types ───────────────────────────────────
 
 /** Request payload for getAudioPlaybackUrl callable */
 export interface GetAudioPlaybackUrlRequest {
   contentId: string;
 }
 
-/** Response payload for getAudioPlaybackUrl callable */
+/** Response payload for getAudioPlaybackUrl callable (Phase 8-E enriched) */
 export interface GetAudioPlaybackUrlResponse {
   /** The content item ID */
   contentId: string;
-  /** Temporary signed URL for audio playback */
-  playbackUrl: string;
+  /** Temporary signed URL for audio playback — undefined if not playable */
+  playbackUrl?: string;
   /** ISO timestamp when the signed URL expires */
-  expiresAt: string;
+  expiresAt?: string;
   /** MIME type of the audio file */
-  mimeType: string;
+  mimeType?: string;
   /** Duration in milliseconds (if known) */
   durationMs?: number;
   /** How the audio was acquired */
   sourceType?: 'recorded' | 'uploaded';
+
+  // ── Phase 8-E enrichments ─────────────────────────────────────────────────
+
+  /** Whether the URL points to processed master, original upload, or nothing */
+  source: 'processed' | 'original' | 'none';
+  /** Overall content processing pipeline status */
+  processingStatus?: ContentProcessingStatus;
+  /** Waveform data (peaks + metadata) if available */
+  waveform?: WaveformData;
+  /** Captions processing status */
+  captionsStatus?: CaptionsProcessing['status'];
 }
 
 // ─── Live Session Document (unchanged from Phase 4-H-1) ──────────────────────

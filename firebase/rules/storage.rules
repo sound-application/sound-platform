@@ -141,6 +141,18 @@ service firebase.storage {
     }
 
     // ----------------------------------------------------------
+    // audioProcessed/{uid}/{contentId}/{allPaths=**}
+    // Phase 8-E: Transcoded audio, waveform JSON, and transcript
+    // output files. Written by Cloud Functions (admin SDK) only.
+    // Client reads DENIED — audio served via signed URL callable.
+    // Waveform data returned inline by getAudioPlaybackUrl.
+    // ----------------------------------------------------------
+    match /audioProcessed/{uid}/{contentId}/{allPaths=**} {
+      allow read: if false;   // Signed URL via Cloud Function only
+      allow write: if false;  // Cloud Functions (admin SDK) bypasses rules
+    }
+
+    // ----------------------------------------------------------
     // SERVER-ONLY STORAGE PATHS
     // The following paths are completely inaccessible from client
     // SDKs under any circumstances. Only Cloud Functions using

@@ -296,13 +296,17 @@ service cloud.firestore {
         && request.resource.data.ownerUid == request.auth.uid;
 
       // Owner can update own non-server fields
-      // Protected: counters, moderationStatus, owner snapshot, timestamps set by CF
+      // Protected: counters, moderationStatus, owner snapshot, timestamps set by CF,
+      // and Phase 8-E processing pipeline fields (server-only)
       allow update: if isOwner(resource.data.get('ownerUid', ''))
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['ownerUid', 'createdAt', 'publishedAt',
                      'listensCount', 'likesCount', 'savesCount',
                      'repostsCount', 'commentsCount', 'sharesCount',
-                     'moderationStatus', 'owner']);
+                     'moderationStatus', 'owner',
+                     'contentProcessingStatus', 'processingStartedAt',
+                     'processingCompletedAt', 'processedAudio',
+                     'waveform', 'captionsProcessing']);
 
       // No client delete — soft-delete via status field
       allow delete: if false;

@@ -1,7 +1,7 @@
 /**
  * Sound Platform — Audio Detail Player Page
  * ===========================================
- * Phase:   8-D.2 (Full Audio Detail Player)
+ * Phase:   8-E (Audio Processing Pipeline Foundation)
  * Updated: 2026-05-28
  *
  * Route: /audio/:contentId
@@ -26,7 +26,7 @@ import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDuration, formatFileSize } from '../lib/audioDuration';
 import { callGetAudioPlaybackUrl } from '../lib/callables';
-import type { AudioContentDoc } from '@sound/shared';
+import type { AudioContentDoc, WaveformData, ContentProcessingStatus } from '@sound/shared';
 import app from '../lib/firebase';
 import './Page.css';
 import './AudioDetailPage.css';
@@ -77,6 +77,12 @@ export function AudioDetailPage() {
   const [playbackError, setPlaybackError] = useState<string | null>(null);
   const [playbackExpiry, setPlaybackExpiry] = useState<string | null>(null);
   const [playbackLoading, setPlaybackLoading] = useState(false);
+
+  // Phase 8-E: Processing pipeline state
+  const [audioSource, setAudioSource] = useState<'processed' | 'original' | 'none'>('none');
+  const [processingStatus, setProcessingStatus] = useState<ContentProcessingStatus | undefined>();
+  const [waveformData, setWaveformData] = useState<WaveformData | undefined>();
+  const [captionsStatus, setCaptionsStatus] = useState<string | undefined>();
 
   // Player state
   const [playerState, setPlayerState] = useState<PlayerState>('loading');
@@ -138,8 +144,17 @@ export function AudioDetailPage() {
       try {
         const result = await callGetAudioPlaybackUrl({ contentId });
         const resp = result.data;
-        setPlaybackUrl(resp.playbackUrl);
-        setPlaybackExpiry(resp.expiresAt);
+        if (resp.playbackUrl) {
+          setPlaybackUrl(resp.playbackUrl);
+        }
+        if (resp.expiresAt) {
+          setPlaybackExpiry(resp.expiresAt);
+        }
+        // Phase 8-E enrichments
+        setAudioSource(resp.source || 'original');
+        setProcessingStatus(resp.processingStatus);
+        setWaveformData(resp.waveform);
+        setCaptionsStatus(resp.captionsStatus);
       } catch (err: unknown) {
         const msg = err instanceof Error ? err.message : 'فشل تحميل رابط التشغيل.';
         setPlaybackError(msg);
@@ -235,8 +250,13 @@ export function AudioDetailPage() {
     setPlaybackLoading(true);
     try {
       const result = await callGetAudioPlaybackUrl({ contentId });
-      setPlaybackUrl(result.data.playbackUrl);
-      setPlaybackExpiry(result.data.expiresAt);
+      const resp = result.data;
+      if (resp.playbackUrl) setPlaybackUrl(resp.playbackUrl);
+      if (resp.expiresAt) setPlaybackExpiry(resp.expiresAt);
+      setAudioSource(resp.source || 'original');
+      setProcessingStatus(resp.processingStatus);
+      setWaveformData(resp.waveform);
+      setCaptionsStatus(resp.captionsStatus);
     } catch (err: unknown) {
       setPlaybackError(err instanceof Error ? err.message : 'فشل.');
       setPlayerState('error');
@@ -321,11 +341,26 @@ export function AudioDetailPage() {
         {/* Gradient overlay */}
         <div className="adp-hero__gradient" />
 
-        {/* Waveform bars */}
+        {/* Waveform bars — dynamic from peaks data or static fallback */}
         <div className="adp-hero__waveform">
-          {Array.from({ length: 9 }).map((_, i) => (
-            <div key={i} className="adp-hero__waveform-bar" />
-          ))}
+          {waveformData?.peaks && waveformData.peaks.length > 0 ? (
+            <>
+              {waveformData.peaks.filter((_, i) => i % Math.max(1, Math.floor(waveformData.peaks!.length / 40)) === 0).map((peak, i) => (
+                <div
+                  key={i}
+                  className="adp-hero__waveform-bar adp-hero__waveform-bar--dynamic"
+                  style={{ height: `${Math.max(8, peak * 100)}%` }}
+                />
+              ))}
+              {waveformData.synthetic && (
+                <span className="adp-waveform-label">تقريبي</span>
+              )}
+            </>
+          ) : (
+            Array.from({ length: 9 }).map((_, i) => (
+              <div key={i} className="adp-hero__waveform-bar" />
+            ))
+          )}
         </div>
 
         {/* Badge */}
@@ -483,6 +518,20 @@ export function AudioDetailPage() {
                 رابط تشغيل مؤقت — صالح حتى {new Date(playbackExpiry).toLocaleTimeString('ar')}
               </p>
             )}
+
+            {/* Phase 8-E: Source indicator chip */}
+            {audioSource === 'original' && (
+              <div className="adp-source-chip">
+                <span className="material-symbols-outlined">info</span>
+                المصدر الأصلي — المعالجة لم تكتمل بعد
+              </div>
+            )}
+            {audioSource === 'processed' && (
+              <div className="adp-source-chip adp-source-chip--ready">
+                <span className="material-symbols-outlined">verified</span>
+                معالَج
+              </div>
+            )}
           </>
         )}
 
@@ -512,6 +561,26 @@ export function AudioDetailPage() {
             <span className="material-symbols-outlined adp-pending__icon">hourglass_top</span>
             <h3>جاري معالجة الصوت...</h3>
             <p>الصوت غير متوفر للتشغيل حالياً.<br />خط المعالجة لم يكتمل بعد.</p>
+          </div>
+        )}
+
+        {/* Phase 8-E: Processing states when audio exists but source is 'none' */}
+        {audioSource === 'none' && !playbackLoading && !playbackError && hasAudio && currentUser && (
+          <div className="adp-pending">
+            <span className="material-symbols-outlined adp-pending__icon">
+              {processingStatus === 'failed' ? 'error' : 'hourglass_top'}
+            </span>
+            <h3>
+              {processingStatus === 'queued' && 'في الانتظار...'}
+              {processingStatus === 'processing' && 'جاري المعالجة...'}
+              {processingStatus === 'failed' && 'فشلت المعالجة'}
+              {(!processingStatus || processingStatus === 'uploaded') && 'جاري التجهيز...'}
+            </h3>
+            {processingStatus === 'failed' && (
+              <button className="adp-btn adp-btn--ghost" onClick={retryPlayback}>
+                <span className="material-symbols-outlined">refresh</span> إعادة المحاولة
+              </button>
+            )}
           </div>
         )}
 
@@ -563,14 +632,28 @@ export function AudioDetailPage() {
         </div>
       )}
 
-      {/* ── 7. Captions Preview ─────────────────────────────────── */}
+      {/* ── 7. Captions Preview ───────────────────────────────── */}
       {item.captionsSetup?.enabled && (
         <div className="adp-glass-card adp-captions">
           <h3 className="adp-section-title">النص</h3>
-          <p className="adp-captions__quote">
-            {item.caption || 'لا يوجد نص متاح حالياً...'}
-          </p>
-          <button className="adp-captions__link">عرض النص الكامل</button>
+          {captionsStatus === 'requested' || captionsStatus === 'processing' ? (
+            <p className="adp-captions__quote adp-captions__quote--pending">
+              <span className="material-symbols-outlined">pending</span>
+              جاري إنشاء النص...
+            </p>
+          ) : captionsStatus === 'failed' ? (
+            <p className="adp-captions__quote adp-captions__quote--failed">
+              <span className="material-symbols-outlined">error_outline</span>
+              فشل إنشاء النص
+            </p>
+          ) : (
+            <>
+              <p className="adp-captions__quote">
+                {item.caption || 'لا يوجد نص متاح حالياً...'}
+              </p>
+              <button className="adp-captions__link">عرض النص الكامل</button>
+            </>
+          )}
         </div>
       )}
 

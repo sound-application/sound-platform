@@ -1,6 +1,6 @@
 /*
  * AudioDetailPage.css — Sound Platform
- * Phase 8-D.2: Full Audio Detail Player
+ * Phase 8-E: Audio Processing Pipeline Foundation
  * Dark/glass | RTL-first | Premium
  * Updated: 2026-05-28
  */
@@ -124,6 +124,24 @@
 .adp-hero__waveform-bar:nth-child(7) { height: 80%; animation-delay: 0.25s; }
 .adp-hero__waveform-bar:nth-child(8) { height: 55%; animation-delay: 0.05s; }
 .adp-hero__waveform-bar:nth-child(9) { height: 30%; animation-delay: 0.4s; }
+
+/* Dynamic waveform bars (Phase 8-E) — inline height from peaks data */
+.adp-hero__waveform-bar--dynamic {
+  animation: none;
+  transition: height 0.3s ease;
+}
+
+/* Synthetic waveform label */
+.adp-waveform-label {
+  position: absolute;
+  bottom: -18px;
+  left: 50%;
+  transform: translateX(-50%);
+  font-size: 0.6rem;
+  color: rgba(255,255,255,0.3);
+  letter-spacing: 0.05em;
+  white-space: nowrap;
+}
 
 @keyframes adp-wave {
   0%, 100% { transform: scaleY(0.6); }
@@ -617,7 +635,55 @@
 }
 .adp-btn--ghost:hover { background: rgba(255,255,255,0.04); }
 
-/* ─── Responsive ──────────────────────────────────────────────────────────── */
+/* ─── Phase 8-E: Source indicator chip ──────────────────────────────────────── */
+
+.adp-source-chip {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.35rem;
+  padding: 0.4rem 0.75rem;
+  margin-top: 0.5rem;
+  background: rgba(255, 180, 50, 0.1);
+  border: 1px solid rgba(255, 180, 50, 0.25);
+  border-radius: 8px;
+  font-size: 0.72rem;
+  color: rgba(255, 200, 80, 0.8);
+  text-align: center;
+}
+.adp-source-chip .material-symbols-outlined {
+  font-size: 0.9rem;
+}
+.adp-source-chip--ready {
+  background: rgba(80, 220, 140, 0.1);
+  border-color: rgba(80, 220, 140, 0.25);
+  color: rgba(80, 220, 140, 0.8);
+}
+
+/* ─── Phase 8-E: Captions processing states ────────────────────────────────── */
+
+.adp-captions__quote--pending,
+.adp-captions__quote--failed {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-style: italic;
+}
+.adp-captions__quote--pending {
+  color: rgba(255, 200, 80, 0.7);
+}
+.adp-captions__quote--pending .material-symbols-outlined {
+  font-size: 1.1rem;
+  animation: adp-spin 1.5s linear infinite;
+}
+.adp-captions__quote--failed {
+  color: rgba(255, 100, 80, 0.7);
+}
+.adp-captions__quote--failed .material-symbols-outlined {
+  font-size: 1.1rem;
+}
+
+/* ─── Responsive ───────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
   .adp-info__title { font-size: 1.25rem; }

@@ -91,3 +91,5 @@ export { publishAudioContent }  from './callables/publishAudioContent';
 // ─── Phase 8-D — Audio Playback ─────────────────────────────────────────────
 export { getAudioPlaybackUrl }  from './callables/getAudioPlaybackUrl';
 
+// ─── Phase 8-E — Audio Processing Pipeline ──────────────────────────────
+export { onAudioContentPublished } from './triggers/onAudioContentPublished';

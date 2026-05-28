@@ -1,8 +1,8 @@
 /**
  * Sound Platform — Audio Content Helpers
  * ========================================
- * Phase:   8-A (Audio Content Core Foundation)
- * Updated: 2026-05-27
+ * Phase:   8-E (Audio Processing Pipeline Foundation)
+ * Updated: 2026-05-28
  *
  * Small, testable validation and factory helpers for the audio content module.
  * Used by:
@@ -19,6 +19,7 @@ import type {
   AudioContentDoc,
   AudioDraftDoc,
   OwnerSnapshot,
+  WaveformData,
 } from './content';
 
 // ─── World × Kind Validation ─────────────────────────────────────────────────
@@ -234,6 +235,15 @@ export function createAudioContentFromDraft(
     // Audio asset — copied from draft (attached during recording/upload)
     audioAsset: draft.audioAsset,
 
+    // Phase 8-E — Processing pipeline initial state
+    contentProcessingStatus: 'uploaded',
+    waveform: { status: 'pending', synthetic: false },
+    captionsProcessing: {
+      status: draft.captionsSetup?.enabled ? 'requested' : 'notRequested',
+      language: draft.captionsSetup?.language,
+    },
+    // processedAudio: undefined — no transcoded output until real pipeline runs
+
     // All counters start at zero
     listensCount: 0,
     likesCount: 0,
@@ -283,4 +293,65 @@ export function normalizeAudioMetadata(
     createdAt: doc.createdAt ?? new Date().toISOString(),
     updatedAt: doc.updatedAt ?? new Date().toISOString(),
   } as AudioContentDoc;
+}
+
+// ─── Synthetic Waveform Generator ─────────────────────────────────────────────
+
+/**
+ * generateSyntheticWaveform — produces a deterministic pseudo-random
+ * peaks array for placeholder waveform rendering.
+ *
+ * Uses a simple seeded PRNG so the same contentId always produces
+ * the same waveform shape. Peaks are normalized to 0.0–1.0.
+ *
+ * IMPORTANT: Always stored with synthetic: true.
+ * Will be replaced by real waveform extraction when FFmpeg/audiowaveform is available.
+ *
+ * @param seed        - Deterministic seed (use contentId)
+ * @param pointsCount - Number of peak points (default: 200)
+ * @returns WaveformData with synthetic peaks
+ */
+export function generateSyntheticWaveform(
+  seed: string,
+  pointsCount: number = 200,
+): WaveformData {
+  // Simple hash from seed string
+  let hash = 0;
+  for (let i = 0; i < seed.length; i++) {
+    const ch = seed.charCodeAt(i);
+    hash = ((hash << 5) - hash) + ch;
+    hash = hash & hash; // Convert to 32bit integer
+  }
+
+  // Seeded PRNG (mulberry32)
+  let state = Math.abs(hash) || 1;
+  const next = (): number => {
+    state |= 0;
+    state = (state + 0x6D2B79F5) | 0;
+    let t = Math.imul(state ^ (state >>> 15), 1 | state);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+
+  // Generate peaks with natural audio shape:
+  // - quiet start, build up, occasional peaks, quiet ending
+  const peaks: number[] = [];
+  for (let i = 0; i < pointsCount; i++) {
+    const position = i / pointsCount; // 0.0 to 1.0
+    // Envelope: fade in at start, fade out at end
+    const envelope = Math.sin(position * Math.PI) * 0.7 + 0.3;
+    // Random variation
+    const random = next() * 0.6 + 0.2;
+    // Combine and clamp
+    const peak = Math.min(1.0, Math.max(0.05, envelope * random));
+    peaks.push(Math.round(peak * 1000) / 1000); // 3 decimal places
+  }
+
+  return {
+    status: 'ready',
+    peaks,
+    pointsCount,
+    synthetic: true,
+    generatedAt: new Date().toISOString(),
+  };
 }
