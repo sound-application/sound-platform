@@ -639,17 +639,21 @@ export function AudioDetailPage() {
           {captionsStatus === 'requested' || captionsStatus === 'queued' || captionsStatus === 'processing' ? (
             <p className="adp-captions__quote adp-captions__quote--pending">
               <span className="material-symbols-outlined">pending</span>
-              {captionsStatus === 'processing' ? 'جاري إنشاء النص...' : 'في انتظار بدء إنشاء النص...'}
+              {captionsStatus === 'processing' ? 'جاري إنشاء النص' : 'في قائمة الانتظار'}
             </p>
           ) : captionsStatus === 'pendingProvider' ? (
-            <p className="adp-captions__quote adp-captions__quote--pending-provider">
+            <div className="adp-captions__quote adp-captions__quote--pending-provider">
               <span className="material-symbols-outlined">schedule</span>
-              في انتظار مزود النسخ — سيتم إنشاء النص عندما يتوفر المزود
-            </p>
+              <div>
+                <strong>مزود النسخ غير مفعل حالياً</strong>
+                <br />
+                <span className="adp-captions__sub">سيتم إنشاء النص تلقائياً بعد تفعيل مزود التفريغ الصوتي.</span>
+              </div>
+            </div>
           ) : captionsStatus === 'failed' ? (
             <p className="adp-captions__quote adp-captions__quote--failed">
               <span className="material-symbols-outlined">error_outline</span>
-              فشل إنشاء النص
+              تعذر إنشاء النص
             </p>
           ) : captionsStatus === 'ready' ? (
             <>

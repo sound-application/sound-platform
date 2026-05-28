@@ -704,6 +704,19 @@
 .adp-captions__quote--ready .material-symbols-outlined {
   font-size: 1.1rem;
 }
+.adp-captions__sub {
+  font-size: 0.72rem;
+  font-weight: 400;
+  font-style: normal;
+  opacity: 0.7;
+  line-height: 1.5;
+}
+.adp-captions__quote--pending-provider {
+  align-items: flex-start;
+}
+.adp-captions__quote--pending-provider .material-symbols-outlined {
+  margin-top: 0.15rem;
+}
 
 /* ─── Responsive ───────────────────────────────────────────────────────────── */
 
