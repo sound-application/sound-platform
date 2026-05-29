@@ -730,6 +730,56 @@ export function AudioDetailPage() {
         </div>
       )}
 
+      {/* ── 7c. Effects Info (Phase 8-J) ──────────────────────────── */}
+      {item.effectsConfig?.enabled && (
+        <div className="adp-glass-card adp-effects-info">
+          <h3 className="adp-section-title">
+            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>tune</span>
+            المؤثرات الصوتية
+          </h3>
+          <div className="adp-effects-info__row">
+            <span className="adp-effects-info__label">النوع:</span>
+            <span>{item.effectsConfig.mode === 'preset' ? item.effectsConfig.selectedPresetLabel || 'إعداد مسبق' : 'تحكم يدوي'}</span>
+          </div>
+          <div className="adp-effects-info__row">
+            <span className="adp-effects-info__label">الحالة:</span>
+            {item.effectsConfig.appliedStatus === 'applied' ? (
+              <span className="adp-effects-info__badge adp-effects-info__badge--applied">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>check_circle</span>
+                تم التطبيق
+              </span>
+            ) : item.effectsConfig.appliedStatus === 'failed' ? (
+              <span className="adp-effects-info__badge adp-effects-info__badge--failed">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>error_outline</span>
+                فشل التطبيق
+              </span>
+            ) : item.effectsConfig.appliedStatus === 'pending' ? (
+              <span className="adp-effects-info__badge adp-effects-info__badge--pending">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>pending</span>
+                قيد المعالجة
+              </span>
+            ) : (
+              <span className="adp-effects-info__badge">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>schedule</span>
+                في الانتظار
+              </span>
+            )}
+          </div>
+          {item.effectsConfig.appliedFilters && item.effectsConfig.appliedFilters.length > 0 && (
+            <div className="adp-effects-info__row">
+              <span className="adp-effects-info__label">الفلاتر:</span>
+              <span>{item.effectsConfig.appliedFilters.join('، ')}</span>
+            </div>
+          )}
+          {item.effectsConfig.processingError && (
+            <p className="adp-effects-info__error">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>warning</span>
+              {item.effectsConfig.processingError}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── 8. Queue Section ────────────────────────────────────── */}
       <div className="adp-glass-card adp-queue">
         <h3 className="adp-section-title">التالي</h3>

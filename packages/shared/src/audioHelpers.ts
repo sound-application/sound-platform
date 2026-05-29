@@ -224,6 +224,18 @@ export function createAudioContentFromDraft(
     coverAsset: draft.coverAsset,
     captionsSetup: draft.captionsSetup,
     captionsData: draft.captionsData,
+    // Phase 8-J: Copy effects config, reset server-only fields to pending.
+    // Effects are applied during processing — appliedStatus starts as pending.
+    effectsConfig: draft.effectsConfig?.enabled
+      ? {
+          enabled: true,
+          mode: draft.effectsConfig.mode,
+          selectedPresetId: draft.effectsConfig.selectedPresetId,
+          selectedPresetLabel: draft.effectsConfig.selectedPresetLabel,
+          filters: draft.effectsConfig.filters ?? [],
+          appliedStatus: 'pending',
+        }
+      : undefined,
     autoCue: draft.autoCue,
 
     // Phase 8-D.2 fields

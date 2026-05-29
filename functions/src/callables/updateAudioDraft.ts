@@ -36,8 +36,9 @@ import type {
   UpdateAudioDraftResponse,
   AudioDraftDoc,
   AudioAssetMeta,
+  AudioEffectsConfig,
 } from '@sound/shared';
-import { validateAudioWorldKind } from '@sound/shared';
+import { validateAudioWorldKind, VALID_FILTER_IDS, VALID_PRESET_IDS } from '@sound/shared';
 
 // ── Admin Firestore ────────────────────────────────────────────────────────────
 const db = admin.firestore();
@@ -164,6 +165,51 @@ export const updateAudioDraft = functions
       if (data.playlistId !== undefined)      update.playlistId = data.playlistId;
       if (data.newPlaylistName !== undefined) update.newPlaylistName = data.newPlaylistName;
       if (data.currentStep !== undefined)      update.currentStep = data.currentStep;
+
+      // Phase 8-J: Effects configuration
+      if (data.effectsConfig !== undefined) {
+        if (data.effectsConfig === null) {
+          update.effectsConfig = admin.firestore.FieldValue.delete();
+        } else {
+          const ec = data.effectsConfig as AudioEffectsConfig;
+          if (ec.mode !== 'preset' && ec.mode !== 'manual') {
+            throw new functions.https.HttpsError('invalid-argument', 'effectsConfig.mode must be "preset" or "manual".');
+          }
+          if (ec.mode === 'preset' && ec.selectedPresetId) {
+            if (!VALID_PRESET_IDS.includes(ec.selectedPresetId)) {
+              throw new functions.https.HttpsError('invalid-argument', `Invalid preset ID: ${ec.selectedPresetId}.`);
+            }
+          }
+          if (Array.isArray(ec.filters)) {
+            if (ec.filters.length > 20) {
+              throw new functions.https.HttpsError('invalid-argument', 'Too many filters (max 20).');
+            }
+            for (const f of ec.filters) {
+              if (!VALID_FILTER_IDS.includes(f.filterId)) {
+                throw new functions.https.HttpsError('invalid-argument', `Invalid filter ID: ${f.filterId}.`);
+              }
+              if (typeof f.intensity !== 'number' || f.intensity < 0 || f.intensity > 100) {
+                throw new functions.https.HttpsError('invalid-argument', `Filter intensity must be 0-100.`);
+              }
+            }
+          }
+          // Strip server-only fields — clients cannot spoof applied status
+          const sanitized: AudioEffectsConfig = {
+            enabled: Boolean(ec.enabled),
+            mode: ec.mode,
+            selectedPresetId: ec.selectedPresetId,
+            selectedPresetLabel: ec.selectedPresetLabel,
+            filters: (ec.filters || []).map(f => ({
+              filterId: f.filterId,
+              enabled: Boolean(f.enabled),
+              intensity: Math.round(Math.min(100, Math.max(0, f.intensity))),
+            })),
+            // Server-only fields intentionally omitted:
+            // appliedStatus, appliedAt, appliedFilters, skippedFilters, processingError
+          };
+          update.effectsConfig = sanitized;
+        }
+      }
 
       // ── 5b. Handle audioAsset attachment (Phase 8-B) ────────────────────────
       if (data.audioAsset !== undefined) {

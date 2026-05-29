@@ -39,12 +39,13 @@ import * as logger from 'firebase-functions/logger';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { probeAudio, transcodeToAAC, extractWaveformPeaks } from '../processing/audioProcessor';
+import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects } from '../processing/audioProcessor';
 
-// ── Types from shared ────────────────────────────────────────────────────────
-import type { ProcessedAudioMeta, WaveformData } from '@sound/shared';
+// ── Types from shared ────────────────────────────────────────────────────
+import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig } from '@sound/shared';
+import { buildEffectsChain, getRequestedFilterIds } from '@sound/shared';
 
-// ── Provider registry ──────────────────────────────────────────────────────
+// ── Provider registry ──────────────────────────────────────────────────
 import { resolveProvider } from '../helpers/providerRegistry';
 
 export const onAudioContentPublished = onDocumentWritten(
@@ -123,15 +124,42 @@ export const onAudioContentPublished = onDocumentWritten(
         throw new Error(`Audio too short or unreadable: ${probe.durationMs}ms.`);
       }
 
-      // ── Step 4: Transcode to AAC/M4A ──────────────────────────────────
-      logger.info(`[8F-pipeline] ${contentId}: transcoding to AAC/M4A.`);
-      const transcode = await transcodeToAAC(tmpOriginal, tmpMaster);
+      // ── Step 4: Transcode to AAC/M4A (with effects if configured) ──────
+      const effectsConfig = data.effectsConfig as AudioEffectsConfig | undefined;
+      const effectsChain = effectsConfig?.enabled ? buildEffectsChain(effectsConfig) : null;
+      const requestedFilterIds = effectsConfig?.enabled ? getRequestedFilterIds(effectsConfig) : [];
+
+      let transcode;
+      let effectsResult: { effectsApplied: boolean; appliedFilters: string[]; skippedFilters: string[]; effectsError?: string } | null = null;
+
+      if (effectsChain) {
+        // Effects enabled — use effects transcoder
+        logger.info(`[8J-pipeline] ${contentId}: transcoding with effects.`, {
+          mode: effectsConfig!.mode,
+          presetId: effectsConfig!.selectedPresetId,
+          filterCount: requestedFilterIds.length,
+        });
+        const result = await transcodeWithEffects(tmpOriginal, tmpMaster, effectsChain, requestedFilterIds);
+        transcode = result;
+        effectsResult = {
+          effectsApplied: result.effectsApplied,
+          appliedFilters: result.appliedFilters,
+          skippedFilters: result.skippedFilters,
+          effectsError: result.effectsError,
+        };
+      } else {
+        // No effects — base transcode (Phase 8-F path, unchanged)
+        logger.info(`[8F-pipeline] ${contentId}: transcoding to AAC/M4A.`);
+        transcode = await transcodeToAAC(tmpOriginal, tmpMaster);
+      }
+
       logger.info(`[8F-pipeline] ${contentId}: transcode complete.`, {
         sizeBytes: transcode.sizeBytes,
         durationMs: transcode.durationMs,
         codec: transcode.codec,
         bitrate: transcode.bitrate,
         loudnessLufs: transcode.loudnessLufs,
+        effectsApplied: effectsResult?.effectsApplied ?? false,
       });
 
       // ── Step 5: Extract real waveform peaks ────────────────────────────
@@ -191,13 +219,36 @@ export const onAudioContentPublished = onDocumentWritten(
         generatedAt: processingCompletedAt,
       };
 
-      await docRef.update({
+      const firestoreUpdate: Record<string, unknown> = {
         contentProcessingStatus: 'ready',
         processingCompletedAt,
         processedAudio,
         waveform,
         moderationStatus: 'approved', // dev auto-approve
-      });
+      };
+
+      // Phase 8-J: Write effects applied status
+      if (effectsResult) {
+        const effectsAppliedAt = new Date().toISOString();
+        if (effectsResult.effectsApplied) {
+          firestoreUpdate['effectsConfig.appliedStatus'] = 'applied';
+          firestoreUpdate['effectsConfig.appliedAt'] = effectsAppliedAt;
+          firestoreUpdate['effectsConfig.appliedFilters'] = effectsResult.appliedFilters;
+          firestoreUpdate['effectsConfig.skippedFilters'] = [];
+        } else {
+          // Effects failed but base processing succeeded — content is still ready
+          firestoreUpdate['effectsConfig.appliedStatus'] = 'failed';
+          firestoreUpdate['effectsConfig.appliedAt'] = effectsAppliedAt;
+          firestoreUpdate['effectsConfig.appliedFilters'] = [];
+          firestoreUpdate['effectsConfig.skippedFilters'] = effectsResult.skippedFilters;
+          firestoreUpdate['effectsConfig.processingError'] = effectsResult.effectsError?.slice(0, 500) || 'فشل تطبيق المؤثرات';
+        }
+      } else if (effectsConfig?.enabled) {
+        // Effects were enabled but no chain was built (shouldn't happen, but safe)
+        firestoreUpdate['effectsConfig.appliedStatus'] = 'notApplied';
+      }
+
+      await docRef.update(firestoreUpdate);
 
       logger.info(
         `[8F-pipeline] ${contentId}: audio processing COMPLETE. ` +

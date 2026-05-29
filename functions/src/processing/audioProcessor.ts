@@ -319,3 +319,125 @@ export async function extractWaveformPeaks(
     try { fs.unlinkSync(pcmPath); } catch { /* ignore */ }
   }
 }
+
+// ── transcodeWithEffects (Phase 8-J) ─────────────────────────────────────────
+/**
+ * Transcode input audio to AAC with an effects filter chain applied.
+ *
+ * Non-destructive: operates on a copy, original upload untouched.
+ * If effects chain fails, falls back to base transcode (no effects).
+ *
+ * @returns TranscodeResult + appliedFilters/skippedFilters tracking
+ */
+export interface TranscodeWithEffectsResult extends TranscodeResult {
+  /** Whether effects were successfully applied */
+  effectsApplied: boolean;
+  /** Filter IDs that were actually applied */
+  appliedFilters: string[];
+  /** Filter IDs that were skipped due to failure */
+  skippedFilters: string[];
+  /** Error message if effects failed entirely */
+  effectsError?: string;
+}
+
+export async function transcodeWithEffects(
+  inputPath: string,
+  outputPath: string,
+  effectsChain: string,
+  requestedFilterIds: string[],
+): Promise<TranscodeWithEffectsResult> {
+  const baseArgs = [
+    '-y',                    // overwrite output
+    '-i', inputPath,         // input
+    '-vn',                   // no video
+    '-ar', '44100',          // sample rate
+    '-ac', '2',              // stereo
+    '-b:a', '128k',          // bitrate
+    '-c:a', 'aac',           // codec
+    '-movflags', '+faststart', // streaming-friendly
+  ];
+
+  let loudnessLufs: number | undefined;
+  let effectsApplied = false;
+  let appliedFilters: string[] = [];
+  let skippedFilters: string[] = [];
+  let effectsError: string | undefined;
+
+  try {
+    // Try with full effects chain
+    const effectsArgs = [
+      ...baseArgs,
+      '-af', effectsChain,
+      outputPath,
+    ];
+
+    logger.info('[audioProcessor] Transcoding with effects chain.', {
+      chain: effectsChain.slice(0, 500),
+      filterCount: requestedFilterIds.length,
+    });
+
+    const { stderr } = await runFFmpeg(effectsArgs);
+
+    // Parse loudnorm output if present
+    const lufsMatch = stderr.match(/"input_i"\s*:\s*"(-?\d+\.?\d*)"/);
+    if (lufsMatch) {
+      loudnessLufs = parseFloat(lufsMatch[1]!);
+    }
+
+    effectsApplied = true;
+    appliedFilters = [...requestedFilterIds];
+    logger.info('[audioProcessor] Transcode with effects succeeded.', {
+      loudnessLufs,
+      appliedFilters,
+    });
+  } catch (effectsErr) {
+    // Effects chain failed — fall back to base transcode
+    const errMsg = effectsErr instanceof Error ? effectsErr.message : String(effectsErr);
+    effectsError = errMsg.slice(0, 300);
+    skippedFilters = [...requestedFilterIds];
+
+    logger.warn('[audioProcessor] Effects chain failed, falling back to base transcode.', {
+      error: effectsError,
+      skippedFilters,
+    });
+
+    // Retry base loudnorm transcode (same as transcodeToAAC)
+    try {
+      const loudnormArgs = [
+        ...baseArgs,
+        '-af', 'loudnorm=I=-16:TP=-1.5:LRA=11:print_format=json',
+        outputPath,
+      ];
+      const { stderr } = await runFFmpeg(loudnormArgs);
+      const lufsMatch = stderr.match(/"input_i"\s*:\s*"(-?\d+\.?\d*)"/);
+      if (lufsMatch) loudnessLufs = parseFloat(lufsMatch[1]!);
+      logger.info('[audioProcessor] Fallback transcode with loudnorm succeeded.');
+    } catch {
+      // Even loudnorm failed — bare transcode
+      logger.warn('[audioProcessor] Loudnorm failed, retrying bare transcode.');
+      const fallbackArgs = [...baseArgs, outputPath];
+      await runFFmpeg(fallbackArgs);
+      logger.info('[audioProcessor] Bare fallback transcode succeeded.');
+    }
+  }
+
+  // Get output file stats
+  const stat = fs.statSync(outputPath);
+  const sizeBytes = stat.size;
+  const probe = await probeAudio(outputPath);
+
+  return {
+    outputPath,
+    mimeType: 'audio/mp4',
+    sizeBytes,
+    durationMs: probe.durationMs,
+    bitrate: 128,
+    codec: 'aac',
+    loudnessLufs,
+    effectsApplied,
+    appliedFilters,
+    skippedFilters,
+    effectsError,
+  };
+}
+

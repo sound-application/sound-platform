@@ -56,7 +56,12 @@ import type {
   PublishToggles,
   PlacementFeed,
   PlaylistIntent,
+  AudioEffectsConfig,
+  AudioEffectFilterSetting,
+  AudioEffectFilterId,
+  AudioEffectPresetId,
 } from '@sound/shared';
+import { AUDIO_PRESETS, AUDIO_FILTERS } from '@sound/shared';
 import type { PlaylistDoc } from '@sound/shared';
 import { parseSRT, parseVTT, splitTextToSegments } from '../../utils/captionsParsers';
 import type { WorldId } from '@sound/shared';
@@ -173,18 +178,7 @@ const LANGUAGES = [
   { code: 'other', label: 'أخرى' },
 ];
 
-// ── Effects & mixing data ─────────────────────────────────────────────────────
-
-const EFFECT_CATEGORIES = ['الكل', 'تحسين', 'بيئة', 'صوتيات', 'ديناميك', 'إبداعي'];
-
-const EFFECT_LIBRARY = [
-  { id: 'noise_reduction', name: 'إزالة الضوضاء', desc: 'تنقية الصوت من التشويش', icon: 'noise_aware', gate: 'حسب الباقة' },
-  { id: 'eq', name: 'معادل الصوت', desc: 'تعديل الترددات المنخفضة والعالية', icon: 'equalizer', gate: 'حسب الباقة' },
-  { id: 'reverb', name: 'صدى', desc: 'إضافة عمق وبُعد مكاني', icon: 'surround_sound', gate: 'مرحلة لاحقة' },
-  { id: 'compressor', name: 'ضاغط ديناميك', desc: 'توحيد مستوى الصوت', icon: 'compress', gate: 'حسب الباقة' },
-  { id: 'pitch', name: 'تعديل النبرة', desc: 'رفع أو خفض حدة الصوت', icon: 'music_note', gate: 'مرحلة لاحقة' },
-  { id: 'normalize', name: 'تطبيع', desc: 'ضبط مستوى الصوت العام', icon: 'tune', gate: 'حسب الباقة' },
-];
+// ── Effects: AUDIO_PRESETS + AUDIO_FILTERS imported from @sound/shared ──
 
 const MIXING_TOOLS = [
   { id: 'crossfade', name: 'مزج تدريجي', icon: 'transition_fade' },
@@ -282,6 +276,40 @@ export function AudioCreatePage() {
   const [fileDurationMs, setFileDurationMs] = useState<number | null>(null);
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  // ── Step 8: Effects ────────────────────────────────────────────────────────
+  const [effectsEnabled, setEffectsEnabled] = useState(false);
+  const [effectsMode, setEffectsMode] = useState<'preset' | 'manual'>('preset');
+  const [selectedPresetId, setSelectedPresetId] = useState<AudioEffectPresetId | null>(null);
+  const [manualFilters, setManualFilters] = useState<AudioEffectFilterSetting[]>(
+    AUDIO_FILTERS.map(f => ({ filterId: f.id, enabled: false, intensity: f.defaultIntensity }))
+  );
+
+  const updateFilter = (filterId: AudioEffectFilterId, updates: Partial<AudioEffectFilterSetting>) => {
+    setManualFilters(prev => prev.map(f => f.filterId === filterId ? { ...f, ...updates } : f));
+  };
+
+  const resetEffects = () => {
+    setEffectsEnabled(false);
+    setEffectsMode('preset');
+    setSelectedPresetId(null);
+    setManualFilters(AUDIO_FILTERS.map(f => ({ filterId: f.id, enabled: false, intensity: f.defaultIntensity })));
+  };
+
+  // Build effectsConfig for saving
+  const buildEffectsConfig = (): AudioEffectsConfig | undefined => {
+    if (!effectsEnabled) return undefined;
+    const preset = AUDIO_PRESETS.find(p => p.id === selectedPresetId);
+    return {
+      enabled: true,
+      mode: effectsMode,
+      selectedPresetId: effectsMode === 'preset' ? selectedPresetId ?? undefined : undefined,
+      selectedPresetLabel: effectsMode === 'preset' ? preset?.label : undefined,
+      filters: effectsMode === 'manual'
+        ? manualFilters.filter(f => f.enabled)
+        : [],
+    };
+  };
 
   // ── Step 10: Preview playback ──────────────────────────────────────────────
   const previewAudioRef = useRef<HTMLAudioElement>(null);
@@ -394,6 +422,7 @@ export function AudioCreatePage() {
             } as CaptionsData
           : undefined,
         autoCue: autoCueConfig,
+        effectsConfig: buildEffectsConfig(),
         currentStep: String(nextStep),
       };
 
@@ -1416,7 +1445,7 @@ export function AudioCreatePage() {
         </section>
       )}
 
-      {/* ═══════════════ STEP 8: EFFECTS (GATED) ═════════════════ */}
+      {/* ═══════════════ STEP 8: EFFECTS (Phase 8-J) ═════════════════ */}
       {step === 8 && (
         <section className="acp-section">
           <h1 className="acp-section__title">
@@ -1425,61 +1454,138 @@ export function AudioCreatePage() {
             <span className="acp-badge acp-badge--optional">اختياري</span>
           </h1>
           <div className="acp-form">
-            {/* Audio preview with waveform */}
-            <div className="acp-effects-preview">
-              <div className="acp-waveform-bars">
-                {waveformBars.map((h, i) => (
-                  <div key={i} className="acp-waveform-bars__bar" style={{ height: `${h}%` }} />
-                ))}
-              </div>
-              <div className="acp-ab-toggle">
-                <button className="acp-ab-toggle__btn acp-ab-toggle__btn--active" type="button">A أصلي</button>
-                <button className="acp-ab-toggle__btn" type="button">B معالج</button>
-              </div>
+            {/* Enable/disable toggle */}
+            <div className="acp-effects-toggle-row">
+              <label className="acp-effects-toggle" id="effects-master-toggle">
+                <span>تفعيل المؤثرات الصوتية</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={effectsEnabled}
+                  className={`acp-toggle-switch ${effectsEnabled ? 'acp-toggle-switch--on' : ''}`}
+                  onClick={() => setEffectsEnabled(!effectsEnabled)}
+                >
+                  <span className="acp-toggle-switch__thumb" />
+                </button>
+              </label>
             </div>
 
-            {/* Effect category chips */}
-            <div className="acp-chips">
-              {EFFECT_CATEGORIES.map((cat, i) => (
-                <button key={cat} className={`acp-chip ${i === 0 ? 'acp-chip--selected' : ''}`} type="button" disabled={i > 0} style={i > 0 ? { opacity: 0.5, cursor: 'not-allowed' } : undefined}>{cat}</button>
-              ))}
-            </div>
+            {effectsEnabled && (
+              <>
+                {/* Mode selector cards */}
+                <div className="acp-effects-mode-row" id="effects-mode-selector">
+                  <button
+                    type="button"
+                    className={`acp-effects-mode-card ${effectsMode === 'preset' ? 'acp-effects-mode-card--selected' : ''}`}
+                    onClick={() => setEffectsMode('preset')}
+                  >
+                    <span className="material-symbols-outlined">auto_awesome</span>
+                    <span className="acp-effects-mode-card__label">إعدادات مسبقة</span>
+                    <span className="acp-effects-mode-card__desc">اختر من الأنماط الجاهزة</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`acp-effects-mode-card ${effectsMode === 'manual' ? 'acp-effects-mode-card--selected' : ''}`}
+                    onClick={() => setEffectsMode('manual')}
+                  >
+                    <span className="material-symbols-outlined">tune</span>
+                    <span className="acp-effects-mode-card__label">تحكم يدوي</span>
+                    <span className="acp-effects-mode-card__desc">تعديل كل فلتر على حدة</span>
+                  </button>
+                </div>
 
-            {/* Empty effects stack */}
-            <div className="acp-effects-empty">
-              <span className="material-symbols-outlined">layers_clear</span>
-              <p>لا توجد مؤثرات مطبقة</p>
-            </div>
-
-            {/* Effect library grid */}
-            <div className="acp-label" style={{ gap: '0.4rem' }}>
-              مكتبة المؤثرات
-              <div className="acp-effects-grid">
-                {EFFECT_LIBRARY.map((fx) => (
-                  <div key={fx.id} className="acp-effect-card acp-effect-card--gated">
-                    <div className="acp-effect-card__header">
-                      <span className="material-symbols-outlined">lock</span>
-                      <span className="material-symbols-outlined">{fx.icon}</span>
-                      <span className="acp-effect-card__name">{fx.name}</span>
-                    </div>
-                    <p className="acp-effect-card__desc">{fx.desc}</p>
-                    <span className="acp-gate-badge acp-effect-card__badge">{fx.gate}</span>
+                {/* Preset mode: grid of preset cards */}
+                {effectsMode === 'preset' && (
+                  <div className="acp-presets-grid" id="effects-presets-grid">
+                    {AUDIO_PRESETS.map((preset) => (
+                      <button
+                        key={preset.id}
+                        type="button"
+                        className={`acp-preset-card ${selectedPresetId === preset.id ? 'acp-preset-card--selected' : ''}`}
+                        onClick={() => setSelectedPresetId(selectedPresetId === preset.id ? null : preset.id)}
+                      >
+                        <span className="material-symbols-outlined acp-preset-card__icon">{preset.icon}</span>
+                        <span className="acp-preset-card__label">{preset.label}</span>
+                        <span className="acp-preset-card__desc">{preset.description}</span>
+                        {selectedPresetId === preset.id && (
+                          <span className="material-symbols-outlined acp-preset-card__check">check_circle</span>
+                        )}
+                      </button>
+                    ))}
                   </div>
-                ))}
-              </div>
-            </div>
+                )}
 
-            <p className="acp-hint">
-              <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-              توفر المؤثرات يعتمد على باقتك الحالية. بعض المؤثرات ستتوفر في مراحل لاحقة.
-            </p>
+                {/* Manual mode: filter rows with toggles and sliders */}
+                {effectsMode === 'manual' && (
+                  <div className="acp-filters-list" id="effects-filters-list">
+                    {AUDIO_FILTERS.map((filterDef) => {
+                      const setting = manualFilters.find(f => f.filterId === filterDef.id);
+                      const isEnabled = setting?.enabled ?? false;
+                      const intensity = setting?.intensity ?? filterDef.defaultIntensity;
+                      return (
+                        <div key={filterDef.id} className={`acp-filter-row ${isEnabled ? 'acp-filter-row--active' : ''}`}>
+                          <div className="acp-filter-row__header">
+                            <span className="material-symbols-outlined acp-filter-row__icon">{filterDef.icon}</span>
+                            <div className="acp-filter-row__info">
+                              <span className="acp-filter-row__label">{filterDef.label}</span>
+                              <span className="acp-filter-row__desc">{filterDef.description}</span>
+                            </div>
+                            <button
+                              type="button"
+                              role="switch"
+                              aria-checked={isEnabled}
+                              className={`acp-toggle-switch acp-toggle-switch--sm ${isEnabled ? 'acp-toggle-switch--on' : ''}`}
+                              onClick={() => updateFilter(filterDef.id, { enabled: !isEnabled })}
+                            >
+                              <span className="acp-toggle-switch__thumb" />
+                            </button>
+                          </div>
+                          {isEnabled && (
+                            <div className="acp-filter-row__slider">
+                              <input
+                                type="range"
+                                min={0}
+                                max={100}
+                                value={intensity}
+                                onChange={(e) => updateFilter(filterDef.id, { intensity: Number(e.target.value) })}
+                                className="acp-range-slider"
+                              />
+                              <span className="acp-filter-row__value">{intensity}%</span>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+
+                {/* Status / info text */}
+                <p className="acp-hint">
+                  <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
+                  سيتم تطبيق المؤثرات أثناء معالجة الصوت بعد النشر. الملف الأصلي يبقى محفوظاً.
+                </p>
+
+                {/* Reset button */}
+                <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetEffects}>
+                  <span className="material-symbols-outlined" aria-hidden="true">restart_alt</span>
+                  إعادة تعيين المؤثرات
+                </button>
+              </>
+            )}
+
+            {!effectsEnabled && (
+              <p className="acp-hint">
+                <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
+                لن يتم تطبيق أي مؤثرات صوتية. يمكنك تخطي هذه الخطوة.
+              </p>
+            )}
 
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(7)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
               </button>
-              <button className="acp-btn acp-btn--primary" onClick={() => setStep(9)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">skip_previous</span> تخطي
+              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(9)} disabled={saving} type="button">
+                {effectsEnabled ? 'التالي' : 'تخطي'} <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
               </button>
             </div>
           </div>
@@ -1916,8 +2022,24 @@ export function AudioCreatePage() {
               <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> المؤثرات والمكساج</h3>
               <div className="acp-rd-card__row">
                 <span>المؤثرات:</span>
-                <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
-                تم التخطي — لم يتم تطبيق أي معالجة
+                {effectsEnabled ? (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--accent-teal, #2dd4bf)' }}>check_circle</span>
+                    {effectsMode === 'preset' && selectedPresetId
+                      ? AUDIO_PRESETS.find(p => p.id === selectedPresetId)?.label ?? 'إعداد مسبق'
+                      : effectsMode === 'manual'
+                        ? `${manualFilters.filter(f => f.enabled).length} فلاتر يدوية`
+                        : 'مفعّل'}
+                    <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+                      سيتم التطبيق أثناء المعالجة
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
+                    تم التخطي — لم يتم تطبيق أي معالجة
+                  </>
+                )}
               </div>
               <div className="acp-rd-card__row">
                 <span>المكساج:</span>

@@ -381,6 +381,76 @@ export interface OwnerSnapshot {
   ownerAvatarUrl?: string;
 }
 
+// ─── Audio Effects Types (Phase 8-J) ─────────────────────────────────────────
+
+/** Named preset IDs for one-click audio effect profiles */
+export type AudioEffectPresetId =
+  | 'radio'           // صوت إذاعي
+  | 'podcast'         // بودكاست
+  | 'deep'            // صوت عميق
+  | 'sharp'           // صوت حاد وواضح
+  | 'warm'            // صوت دافئ
+  | 'tv'              // صوت تلفزيوني
+  | 'lightReverb'     // صوت مع ريفيرب خفيف
+  | 'delay'           // صوت مع تأخير
+  | 'quranRecitation' // صوت تلاوة قرآن
+  | 'poetryRecital'   // صوت إلقاء شعر
+  | 'sessions';       // صوت جلسات
+
+/** Individual filter IDs for manual effect control */
+export type AudioEffectFilterId =
+  | 'normalize'       // loudnorm
+  | 'compressor'      // acompressor
+  | 'noiseReduction'  // highpass
+  | 'deesser'         // bandreject
+  | 'clarity'         // presence EQ
+  | 'bassBoost'       // low shelf EQ
+  | 'warmth'          // mid-low EQ
+  | 'treble'          // high shelf EQ
+  | 'reverb'          // aecho room
+  | 'echoDelay'       // aecho delay
+  | 'limiter';        // alimiter
+
+/** Per-filter setting with enabled toggle and intensity */
+export interface AudioEffectFilterSetting {
+  filterId: AudioEffectFilterId;
+  enabled: boolean;
+  /** 0–100 intensity. Higher = stronger effect. */
+  intensity: number;
+}
+
+/** Server-set status after processing applies (or fails to apply) effects */
+export type AudioEffectsAppliedStatus =
+  | 'notApplied'
+  | 'pending'
+  | 'applied'
+  | 'partiallyApplied'
+  | 'failed';
+
+/** Full effects configuration — stored on draft and published content */
+export interface AudioEffectsConfig {
+  /** Whether effects processing is enabled for this content */
+  enabled: boolean;
+  /** Selection mode: preset picks a named profile, manual picks individual filters */
+  mode: 'preset' | 'manual';
+  /** Selected preset ID (when mode === 'preset') */
+  selectedPresetId?: AudioEffectPresetId;
+  /** Localized preset label snapshot */
+  selectedPresetLabel?: string;
+  /** Active filter settings (populated by preset expansion or manual selection) */
+  filters: AudioEffectFilterSetting[];
+  /** Server-set: whether effects were actually applied during processing */
+  appliedStatus?: AudioEffectsAppliedStatus;
+  /** Server-set: ISO timestamp when effects were applied */
+  appliedAt?: string;
+  /** Server-set: filter IDs that were successfully applied */
+  appliedFilters?: string[];
+  /** Server-set: filter IDs that were skipped (unsupported/failed) */
+  skippedFilters?: string[];
+  /** Server-set: error message if effects processing failed */
+  processingError?: string;
+}
+
 // ─── Audio Content Document ──────────────────────────────────────────────────
 //
 // Stored in: contentItems/{contentId}
@@ -509,6 +579,9 @@ export interface AudioContentDoc {
   /** Creator-authored captions data (Phase 8-H.1) — inline, no provider needed */
   captionsData?: CaptionsData;
 
+  /** Audio effects configuration (Phase 8-J) — presets or manual filters */
+  effectsConfig?: AudioEffectsConfig;
+
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 
   listensCount: number;
@@ -590,6 +663,8 @@ export interface AudioDraftDoc {
   captionsSetup?: CaptionsSetup;
   /** Creator-authored captions data (Phase 8-H.1) */
   captionsData?: CaptionsData;
+  /** Audio effects configuration (Phase 8-J) */
+  effectsConfig?: AudioEffectsConfig;
   autoCue?: AutoCueConfig;
 
   /** Whether this is child-directed content (Phase 8-D.2) */
@@ -677,6 +752,8 @@ export interface UpdateAudioDraftRequest {
   captionsSetup?: CaptionsSetup;
   /** Creator-authored captions data (Phase 8-H.1) */
   captionsData?: CaptionsData;
+  /** Audio effects configuration (Phase 8-J) */
+  effectsConfig?: AudioEffectsConfig;
   autoCue?: AutoCueConfig;
   isChildContent?: boolean;
   placementFeed?: PlacementFeed;

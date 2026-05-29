@@ -636,6 +636,59 @@
   padding: 1rem 0;
 }
 
+/* ─── Effects Info (Phase 8-J) ────────────────────────────────────────────── */
+
+.adp-effects-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.adp-effects-info__row {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.78rem;
+}
+.adp-effects-info__label {
+  color: rgba(255,255,255,0.5);
+  font-weight: 600;
+  min-width: 3rem;
+}
+.adp-effects-info__badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.5rem;
+  border-radius: 4px;
+  font-size: 0.7rem;
+  font-weight: 600;
+  background: rgba(255,255,255,0.06);
+  color: rgba(255,255,255,0.6);
+}
+.adp-effects-info__badge--applied {
+  background: rgba(34, 197, 94, 0.12);
+  color: #22c55e;
+}
+.adp-effects-info__badge--failed {
+  background: rgba(239, 68, 68, 0.12);
+  color: #ef4444;
+}
+.adp-effects-info__badge--pending {
+  background: rgba(251, 191, 36, 0.12);
+  color: #fbbf24;
+}
+.adp-effects-info__error {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.7rem;
+  color: #ef4444;
+  margin: 0;
+  padding: 0.3rem 0.5rem;
+  background: rgba(239, 68, 68, 0.06);
+  border-radius: 4px;
+}
+
 /* ─── Comments Section ────────────────────────────────────────────────────── */
 
 .adp-comments {}
