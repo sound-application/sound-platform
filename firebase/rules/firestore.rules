@@ -517,20 +517,48 @@ service cloud.firestore {
 
     // ----------------------------------------------------------
     // playlists/{playlistId}
-    // User-created playlists.
-    // Public playlists: any authenticated user can read.
-    // Private playlists: owner only.
-    // Write: owner only (non-sensitive fields).
+    // User-created playlists (Phase 8-I).
+    // Read: owner always; other auth users if visibility == 'public'.
+    //        followers/friends visibility deferred (treated as owner-only).
+    // Write: owner can create/update/delete.
+    //        Server-managed fields (ownerUid, createdAt, itemCount,
+    //        ownerSnapshot, firstItemIds) are protected from client edits.
     // ----------------------------------------------------------
     match /playlists/{playlistId} {
       allow read: if isOwner(resource.data.ownerUid)
-        || (isAuth() && resource.data.get('isPublic', false) == true);
+        || (isAuth() && resource.data.get('visibility', 'onlyMe') == 'public');
       allow create: if isAuth()
         && request.resource.data.ownerUid == request.auth.uid;
       allow update: if isOwner(resource.data.ownerUid)
         && !request.resource.data.diff(resource.data).affectedKeys()
-            .hasAny(['ownerUid', 'createdAt']);
+            .hasAny(['ownerUid', 'createdAt', 'itemCount',
+                     'ownerSnapshot', 'firstItemIds']);
       allow delete: if isOwner(resource.data.ownerUid);
+
+      // ----------------------------------------------------------
+      // playlists/{playlistId}/items/{itemId}
+      // Playlist items subcollection.
+      // Read: same as parent playlist.
+      // Write: Cloud Function only — callables manage item count,
+      //         sort order, and content snapshots atomically.
+      // ----------------------------------------------------------
+      match /items/{itemId} {
+        allow read: if isAuth()
+          && (get(/databases/$(database)/documents/playlists/$(playlistId)).data.ownerUid == request.auth.uid
+              || get(/databases/$(database)/documents/playlists/$(playlistId)).data.get('visibility', 'onlyMe') == 'public');
+        allow write: if false; // Cloud Function only
+      }
+    }
+
+    // ----------------------------------------------------------
+    // users/{uid}/playlistRefs/{playlistId}
+    // Denormalized playlist references for fast owner queries.
+    // Read: owner only.
+    // Write: Cloud Function only — managed by playlist callables.
+    // ----------------------------------------------------------
+    match /users/{uid}/playlistRefs/{playlistId} {
+      allow read: if isOwner(uid);
+      allow write: if false; // Cloud Function only
     }
 
     // ----------------------------------------------------------

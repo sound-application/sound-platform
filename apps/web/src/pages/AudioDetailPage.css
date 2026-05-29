@@ -586,6 +586,41 @@
 }
 .adp-captions__link:hover { text-decoration: underline; }
 
+/* ─── Playlist Link (Phase 8-I) ───────────────────────────────────────────── */
+
+.adp-playlist-link {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.adp-playlist-link__icon {
+  font-size: 1.2rem;
+  color: var(--col-accent, #facc15);
+}
+.adp-playlist-link__label {
+  font-size: 0.78rem;
+  color: rgba(255,255,255,0.6);
+  flex: 1;
+}
+.adp-playlist-link__btn {
+  display: flex;
+  align-items: center;
+  gap: 0.25rem;
+  background: none;
+  border: 1px solid rgba(255,255,255,0.15);
+  border-radius: 4px;
+  padding: 0.3rem 0.55rem;
+  color: var(--col-accent, #facc15);
+  font-size: 0.75rem;
+  font-family: inherit;
+  cursor: pointer;
+  transition: background 0.12s, border-color 0.12s;
+}
+.adp-playlist-link__btn:hover {
+  background: rgba(250,204,21,0.08);
+  border-color: var(--col-accent, #facc15);
+}
+
 /* ─── Queue Section ───────────────────────────────────────────────────────── */
 
 .adp-queue {}

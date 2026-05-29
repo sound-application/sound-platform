@@ -20,6 +20,16 @@ import type {
   PublishAudioContentResponse,
   GetAudioPlaybackUrlRequest,
   GetAudioPlaybackUrlResponse,
+  CreatePlaylistRequest,
+  CreatePlaylistResponse,
+  UpdatePlaylistRequest,
+  UpdatePlaylistResponse,
+  AddToPlaylistRequest,
+  AddToPlaylistResponse,
+  RemoveFromPlaylistRequest,
+  RemoveFromPlaylistResponse,
+  GetUserPlaylistsRequest,
+  GetUserPlaylistsResponse,
 } from '@sound/shared';
 import app from './firebase';
 
@@ -49,3 +59,31 @@ export const callGetAudioPlaybackUrl = httpsCallable<
   GetAudioPlaybackUrlRequest,
   GetAudioPlaybackUrlResponse
 >(functions, 'getAudioPlaybackUrl');
+
+// ── Playlist Callables (Phase 8-I) ───────────────────────────────────────────
+
+export const callCreatePlaylist = httpsCallable<
+  CreatePlaylistRequest,
+  CreatePlaylistResponse
+>(functions, 'createPlaylist');
+
+export const callUpdatePlaylist = httpsCallable<
+  UpdatePlaylistRequest,
+  UpdatePlaylistResponse
+>(functions, 'updatePlaylist');
+
+export const callAddToPlaylist = httpsCallable<
+  AddToPlaylistRequest,
+  AddToPlaylistResponse
+>(functions, 'addToPlaylist');
+
+export const callRemoveFromPlaylist = httpsCallable<
+  RemoveFromPlaylistRequest,
+  RemoveFromPlaylistResponse
+>(functions, 'removeFromPlaylist');
+
+export const callGetUserPlaylists = httpsCallable<
+  GetUserPlaylistsRequest,
+  GetUserPlaylistsResponse
+>(functions, 'getUserPlaylists');
+

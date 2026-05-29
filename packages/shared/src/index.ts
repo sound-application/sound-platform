@@ -13,3 +13,4 @@ export * from './social';
 export * from './resolver';
 export * from './username';
 export * from './providers';
+export * from './playlists';

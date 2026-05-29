@@ -714,6 +714,22 @@ export function AudioDetailPage() {
         </div>
       )}
 
+      {/* ── 7b. Playlist Placement (Phase 8-I) ─────────────────────── */}
+      {item.playlistId && (
+        <div className="adp-glass-card adp-playlist-link">
+          <span className="material-symbols-outlined adp-playlist-link__icon">queue_music</span>
+          <span className="adp-playlist-link__label">ضمن قائمة تشغيل</span>
+          <button
+            className="adp-playlist-link__btn"
+            onClick={() => navigate(`/playlist/${item.playlistId}`)}
+            type="button"
+          >
+            {item.newPlaylistName || 'عرض القائمة'}
+            <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>arrow_back</span>
+          </button>
+        </div>
+      )}
+
       {/* ── 8. Queue Section ────────────────────────────────────── */}
       <div className="adp-glass-card adp-queue">
         <h3 className="adp-section-title">التالي</h3>

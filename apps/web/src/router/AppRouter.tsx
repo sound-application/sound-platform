@@ -65,6 +65,7 @@ import { LoginPage }          from '../pages/LoginPage';
 import { SignUpPage }         from '../pages/SignUpPage';
 import { AudioCreatePage }    from '../pages/create/AudioCreatePage';
 import { AudioDetailPage }    from '../pages/AudioDetailPage';
+import { PlaylistDetailPage } from '../pages/PlaylistDetailPage';
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
 
@@ -111,6 +112,9 @@ export function AppRouter() {
 
           {/* ── Audio Detail Player (Phase 8-C) ──────────────────────── */}
           <Route path="audio/:contentId" element={<AudioDetailPage />} />
+
+          {/* ── Playlist Detail (Phase 8-I) ──────────────────────── */}
+          <Route path="playlist/:playlistId" element={<PlaylistDetailPage />} />
 
           {/* ── World + Tab routes: /:worldId/:tab ────────────────────── */}
           {/*

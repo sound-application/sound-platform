@@ -339,6 +339,61 @@
   cursor: not-allowed;
 }
 
+/* ─── Playlist select area (Phase 8-I) ────────────────────────────────────── */
+
+.acp-playlist-select {
+  margin-top: 0.35rem;
+}
+.acp-playlist-loading {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.625rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+}
+.acp-playlist-empty {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.5rem 0.625rem;
+  color: var(--color-text-muted);
+  font-size: 0.78rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+.acp-playlist-empty .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--color-accent);
+}
+.acp-playlist-item-info {
+  display: flex;
+  flex-direction: column;
+  gap: 0.05rem;
+  text-align: right;
+}
+.acp-playlist-item-title {
+  font-size: 0.8rem;
+  font-weight: 500;
+  color: var(--color-text-primary);
+}
+.acp-playlist-item-meta {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+}
+.acp-playlist-new-input {
+  margin-top: 0.35rem;
+}
+@keyframes acp-spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+.acp-spin {
+  animation: acp-spin 1s linear infinite;
+  font-size: 1.1rem;
+}
+
 /* ─── Glass dropdown ──────────────────────────────────────────────────────── */
 
 .acp-glass-dropdown {

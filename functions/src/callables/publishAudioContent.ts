@@ -57,6 +57,129 @@ import {
 // ── Admin Firestore ────────────────────────────────────────────────────────────
 const db = admin.firestore();
 
+// ── Playlist Side-Effects (extracted for idempotent re-use) ────────────────────
+//
+// Called by both the normal publish path and the retry-recovery path.
+// Idempotent: checks for existing items/playlists before writing.
+// Non-blocking caller: failures are caught at the call site.
+//
+async function runPlaylistSideEffects(
+  firestore: FirebaseFirestore.Firestore,
+  uid: string,
+  draft: AudioDraftDoc,
+  contentId: string,
+  contentRef: FirebaseFirestore.DocumentReference,
+  owner: OwnerSnapshot,
+): Promise<void> {
+  if (draft.playlistIntent === 'existing' && draft.playlistId) {
+    // Add published content to existing playlist
+    const playlistRef = firestore.collection('playlists').doc(draft.playlistId);
+    const playlistSnap = await playlistRef.get();
+    if (playlistSnap.exists && playlistSnap.data()?.ownerUid === uid) {
+      const itemRef = playlistRef.collection('items').doc(contentId);
+      const itemSnap = await itemRef.get();
+      if (!itemSnap.exists) {
+        const plBatch = firestore.batch();
+        const nowPl = new Date().toISOString();
+        plBatch.set(itemRef, {
+          playlistId: draft.playlistId,
+          contentId,
+          ownerUid: uid,
+          addedByUid: uid,
+          addedAt: nowPl,
+          sortOrder: (playlistSnap.data()?.itemCount ?? 0) + 1,
+          contentSnapshot: {
+            title: draft.title || '',
+            ownerUid: uid,
+            ownerDisplayName: owner.ownerDisplayName,
+            coverPath: draft.coverAsset?.storagePath,
+            durationMs: draft.audioAsset?.durationMs,
+            kind: draft.kind,
+            world: draft.world,
+          },
+        });
+        plBatch.update(playlistRef, {
+          itemCount: admin.firestore.FieldValue.increment(1),
+          lastItemAddedAt: nowPl,
+          updatedAt: nowPl,
+        });
+        const plRefDoc = firestore.collection('users').doc(uid)
+          .collection('playlistRefs').doc(draft.playlistId);
+        plBatch.update(plRefDoc, {
+          itemCount: admin.firestore.FieldValue.increment(1),
+          updatedAt: nowPl,
+        });
+        // Set playlistId on the contentItem for linkback
+        plBatch.update(contentRef, { playlistId: draft.playlistId });
+        await plBatch.commit();
+        functions.logger.info(
+          `[publishAudioContent] Added ${contentId} to existing playlist ${draft.playlistId}`,
+          { uid, contentId, playlistId: draft.playlistId },
+        );
+      }
+    }
+  } else if (draft.playlistIntent === 'new' && draft.newPlaylistName) {
+    // Create new playlist and add content
+    const newPlRef = firestore.collection('playlists').doc();
+    const newPlId = newPlRef.id;
+    const nowPl = new Date().toISOString();
+    const plDoc = {
+      playlistId: newPlId,
+      ownerUid: uid,
+      ownerSnapshot: owner,
+      title: draft.newPlaylistName,
+      visibility: 'onlyMe' as const,
+      source: 'audioPublish' as const,
+      world: draft.world,
+      itemCount: 1,
+      firstItemIds: [contentId],
+      createdAt: nowPl,
+      updatedAt: nowPl,
+      lastItemAddedAt: nowPl,
+      status: 'active' as const,
+    };
+    const itemDoc = {
+      playlistId: newPlId,
+      contentId,
+      ownerUid: uid,
+      addedByUid: uid,
+      addedAt: nowPl,
+      sortOrder: 1,
+      contentSnapshot: {
+        title: draft.title || '',
+        ownerUid: uid,
+        ownerDisplayName: owner.ownerDisplayName,
+        coverPath: draft.coverAsset?.storagePath,
+        durationMs: draft.audioAsset?.durationMs,
+        kind: draft.kind,
+        world: draft.world,
+      },
+    };
+    const plRefData = {
+      playlistId: newPlId,
+      title: draft.newPlaylistName,
+      visibility: 'onlyMe' as const,
+      itemCount: 1,
+      createdAt: nowPl,
+      updatedAt: nowPl,
+    };
+    const plBatch = firestore.batch();
+    plBatch.set(newPlRef, plDoc);
+    plBatch.set(newPlRef.collection('items').doc(contentId), itemDoc);
+    plBatch.set(
+      firestore.collection('users').doc(uid).collection('playlistRefs').doc(newPlId),
+      plRefData,
+    );
+    // Also update the contentItem with the new playlistId
+    plBatch.update(contentRef, { playlistId: newPlId });
+    await plBatch.commit();
+    functions.logger.info(
+      `[publishAudioContent] Created playlist ${newPlId} and added ${contentId}`,
+      { uid, contentId, playlistId: newPlId },
+    );
+  }
+}
+
 // ─── Callable ──────────────────────────────────────────────────────────────────
 
 export const publishAudioContent = functions
@@ -106,15 +229,47 @@ export const publishAudioContent = functions
       }
 
       // ── 3b. Duplicate-publish protection ───────────────────────────────
-      // If the draft was already published, return the existing content ID
-      // instead of creating a duplicate contentItems document.
+      // If the draft was already published, check if playlist side-effects
+      // completed. If not, re-run them. Then return the existing content ID.
       if (draft.targetContentId) {
+        const existingContentId = draft.targetContentId;
+
+        // Check if playlist side-effects need recovery
+        if (
+          draft.playlistIntent === 'new' || draft.playlistIntent === 'existing'
+        ) {
+          const existingContent = await db.collection('contentItems').doc(existingContentId).get();
+          const existingData = existingContent.data();
+          if (existingData && !existingData.playlistId) {
+            // Playlist side-effects didn't complete — build owner snapshot for recovery
+            const recoveryProfileDoc = await db.collection('publicProfiles').doc(uid).get();
+            const recoveryProfileData = recoveryProfileDoc.data();
+            const recoveryOwner: OwnerSnapshot = {
+              ownerUsername: recoveryProfileData?.generalProfile?.username ?? '',
+              ownerDisplayName: recoveryProfileData?.generalProfile?.displayName ?? '',
+              ownerAvatarUrl: recoveryProfileData?.generalProfile?.avatarUrl,
+            };
+            try {
+              await runPlaylistSideEffects(
+                db, uid, draft, existingContentId,
+                db.collection('contentItems').doc(existingContentId),
+                recoveryOwner,
+              );
+            } catch (recoverErr) {
+              functions.logger.error(
+                `[publishAudioContent] Playlist recovery failed (non-blocking)`,
+                { uid, contentId: existingContentId, error: recoverErr },
+              );
+            }
+          }
+        }
+
         functions.logger.info(
-          `[publishAudioContent] Draft ${data.draftId} already published as ${draft.targetContentId}, returning existing.`,
-          { uid, contentId: draft.targetContentId, draftId: data.draftId },
+          `[publishAudioContent] Draft ${data.draftId} already published as ${existingContentId}, returning existing.`,
+          { uid, contentId: existingContentId, draftId: data.draftId },
         );
         return {
-          contentId: draft.targetContentId,
+          contentId: existingContentId,
           status: 'readyForUpload',
         };
       }
@@ -201,6 +356,19 @@ export const publishAudioContent = functions
       }
 
       await batch.commit();
+
+      // ── 9. Playlist side-effects (Phase 8-I) ───────────────────────────────
+      // Delegated to extracted function for idempotent re-use on retry.
+      // Non-blocking — playlist failure does not fail the publish.
+      try {
+        await runPlaylistSideEffects(db, uid, draft, contentId, contentRef, owner);
+      } catch (playlistErr) {
+        // Playlist failure is non-blocking — content is still published
+        functions.logger.error(
+          `[publishAudioContent] Playlist side-effect failed (non-blocking)`,
+          { uid, contentId, error: playlistErr },
+        );
+      }
 
       functions.logger.info(
         `[publishAudioContent] Published content ${contentId} from draft ${data.draftId} for user ${uid}`,

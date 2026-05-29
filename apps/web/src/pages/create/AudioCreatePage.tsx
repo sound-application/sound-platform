@@ -34,6 +34,7 @@ import {
   callCreateAudioDraft,
   callUpdateAudioDraft,
   callPublishAudioContent,
+  callGetUserPlaylists,
 } from '../../lib/callables';
 import {
   extractAudioDuration,
@@ -56,6 +57,7 @@ import type {
   PlacementFeed,
   PlaylistIntent,
 } from '@sound/shared';
+import type { PlaylistDoc } from '@sound/shared';
 import { parseSRT, parseVTT, splitTextToSegments } from '../../utils/captionsParsers';
 import type { WorldId } from '@sound/shared';
 import '../Page.css';
@@ -230,6 +232,11 @@ export function AudioCreatePage() {
   const [placementFeed, setPlacementFeed] = useState<PlacementFeed>('main');
   const [playlistIntent, setPlaylistIntent] = useState<PlaylistIntent>('none');
   const [newPlaylistName, setNewPlaylistName] = useState('');
+  const [selectedPlaylistId, setSelectedPlaylistId] = useState('');
+  const [userPlaylists, setUserPlaylists] = useState<PlaylistDoc[]>([]);
+  const [playlistsLoaded, setPlaylistsLoaded] = useState(false);
+  const [playlistsLoading, setPlaylistsLoading] = useState(false);
+  const [playlistDropdownOpen, setPlaylistDropdownOpen] = useState(false);
   const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [giftsEnabled, setGiftsEnabled] = useState(true);
   const [sharingEnabled, setSharingEnabled] = useState(true);
@@ -364,6 +371,7 @@ export function AudioCreatePage() {
         isChildContent,
         placementFeed,
         playlistIntent,
+        playlistId: selectedPlaylistId || undefined,
         newPlaylistName: newPlaylistName || undefined,
         audience,
         publishToggles,
@@ -759,25 +767,75 @@ export function AudioCreatePage() {
               </div>
             </div>
 
-            {/* Playlist intent */}
+            {/* Playlist intent (Phase 8-I) */}
             <div className="acp-label">
               قائمة التشغيل
               <div className="acp-playlist-cards">
-                <button className={`acp-playlist-card ${playlistIntent === 'none' ? 'acp-playlist-card--selected' : ''}`} onClick={() => setPlaylistIntent('none')} type="button">
+                <button className={`acp-playlist-card ${playlistIntent === 'none' ? 'acp-playlist-card--selected' : ''}`} onClick={() => { setPlaylistIntent('none'); setSelectedPlaylistId(''); setNewPlaylistName(''); setPlaylistDropdownOpen(false); }} type="button">
                   <span className="material-symbols-outlined">playlist_remove</span>
                   بدون قائمة
                 </button>
-                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
+                <button className={`acp-playlist-card ${playlistIntent === 'existing' ? 'acp-playlist-card--selected' : ''}`} onClick={async () => { setPlaylistIntent('existing'); setNewPlaylistName(''); if (!playlistsLoaded && !playlistsLoading) { setPlaylistsLoading(true); try { const res = await callGetUserPlaylists({}); setUserPlaylists(res.data.playlists || []); setPlaylistsLoaded(true); } catch { setUserPlaylists([]); setPlaylistsLoaded(true); } finally { setPlaylistsLoading(false); } } setPlaylistDropdownOpen(true); }} type="button">
                   <span className="material-symbols-outlined">playlist_add</span>
                   إضافة لقائمة موجودة
-                  <span className="acp-gate-badge">مرحلة لاحقة</span>
                 </button>
-                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
+                <button className={`acp-playlist-card ${playlistIntent === 'new' ? 'acp-playlist-card--selected' : ''}`} onClick={() => { setPlaylistIntent('new'); setSelectedPlaylistId(''); setPlaylistDropdownOpen(false); }} type="button">
                   <span className="material-symbols-outlined">queue_music</span>
                   إنشاء قائمة جديدة
-                  <span className="acp-gate-badge">مرحلة لاحقة</span>
                 </button>
               </div>
+
+              {/* Existing playlist dropdown */}
+              {playlistIntent === 'existing' && (
+                <div className="acp-playlist-select">
+                  {playlistsLoading ? (
+                    <div className="acp-playlist-loading">
+                      <span className="material-symbols-outlined acp-spin">progress_activity</span>
+                      <span>جارٍ تحميل القوائم...</span>
+                    </div>
+                  ) : userPlaylists.length === 0 ? (
+                    <div className="acp-playlist-empty">
+                      <span className="material-symbols-outlined">info</span>
+                      <span>لا توجد قوائم تشغيل بعد. يمكنك إنشاء قائمة جديدة.</span>
+                    </div>
+                  ) : (
+                    <div className="acp-glass-dropdown">
+                      <button className="acp-glass-dropdown__trigger" onClick={() => setPlaylistDropdownOpen(!playlistDropdownOpen)} type="button">
+                        <span>{selectedPlaylistId ? userPlaylists.find(p => p.playlistId === selectedPlaylistId)?.title || 'قائمة غير معروفة' : 'اختر قائمة تشغيل...'}</span>
+                        <span className="material-symbols-outlined">{playlistDropdownOpen ? 'expand_less' : 'expand_more'}</span>
+                      </button>
+                      {playlistDropdownOpen && (
+                        <div className="acp-glass-dropdown__menu">
+                          {userPlaylists.map((pl) => (
+                            <button key={pl.playlistId} className={`acp-glass-dropdown__item ${selectedPlaylistId === pl.playlistId ? 'acp-glass-dropdown__item--selected' : ''}`} onClick={() => { setSelectedPlaylistId(pl.playlistId); setPlaylistDropdownOpen(false); }} type="button">
+                              <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>queue_music</span>
+                              <span className="acp-playlist-item-info">
+                                <span className="acp-playlist-item-title">{pl.title}</span>
+                                <span className="acp-playlist-item-meta">{pl.itemCount} مقطع · {pl.visibility === 'public' ? 'عامة' : 'خاصة'}</span>
+                              </span>
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
+
+              {/* New playlist name input */}
+              {playlistIntent === 'new' && (
+                <div className="acp-playlist-new-input">
+                  <input
+                    type="text"
+                    className="acp-input"
+                    placeholder="اسم القائمة الجديدة..."
+                    value={newPlaylistName}
+                    onChange={(e) => setNewPlaylistName(e.target.value)}
+                    maxLength={80}
+                    autoFocus
+                  />
+                </div>
+              )}
             </div>
 
             <div className="acp-toggles-group">

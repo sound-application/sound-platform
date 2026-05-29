@@ -96,3 +96,10 @@ export { onAudioContentPublished } from './triggers/onAudioContentPublished';
 
 // ─── Phase 8-G — Audio Captions Pipeline ─────────────────────────────────
 export { getAudioCaptions }        from './callables/getAudioCaptions';
+
+// ─── Phase 8-I — Playlist Foundation ────────────────────────────────────────
+export { createPlaylist }      from './callables/createPlaylist';
+export { updatePlaylist }      from './callables/updatePlaylist';
+export { addToPlaylist }       from './callables/addToPlaylist';
+export { removeFromPlaylist }  from './callables/removeFromPlaylist';
+export { getUserPlaylists }    from './callables/getUserPlaylists';
