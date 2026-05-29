@@ -783,6 +783,63 @@ export function AudioDetailPage() {
         </div>
       )}
 
+      {/* ── 7d. Mixing Info (Phase 8-K) ──────────────────────────── */}
+      {item.mixingConfig?.enabled && (
+        <div className="adp-glass-card adp-effects-info">
+          <h3 className="adp-section-title">
+            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>graphic_eq</span>
+            المكساج
+          </h3>
+          <div className="adp-effects-info__row">
+            <span className="adp-effects-info__label">النوع:</span>
+            <span>{item.mixingConfig.mode === 'preset' ? item.mixingConfig.selectedPresetLabel || 'قالب' : 'ضبط يدوي'}</span>
+          </div>
+          <div className="adp-effects-info__row">
+            <span className="adp-effects-info__label">الحالة:</span>
+            {item.mixingConfig.renderStatus === 'applied' ? (
+              <span className="adp-effects-info__badge adp-effects-info__badge--applied">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>check_circle</span>
+                ضبط الماستر مطبّق
+              </span>
+            ) : item.mixingConfig.renderStatus === 'failed' ? (
+              <span className="adp-effects-info__badge adp-effects-info__badge--failed">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>error_outline</span>
+                فشل التطبيق
+              </span>
+            ) : item.mixingConfig.renderStatus === 'pending' ? (
+              <span className="adp-effects-info__badge adp-effects-info__badge--pending">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>pending</span>
+                إعدادات محفوظة — المعالجة معلقة
+              </span>
+            ) : (
+              <span className="adp-effects-info__badge">
+                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>schedule</span>
+                في الانتظار
+              </span>
+            )}
+          </div>
+          {item.mixingConfig.appliedOperations && item.mixingConfig.appliedOperations.length > 0 && (
+            <div className="adp-effects-info__row">
+              <span className="adp-effects-info__label">عمليات:</span>
+              <span>{item.mixingConfig.appliedOperations.join('، ')}</span>
+            </div>
+          )}
+          {/* Deferred layers note */}
+          {item.mixingConfig.tracks?.some(t => t.type !== 'voice' && t.enabled && !t.storagePath) && (
+            <p className="adp-effects-info__error" style={{ color: 'var(--color-warning, #f59e0b)' }}>
+              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>schedule</span>
+              طبقات الموسيقى/المؤثرات: مؤجلة — تتطلب أصول صوتية
+            </p>
+          )}
+          {item.mixingConfig.processingError && (
+            <p className="adp-effects-info__error">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>warning</span>
+              {item.mixingConfig.processingError}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── 8. Queue Section ────────────────────────────────────── */}
       <div className="adp-glass-card adp-queue">
         <h3 className="adp-section-title">التالي</h3>

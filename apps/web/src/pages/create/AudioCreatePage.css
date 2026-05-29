@@ -1595,7 +1595,7 @@
 }
 
 
-/* ─── Mixing step / tracks ────────────────────────────────────────────────── */
+/* ─── Mixing step / tracks (Phase 8-K) ───────────────────────────────────── */
 
 .acp-tracks {
   display: flex;
@@ -1616,68 +1616,186 @@
   font-weight: 600;
   color: var(--color-text-muted);
   min-width: 3.5rem;
+  text-align: end;
 }
 .acp-track-row__bar {
-  flex: 1;
   height: 0.5rem;
   border-radius: 2px;
-  opacity: 0.5;
+  transition: width 0.3s ease, opacity 0.2s ease;
 }
 .acp-track-row__bar--voice { background: var(--color-accent); }
 .acp-track-row__bar--music { background: #5de6ff; }
 .acp-track-row__bar--effects { background: #a78bfa; }
 
-.acp-track-mixer {
+/* Layer tracks section */
+.acp-mix-layers {
   display: flex;
   flex-direction: column;
-  gap: 0.4rem;
-  padding: 0.625rem;
+  gap: 0.5rem;
+}
+.acp-mix-layers__title {
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  font-size: 0.78rem;
+  font-weight: 600;
+  color: var(--color-text-secondary);
+  margin: 0;
+}
+.acp-mix-layers__title .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--color-accent);
+}
+
+/* Individual track card */
+.acp-mix-track-card {
+  padding: 0.6rem;
   background: var(--color-bg-card);
   border: 1px solid var(--color-border);
   border-radius: 3px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
 }
-.acp-track-mixer__title {
-  font-size: 0.74rem;
+.acp-mix-track-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+}
+.acp-mix-track-card__name {
+  font-size: 0.76rem;
   font-weight: 600;
+  color: var(--color-text-primary);
+}
+.acp-mix-track-card__actions {
+  display: flex;
+  gap: 0.25rem;
+}
+.acp-mix-icon-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 28px;
+  height: 28px;
+  border: 1px solid var(--color-border);
+  border-radius: 50%;
+  background: transparent;
+  cursor: pointer;
+  transition: all 0.15s ease;
+}
+.acp-mix-icon-btn .material-symbols-outlined {
+  font-size: 0.85rem;
   color: var(--color-text-muted);
-  margin: 0;
+}
+.acp-mix-icon-btn--active {
+  background: rgba(239, 68, 68, 0.1);
+  border-color: rgba(239, 68, 68, 0.3);
+}
+.acp-mix-icon-btn--active .material-symbols-outlined {
+  color: #ef4444;
 }
 
-.acp-slider-row {
+.acp-mix-track-card__slider {
   display: flex;
   align-items: center;
   gap: 0.5rem;
 }
-.acp-slider-row__label {
+.acp-mix-track-card__value {
   font-size: 0.72rem;
-  font-weight: 500;
-  color: var(--color-text-muted);
-  min-width: 3rem;
-}
-.acp-slider-row__slider {
-  flex: 1;
-  height: 4px;
-  -webkit-appearance: none;
-  appearance: none;
-  background: var(--color-border);
-  border-radius: 2px;
-  outline: none;
-  opacity: 0.5;
-}
-.acp-slider-row__slider::-webkit-slider-thumb {
-  -webkit-appearance: none;
-  width: 12px;
-  height: 12px;
-  border-radius: 50%;
-  background: var(--color-accent);
-  cursor: not-allowed;
-}
-.acp-slider-row__value {
-  font-size: 0.65rem;
-  color: var(--color-text-muted);
-  min-width: 2rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  min-width: 2.5rem;
   text-align: center;
 }
+
+/* Music/SFX source cards */
+.acp-mix-track-card__source {
+  display: flex;
+  gap: 0.35rem;
+  flex-wrap: wrap;
+  padding-top: 0.25rem;
+  border-top: 1px solid var(--color-border);
+}
+
+/* Advanced tools */
+.acp-mix-advanced {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+.acp-mix-tools-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 0.4rem;
+}
+.acp-mix-tool-card {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+  padding: 0.55rem;
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  border-radius: 3px;
+}
+.acp-mix-tool-card__header {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: 0.74rem;
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+.acp-mix-tool-card__header .material-symbols-outlined {
+  font-size: 0.9rem;
+  color: var(--color-accent);
+}
+.acp-mix-tool-card__desc {
+  font-size: 0.65rem;
+  color: var(--color-text-muted);
+}
+.acp-mix-tool-card__control {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.15rem;
+}
+.acp-mix-tool-card__value {
+  font-size: 0.68rem;
+  font-weight: 600;
+  color: var(--color-accent);
+  min-width: 2.2rem;
+  text-align: center;
+}
+.acp-mix-tool-card__note {
+  display: flex;
+  align-items: center;
+  gap: 0.2rem;
+  font-size: 0.6rem;
+  color: var(--color-warning, #f59e0b);
+  margin-top: 0.1rem;
+}
+
+/* Mix presets */
+.acp-mix-presets {
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+
+/* Small toggle variant */
+.acp-toggle--sm {
+  transform: scale(0.8);
+  transform-origin: right center;
+}
+
+/* Old placeholder styles kept for backward compat */
+.acp-track-mixer,
+.acp-track-mixer__title,
+.acp-slider-row,
+.acp-slider-row__label,
+.acp-slider-row__slider,
+.acp-slider-row__value { display: none; }
+
 
 /* ─── Edit-back links ─────────────────────────────────────────────────────── */
 

@@ -451,6 +451,54 @@ export interface AudioEffectsConfig {
   processingError?: string;
 }
 
+// ─── Audio Mixing Types (Phase 8-K) ─────────────────────────────────────────
+
+export type AudioMixLayerType = 'voice' | 'musicBed' | 'sfx' | 'ambient';
+export type AudioMixSourceType = 'library' | 'uploaded' | 'generated' | 'none';
+export type AudioMixRenderStatus = 'notApplied' | 'pending' | 'applied' | 'failed';
+export type AudioMixPresetId =
+  | 'podcast' | 'radio' | 'story' | 'meditation'
+  | 'lightMusic' | 'competition';
+
+/** Individual track in the mix */
+export interface AudioMixTrack {
+  id: string;
+  type: AudioMixLayerType;
+  label: string;
+  enabled: boolean;
+  /** Actual asset storage path — null means intent only, no renderable asset */
+  storagePath?: string;
+  sourceType: AudioMixSourceType;
+  /** Volume in dB (-40 to +12) */
+  volumeDb: number;
+  muted: boolean;
+  fadeInMs: number;
+  fadeOutMs: number;
+  loop: boolean;
+  duckUnderVoice: boolean;
+}
+
+/** Full mixing configuration — stored on draft and published content */
+export interface AudioMixingConfig {
+  enabled: boolean;
+  mode: 'preset' | 'manual';
+  selectedPresetId?: AudioMixPresetId;
+  selectedPresetLabel?: string;
+  tracks: AudioMixTrack[];
+  autoDuckEnabled: boolean;
+  /** Master fade in (ms) */
+  fadeInMs: number;
+  /** Master fade out (ms) */
+  fadeOutMs: number;
+  /** Master gain in dB (-20 to +6) */
+  masterGainDb: number;
+  // Server-managed fields (not client-writable):
+  renderStatus?: AudioMixRenderStatus;
+  renderedAt?: string;
+  appliedOperations?: string[];
+  processingError?: string;
+}
+
 // ─── Audio Content Document ──────────────────────────────────────────────────
 //
 // Stored in: contentItems/{contentId}
@@ -582,6 +630,9 @@ export interface AudioContentDoc {
   /** Audio effects configuration (Phase 8-J) — presets or manual filters */
   effectsConfig?: AudioEffectsConfig;
 
+  /** Audio mixing configuration (Phase 8-K) — tracks, fading, volume, presets */
+  mixingConfig?: AudioMixingConfig;
+
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 
   listensCount: number;
@@ -665,6 +716,8 @@ export interface AudioDraftDoc {
   captionsData?: CaptionsData;
   /** Audio effects configuration (Phase 8-J) */
   effectsConfig?: AudioEffectsConfig;
+  /** Audio mixing configuration (Phase 8-K) */
+  mixingConfig?: AudioMixingConfig;
   autoCue?: AutoCueConfig;
 
   /** Whether this is child-directed content (Phase 8-D.2) */
@@ -754,6 +807,8 @@ export interface UpdateAudioDraftRequest {
   captionsData?: CaptionsData;
   /** Audio effects configuration (Phase 8-J) */
   effectsConfig?: AudioEffectsConfig;
+  /** Audio mixing configuration (Phase 8-K) */
+  mixingConfig?: AudioMixingConfig;
   autoCue?: AutoCueConfig;
   isChildContent?: boolean;
   placementFeed?: PlacementFeed;

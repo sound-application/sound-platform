@@ -60,8 +60,11 @@ import type {
   AudioEffectFilterSetting,
   AudioEffectFilterId,
   AudioEffectPresetId,
+  AudioMixingConfig,
+  AudioMixTrack,
+  AudioMixPresetId,
 } from '@sound/shared';
-import { AUDIO_PRESETS, AUDIO_FILTERS } from '@sound/shared';
+import { AUDIO_PRESETS, AUDIO_FILTERS, MIXING_PRESETS as MIXING_PRESET_DEFS, createDefaultTracks, dbToPercent, percentToDb } from '@sound/shared';
 import type { PlaylistDoc } from '@sound/shared';
 import { parseSRT, parseVTT, splitTextToSegments } from '../../utils/captionsParsers';
 import type { WorldId } from '@sound/shared';
@@ -179,15 +182,14 @@ const LANGUAGES = [
 ];
 
 // ── Effects: AUDIO_PRESETS + AUDIO_FILTERS imported from @sound/shared ──
+// ── Mixing: MIXING_PRESET_DEFS + createDefaultTracks imported from @sound/shared ──
 
-const MIXING_TOOLS = [
-  { id: 'crossfade', name: 'مزج تدريجي', icon: 'transition_fade' },
-  { id: 'trim', name: 'قص وتقليم', icon: 'content_cut' },
-  { id: 'fade_in', name: 'تلاشي دخول', icon: 'signal_cellular_alt' },
-  { id: 'loudness', name: 'معايرة الصوت', icon: 'volume_up' },
+// Mixing source options for background music
+const MUSIC_SOURCE_OPTIONS = [
+  { id: 'none', label: 'بدون موسيقى', icon: 'music_off', available: true },
+  { id: 'uploaded', label: 'رفع من الجهاز', icon: 'upload_file', available: false },
+  { id: 'library', label: 'مكتبة Sound', icon: 'library_music', available: false },
 ];
-
-const MIXING_PRESETS = ['بودكاست', 'راديو', 'قصة', 'تأمل'];
 
 // ── Page Component ───────────────────────────────────────────────────────────
 
@@ -311,6 +313,64 @@ export function AudioCreatePage() {
     };
   };
 
+  // ── Step 9: Mixing ───────────────────────────────────────────────────────
+  const [mixingEnabled, setMixingEnabled] = useState(false);
+  const [mixingMode, setMixingMode] = useState<'preset' | 'manual'>('preset');
+  const [selectedMixPresetId, setSelectedMixPresetId] = useState<AudioMixPresetId | null>(null);
+  const [mixTracks, setMixTracks] = useState<AudioMixTrack[]>(createDefaultTracks());
+  const [autoDuckEnabled, setAutoDuckEnabled] = useState(false);
+  const [masterFadeInMs, setMasterFadeInMs] = useState(0);
+  const [masterFadeOutMs, setMasterFadeOutMs] = useState(0);
+  const [masterGainDb, setMasterGainDb] = useState(0);
+
+  const updateMixTrack = (trackId: string, updates: Partial<AudioMixTrack>) => {
+    setMixTracks(prev => prev.map(t => t.id === trackId ? { ...t, ...updates } : t));
+  };
+
+  const applyMixPreset = (presetId: AudioMixPresetId) => {
+    const preset = MIXING_PRESET_DEFS.find(p => p.id === presetId);
+    if (!preset) return;
+    setSelectedMixPresetId(presetId);
+    setMixingMode('preset');
+    setAutoDuckEnabled(preset.autoDuck);
+    setMasterFadeInMs(preset.fadeInMs);
+    setMasterFadeOutMs(preset.fadeOutMs);
+    setMasterGainDb(preset.masterGainDb);
+    setMixTracks(prev => prev.map(t => {
+      if (t.type === 'voice') return { ...t, volumeDb: preset.voiceDb };
+      if (t.type === 'musicBed') return { ...t, volumeDb: preset.musicDb, duckUnderVoice: preset.autoDuck };
+      if (t.type === 'sfx') return { ...t, volumeDb: preset.sfxDb };
+      return t;
+    }));
+  };
+
+  const resetMixing = () => {
+    setMixingEnabled(false);
+    setMixingMode('preset');
+    setSelectedMixPresetId(null);
+    setMixTracks(createDefaultTracks());
+    setAutoDuckEnabled(false);
+    setMasterFadeInMs(0);
+    setMasterFadeOutMs(0);
+    setMasterGainDb(0);
+  };
+
+  const buildMixingConfig = (): AudioMixingConfig | undefined => {
+    if (!mixingEnabled) return undefined;
+    const preset = MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId);
+    return {
+      enabled: true,
+      mode: mixingMode,
+      selectedPresetId: mixingMode === 'preset' ? selectedMixPresetId ?? undefined : undefined,
+      selectedPresetLabel: mixingMode === 'preset' ? preset?.label : undefined,
+      tracks: mixTracks,
+      autoDuckEnabled,
+      fadeInMs: masterFadeInMs,
+      fadeOutMs: masterFadeOutMs,
+      masterGainDb,
+    };
+  };
+
   // ── Step 10: Preview playback ──────────────────────────────────────────────
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
@@ -423,6 +483,7 @@ export function AudioCreatePage() {
           : undefined,
         autoCue: autoCueConfig,
         effectsConfig: buildEffectsConfig(),
+        mixingConfig: buildMixingConfig(),
         currentStep: String(nextStep),
       };
 
@@ -1597,105 +1658,207 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">graphic_eq</span>
-            المكساج والدمج
+            مكساج الصوت
             <span className="acp-badge acp-badge--optional">اختياري</span>
           </h1>
           <div className="acp-form">
-            {/* Multi-track visual */}
-            <div className="acp-tracks">
-              <div className="acp-track-row">
-                <span className="acp-track-row__label">الصوت</span>
-                <div className="acp-track-row__bar acp-track-row__bar--voice" style={{ width: '80%' }} />
+            {/* Master enable toggle */}
+            <div className="acp-fx-toggle-row">
+              <div className="acp-fx-toggle-row__info">
+                <span className="material-symbols-outlined">graphic_eq</span>
+                <div>
+                  <span className="acp-fx-toggle-row__title">تفعيل المكساج</span>
+                  <span className="acp-fx-toggle-row__desc">اضبط طبقات الصوت والموسيقى قبل الحفظ</span>
+                </div>
               </div>
-              <div className="acp-track-row">
-                <span className="acp-track-row__label">الموسيقى</span>
-                <div className="acp-track-row__bar acp-track-row__bar--music" style={{ width: '0%' }} />
-              </div>
-              <div className="acp-track-row">
-                <span className="acp-track-row__label">المؤثرات</span>
-                <div className="acp-track-row__bar acp-track-row__bar--effects" style={{ width: '0%' }} />
-              </div>
+              <label className="acp-toggle">
+                <input type="checkbox" checked={mixingEnabled} onChange={e => setMixingEnabled(e.target.checked)} />
+                <span className="acp-toggle__track" />
+              </label>
             </div>
 
-            {/* Track mixer */}
-            <div className="acp-track-mixer">
-              <h3 className="acp-track-mixer__title">مستوى الصوت</h3>
-              <div className="acp-slider-row">
-                <span className="acp-slider-row__label">الصوت</span>
-                <input type="range" className="acp-slider-row__slider" min={0} max={100} value={80} disabled />
-                <span className="acp-slider-row__value">80%</span>
-              </div>
-              <div className="acp-slider-row">
-                <span className="acp-slider-row__label">الموسيقى</span>
-                <input type="range" className="acp-slider-row__slider" min={0} max={100} value={0} disabled />
-                <span className="acp-slider-row__value">0%</span>
-              </div>
-              <div className="acp-slider-row">
-                <span className="acp-slider-row__label">المؤثرات</span>
-                <input type="range" className="acp-slider-row__slider" min={0} max={100} value={0} disabled />
-                <span className="acp-slider-row__value">0%</span>
-              </div>
-            </div>
-
-            {/* Background music — gated options */}
-            <div className="acp-label" style={{ gap: '0.4rem' }}>
-              الموسيقى الخلفية
-              <div className="acp-playlist-cards">
-                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
-                  <span className="material-symbols-outlined">library_music</span>
-                  مكتبة Sound
-                  <span className="acp-gate-badge">حسب الباقة</span>
-                </button>
-                <button className="acp-playlist-card acp-playlist-card--gated" disabled type="button">
-                  <span className="material-symbols-outlined">upload_file</span>
-                  رفع ملف موسيقى
-                  <span className="acp-gate-badge">حسب الباقة</span>
-                </button>
-                <button className="acp-playlist-card acp-playlist-card--selected" type="button">
-                  <span className="material-symbols-outlined">music_off</span>
-                  بدون موسيقى
-                </button>
-              </div>
-            </div>
-
-            {/* Advanced tools — all disabled */}
-            <div className="acp-label" style={{ gap: '0.4rem' }}>
-              أدوات متقدمة
-              <div className="acp-effects-grid">
-                {MIXING_TOOLS.map((tool) => (
-                  <div key={tool.id} className="acp-effect-card acp-effect-card--gated">
-                    <div className="acp-effect-card__header">
-                      <span className="material-symbols-outlined">lock</span>
-                      <span className="material-symbols-outlined">{tool.icon}</span>
-                      <span className="acp-effect-card__name">{tool.name}</span>
+            {mixingEnabled && (
+              <>
+                {/* Track visualization */}
+                <div className="acp-tracks">
+                  {mixTracks.map(track => (
+                    <div className="acp-track-row" key={track.id}>
+                      <span className="acp-track-row__label">{track.label}</span>
+                      <div
+                        className={`acp-track-row__bar acp-track-row__bar--${track.type === 'voice' ? 'voice' : track.type === 'musicBed' ? 'music' : 'effects'}`}
+                        style={{ width: `${Math.max(0, dbToPercent(track.volumeDb))}%`, opacity: track.muted ? 0.2 : 0.7 }}
+                      />
                     </div>
-                    <span className="acp-gate-badge acp-effect-card__badge">حسب الباقة</span>
+                  ))}
+                </div>
+
+                {/* Layer tracks section */}
+                <div className="acp-mix-layers">
+                  <h3 className="acp-mix-layers__title">
+                    <span className="material-symbols-outlined">layers</span> الطبقات
+                  </h3>
+                  {mixTracks.map(track => (
+                    <div className="acp-mix-track-card" key={track.id}>
+                      <div className="acp-mix-track-card__header">
+                        <span className="acp-mix-track-card__name">{track.label}</span>
+                        <div className="acp-mix-track-card__actions">
+                          <button
+                            className={`acp-mix-icon-btn ${track.muted ? 'acp-mix-icon-btn--active' : ''}`}
+                            type="button"
+                            onClick={() => updateMixTrack(track.id, { muted: !track.muted })}
+                            title={track.muted ? 'إلغاء الكتم' : 'كتم'}
+                          >
+                            <span className="material-symbols-outlined">{track.muted ? 'volume_off' : 'volume_up'}</span>
+                          </button>
+                        </div>
+                      </div>
+                      <div className="acp-mix-track-card__slider">
+                        <input
+                          type="range"
+                          className="acp-range-slider"
+                          min={0}
+                          max={130}
+                          value={dbToPercent(track.volumeDb)}
+                          onChange={e => updateMixTrack(track.id, { volumeDb: percentToDb(Number(e.target.value)) })}
+                        />
+                        <span className="acp-mix-track-card__value">{dbToPercent(track.volumeDb)}%</span>
+                      </div>
+                      {/* Source selector for non-voice tracks */}
+                      {track.type !== 'voice' && (
+                        <div className="acp-mix-track-card__source">
+                          {MUSIC_SOURCE_OPTIONS.map(opt => (
+                            <button
+                              key={opt.id}
+                              className={`acp-playlist-card ${track.sourceType === opt.id ? 'acp-playlist-card--selected' : ''} ${!opt.available && opt.id !== 'none' ? 'acp-playlist-card--gated' : ''}`}
+                              type="button"
+                              onClick={() => opt.available ? updateMixTrack(track.id, { sourceType: opt.id as AudioMixTrack['sourceType'], enabled: opt.id !== 'none' }) : undefined}
+                              disabled={!opt.available && opt.id !== 'none'}
+                            >
+                              <span className="material-symbols-outlined">{opt.icon}</span>
+                              {opt.label}
+                              {!opt.available && opt.id !== 'none' && <span className="acp-gate-badge">قريباً</span>}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                  ))}
+                </div>
+
+                {/* Advanced tools */}
+                <div className="acp-mix-advanced">
+                  <h3 className="acp-mix-layers__title">
+                    <span className="material-symbols-outlined">tune</span> أدوات متقدمة
+                  </h3>
+                  <div className="acp-mix-tools-grid">
+                    {/* Auto-duck toggle */}
+                    <div className="acp-mix-tool-card">
+                      <div className="acp-mix-tool-card__header">
+                        <span className="material-symbols-outlined">hearing</span>
+                        <span>خفض الموسيقى</span>
+                      </div>
+                      <span className="acp-mix-tool-card__desc">تلقائياً أثناء الكلام</span>
+                      <label className="acp-toggle acp-toggle--sm">
+                        <input type="checkbox" checked={autoDuckEnabled} onChange={e => setAutoDuckEnabled(e.target.checked)} />
+                        <span className="acp-toggle__track" />
+                      </label>
+                      {autoDuckEnabled && (
+                        <span className="acp-mix-tool-card__note">
+                          <span className="material-symbols-outlined" style={{ fontSize: '0.7rem' }}>schedule</span>
+                          مؤجل — يتطلب مسار موسيقى
+                        </span>
+                      )}
+                    </div>
+
+                    {/* Fade In */}
+                    <div className="acp-mix-tool-card">
+                      <div className="acp-mix-tool-card__header">
+                        <span className="material-symbols-outlined">signal_cellular_alt</span>
+                        <span>Fade In</span>
+                      </div>
+                      <span className="acp-mix-tool-card__desc">تدرج دخول</span>
+                      <div className="acp-mix-tool-card__control">
+                        <input
+                          type="range" className="acp-range-slider" min={0} max={5000} step={100}
+                          value={masterFadeInMs} onChange={e => setMasterFadeInMs(Number(e.target.value))}
+                        />
+                        <span className="acp-mix-tool-card__value">{(masterFadeInMs / 1000).toFixed(1)}ث</span>
+                      </div>
+                    </div>
+
+                    {/* Fade Out */}
+                    <div className="acp-mix-tool-card">
+                      <div className="acp-mix-tool-card__header">
+                        <span className="material-symbols-outlined">signal_cellular_alt</span>
+                        <span>Fade Out</span>
+                      </div>
+                      <span className="acp-mix-tool-card__desc">تدرج خروج</span>
+                      <div className="acp-mix-tool-card__control">
+                        <input
+                          type="range" className="acp-range-slider" min={0} max={5000} step={100}
+                          value={masterFadeOutMs} onChange={e => setMasterFadeOutMs(Number(e.target.value))}
+                        />
+                        <span className="acp-mix-tool-card__value">{(masterFadeOutMs / 1000).toFixed(1)}ث</span>
+                      </div>
+                    </div>
+
+                    {/* Master Gain */}
+                    <div className="acp-mix-tool-card">
+                      <div className="acp-mix-tool-card__header">
+                        <span className="material-symbols-outlined">volume_up</span>
+                        <span>مستوى الماستر</span>
+                      </div>
+                      <span className="acp-mix-tool-card__desc">معايرة المستوى العام</span>
+                      <div className="acp-mix-tool-card__control">
+                        <input
+                          type="range" className="acp-range-slider" min={-20} max={6}
+                          value={masterGainDb} onChange={e => setMasterGainDb(Number(e.target.value))}
+                        />
+                        <span className="acp-mix-tool-card__value">{masterGainDb > 0 ? '+' : ''}{masterGainDb}dB</span>
+                      </div>
+                    </div>
                   </div>
-                ))}
-              </div>
-            </div>
+                </div>
 
-            {/* Presets — all disabled */}
-            <div className="acp-label" style={{ gap: '0.4rem' }}>
-              إعدادات مسبقة
-              <div className="acp-chips">
-                {MIXING_PRESETS.map((preset) => (
-                  <button key={preset} className="acp-chip" type="button" disabled style={{ opacity: 0.4, cursor: 'not-allowed' }}>{preset}</button>
-                ))}
-              </div>
-            </div>
+                {/* Presets */}
+                <div className="acp-mix-presets">
+                  <h3 className="acp-mix-layers__title">
+                    <span className="material-symbols-outlined">auto_awesome</span> قوالب جاهزة
+                  </h3>
+                  <div className="acp-chips">
+                    {MIXING_PRESET_DEFS.map(preset => (
+                      <button
+                        key={preset.id}
+                        className={`acp-chip ${selectedMixPresetId === preset.id ? 'acp-chip--active' : ''}`}
+                        type="button"
+                        onClick={() => applyMixPreset(preset.id)}
+                      >
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>{preset.icon}</span>
+                        {preset.label}
+                      </button>
+                    ))}
+                  </div>
+                </div>
 
-            <p className="acp-hint">
-              <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-              أدوات المكساج والدمج متاحة حسب باقتك. لن يتم تطبيق أي خلط على هذا النشر.
-            </p>
+                <p className="acp-hint">
+                  <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
+                  سيتم تطبيق ضبط الصوت والتدرج أثناء المعالجة. مكتبة الموسيقى ورفع الملفات ستتوفر قريباً.
+                </p>
+
+                {/* Reset button */}
+                <button className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetMixing} type="button">
+                  <span className="material-symbols-outlined">restart_alt</span> إعادة ضبط
+                </button>
+              </>
+            )}
 
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(8)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
               </button>
-              <button className="acp-btn acp-btn--primary" onClick={() => setStep(10)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">skip_previous</span> تخطي
+              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(10)} disabled={saving} type="button">
+                <span className="material-symbols-outlined" aria-hidden="true">{mixingEnabled ? 'save' : 'skip_previous'}</span>
+                {saving ? 'جاري الحفظ...' : mixingEnabled ? 'حفظ المكساج' : 'تخطي'}
               </button>
             </div>
           </div>
@@ -1830,9 +1993,13 @@ export function AudioCreatePage() {
                       : 'مفعّل')
                 : 'تم التخطي'}
             </span>
-            <span className="acp-status-chip acp-status-chip--skip">
-              <span className="material-symbols-outlined">skip_next</span>
-              المكساج: تم التخطي
+            <span className={`acp-status-chip ${mixingEnabled ? 'acp-status-chip--done' : 'acp-status-chip--skip'}`}>
+              <span className="material-symbols-outlined">{mixingEnabled ? 'graphic_eq' : 'skip_next'}</span>
+              {mixingEnabled
+                ? `المكساج: ${selectedMixPresetId
+                    ? MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId)?.label || 'مخصص'
+                    : 'ضبط يدوي'}`
+                : 'المكساج: تم التخطي'}
             </span>
           </div>
 
@@ -2049,8 +2216,26 @@ export function AudioCreatePage() {
               </div>
               <div className="acp-rd-card__row">
                 <span>المكساج:</span>
-                <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
-                تم التخطي — لم يتم تطبيق أي خلط
+                {mixingEnabled ? (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--accent-teal, #2dd4bf)' }}>check_circle</span>
+                    {selectedMixPresetId
+                      ? MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId)?.label ?? 'مخصص'
+                      : 'ضبط يدوي'}
+                    <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+                      صوتك: {dbToPercent(mixTracks.find(t => t.type === 'voice')?.volumeDb ?? 0)}%
+                      {masterFadeInMs > 0 && ` · Fade In: ${(masterFadeInMs/1000).toFixed(1)}ث`}
+                      {masterFadeOutMs > 0 && ` · Fade Out: ${(masterFadeOutMs/1000).toFixed(1)}ث`}
+                      {masterGainDb !== 0 && ` · ماستر: ${masterGainDb > 0 ? '+' : ''}${masterGainDb}dB`}
+                      {autoDuckEnabled && ' · خفض تلقائي (مؤجل)'}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
+                    تم التخطي — لم يتم تطبيق أي خلط
+                  </>
+                )}
               </div>
             </div>
 

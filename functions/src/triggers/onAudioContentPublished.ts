@@ -39,11 +39,11 @@ import * as logger from 'firebase-functions/logger';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects } from '../processing/audioProcessor';
+import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects, applyMixingMaster } from '../processing/audioProcessor';
 
 // ── Types from shared ────────────────────────────────────────────────────
-import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig } from '@sound/shared';
-import { buildEffectsChain, getRequestedFilterIds } from '@sound/shared';
+import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig, AudioMixingConfig } from '@sound/shared';
+import { buildEffectsChain, getRequestedFilterIds, getMixingMasterOps, buildMixingFFmpegChain } from '@sound/shared';
 
 // ── Provider registry ──────────────────────────────────────────────────
 import { resolveProvider } from '../helpers/providerRegistry';
@@ -162,6 +162,37 @@ export const onAudioContentPublished = onDocumentWritten(
         effectsApplied: effectsResult?.effectsApplied ?? false,
       });
 
+      // ── Step 4b: Mixing master adjustments (Phase 8-K) ──────────────────
+      // Order: original → effects → mixing/master adjustments → waveform → upload
+      // Only renders voice-only ops (volume, gain, fades).
+      // Multi-track mixing with actual layers is deferred.
+      const mixingConfig = data.mixingConfig as AudioMixingConfig | undefined;
+      let mixingResult: { mixApplied: boolean; appliedOperations: string[]; error?: string } | null = null;
+
+      if (mixingConfig?.enabled) {
+        const mixOps = getMixingMasterOps(mixingConfig);
+
+        if (mixOps.hasRenderableOps) {
+          const mixChain = buildMixingFFmpegChain(mixOps, transcode.durationMs);
+          if (mixChain) {
+            logger.info(`[8K-pipeline] ${contentId}: applying mixing master adjustments.`, {
+              operations: mixOps.operationLabels,
+              chain: mixChain,
+              hasDeferredLayers: mixOps.hasDeferredLayers,
+            });
+            mixingResult = await applyMixingMaster(tmpMaster, mixChain, mixOps.operationLabels);
+          } else {
+            logger.info(`[8K-pipeline] ${contentId}: mixing enabled but filter chain is empty.`);
+            mixingResult = { mixApplied: false, appliedOperations: [], error: undefined };
+          }
+        } else {
+          logger.info(`[8K-pipeline] ${contentId}: mixing enabled but no renderable ops.`, {
+            hasDeferredLayers: mixOps.hasDeferredLayers,
+          });
+          mixingResult = { mixApplied: false, appliedOperations: [] };
+        }
+      }
+
       // ── Step 5: Extract real waveform peaks ────────────────────────────
       logger.info(`[8F-pipeline] ${contentId}: extracting waveform.`);
       const peaks = await extractWaveformPeaks(tmpMaster, 200);
@@ -244,8 +275,28 @@ export const onAudioContentPublished = onDocumentWritten(
           firestoreUpdate['effectsConfig.processingError'] = effectsResult.effectsError?.slice(0, 500) || 'فشل تطبيق المؤثرات';
         }
       } else if (effectsConfig?.enabled) {
-        // Effects were enabled but no chain was built (shouldn't happen, but safe)
         firestoreUpdate['effectsConfig.appliedStatus'] = 'notApplied';
+      }
+
+      // Phase 8-K: Write mixing render status
+      if (mixingResult) {
+        const mixRenderedAt = new Date().toISOString();
+        if (mixingResult.mixApplied) {
+          firestoreUpdate['mixingConfig.renderStatus'] = 'applied';
+          firestoreUpdate['mixingConfig.renderedAt'] = mixRenderedAt;
+          firestoreUpdate['mixingConfig.appliedOperations'] = mixingResult.appliedOperations;
+        } else if (mixingResult.error) {
+          // Mixing failed but base/effects processing succeeded — content still ready
+          firestoreUpdate['mixingConfig.renderStatus'] = 'failed';
+          firestoreUpdate['mixingConfig.renderedAt'] = mixRenderedAt;
+          firestoreUpdate['mixingConfig.appliedOperations'] = [];
+          firestoreUpdate['mixingConfig.processingError'] = mixingResult.error.slice(0, 500);
+        } else {
+          // No renderable ops (settings saved but no volume/fade changes, or only deferred layers)
+          firestoreUpdate['mixingConfig.renderStatus'] = 'pending';
+        }
+      } else if (mixingConfig?.enabled) {
+        firestoreUpdate['mixingConfig.renderStatus'] = 'pending';
       }
 
       await docRef.update(firestoreUpdate);

@@ -15,3 +15,4 @@ export * from './username';
 export * from './providers';
 export * from './playlists';
 export * from './effectsPresets';
+export * from './mixingPresets';

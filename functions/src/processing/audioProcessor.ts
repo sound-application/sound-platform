@@ -441,3 +441,70 @@ export async function transcodeWithEffects(
   };
 }
 
+// ── Phase 8-K: Mixing Master Adjustments ─────────────────────────────────────
+
+export interface MixingMasterResult {
+  mixApplied: boolean;
+  appliedOperations: string[];
+  error?: string;
+}
+
+/**
+ * Apply voice-only mixing master adjustments (volume, gain, fade in/out)
+ * to the already-transcoded master file.
+ *
+ * This re-encodes the master with the mixing filter chain.
+ * If no renderable ops exist, returns immediately without touching the file.
+ * If FFmpeg fails, returns error without destroying the input file.
+ */
+export async function applyMixingMaster(
+  masterPath: string,
+  filterChain: string,
+  operationLabels: string[],
+): Promise<MixingMasterResult> {
+  // Create temp output path
+  const tmpMixed = masterPath.replace(/\.m4a$/, '_mixed.m4a');
+
+  try {
+    logger.info('[audioProcessor] Applying mixing master adjustments.', {
+      chain: filterChain,
+      operations: operationLabels,
+    });
+
+    const args = [
+      '-y', '-i', masterPath,
+      '-vn', '-ar', '44100', '-ac', '2',
+      '-b:a', '128k', '-c:a', 'aac',
+      '-movflags', '+faststart',
+      '-af', filterChain,
+      tmpMixed,
+    ];
+
+    await runFFmpeg(args);
+
+    // Verify output exists and is non-empty
+    const stat = fs.statSync(tmpMixed);
+    if (stat.size === 0) {
+      throw new Error('Mixing output is empty');
+    }
+
+    // Replace original master with mixed version
+    fs.copyFileSync(tmpMixed, masterPath);
+    fs.unlinkSync(tmpMixed);
+
+    logger.info('[audioProcessor] Mixing master adjustments applied.', {
+      appliedOperations: operationLabels,
+      sizeBytes: stat.size,
+    });
+
+    return { mixApplied: true, appliedOperations: operationLabels };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn('[audioProcessor] Mixing master adjustments failed, keeping original master.', {
+      error: msg,
+    });
+    // Clean up temp file if it exists
+    try { if (fs.existsSync(tmpMixed)) fs.unlinkSync(tmpMixed); } catch { /* ignore */ }
+    return { mixApplied: false, appliedOperations: [], error: msg };
+  }
+}

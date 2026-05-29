@@ -236,6 +236,28 @@ export function createAudioContentFromDraft(
           appliedStatus: 'pending',
         }
       : undefined,
+    // Phase 8-K: Copy mixing config, reset server-only fields to pending.
+    // Master adjustments are applied during processing — renderStatus starts as pending.
+    mixingConfig: draft.mixingConfig?.enabled
+      ? {
+          enabled: true,
+          mode: draft.mixingConfig.mode,
+          selectedPresetId: draft.mixingConfig.selectedPresetId,
+          selectedPresetLabel: draft.mixingConfig.selectedPresetLabel,
+          tracks: (draft.mixingConfig.tracks ?? []).map(t => ({
+            id: t.id, type: t.type, label: t.label, enabled: t.enabled,
+            sourceType: t.sourceType, volumeDb: t.volumeDb, muted: t.muted,
+            fadeInMs: t.fadeInMs, fadeOutMs: t.fadeOutMs, loop: t.loop,
+            duckUnderVoice: t.duckUnderVoice,
+            // Do NOT copy storagePath — server resolves this
+          })),
+          autoDuckEnabled: draft.mixingConfig.autoDuckEnabled ?? false,
+          fadeInMs: draft.mixingConfig.fadeInMs ?? 0,
+          fadeOutMs: draft.mixingConfig.fadeOutMs ?? 0,
+          masterGainDb: draft.mixingConfig.masterGainDb ?? 0,
+          renderStatus: 'pending',
+        }
+      : undefined,
     autoCue: draft.autoCue,
 
     // Phase 8-D.2 fields

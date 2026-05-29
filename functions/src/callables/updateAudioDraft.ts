@@ -37,8 +37,13 @@ import type {
   AudioDraftDoc,
   AudioAssetMeta,
   AudioEffectsConfig,
+  AudioMixingConfig,
+  AudioMixTrack,
 } from '@sound/shared';
-import { validateAudioWorldKind, VALID_FILTER_IDS, VALID_PRESET_IDS } from '@sound/shared';
+import {
+  validateAudioWorldKind, VALID_FILTER_IDS, VALID_PRESET_IDS,
+  VALID_MIX_PRESET_IDS, VALID_MIX_LAYER_TYPES,
+} from '@sound/shared';
 
 // ── Admin Firestore ────────────────────────────────────────────────────────────
 const db = admin.firestore();
@@ -208,6 +213,62 @@ export const updateAudioDraft = functions
             // appliedStatus, appliedAt, appliedFilters, skippedFilters, processingError
           };
           update.effectsConfig = sanitized;
+        }
+      }
+
+      // ── 5b. Handle mixingConfig (Phase 8-K) ───────────────────────────────────
+      if (data.mixingConfig !== undefined) {
+        if (data.mixingConfig === null) {
+          update.mixingConfig = admin.firestore.FieldValue.delete();
+        } else {
+          const mc = data.mixingConfig as AudioMixingConfig;
+          if (mc.mode && !['preset', 'manual'].includes(mc.mode)) {
+            throw new functions.https.HttpsError('invalid-argument', 'mixingConfig.mode must be preset or manual.');
+          }
+          if (mc.selectedPresetId && !(VALID_MIX_PRESET_IDS as readonly string[]).includes(mc.selectedPresetId)) {
+            throw new functions.https.HttpsError('invalid-argument', `Invalid mixing preset ID: ${mc.selectedPresetId}`);
+          }
+          // Validate tracks
+          const tracks: AudioMixTrack[] = [];
+          if (mc.tracks && Array.isArray(mc.tracks)) {
+            if (mc.tracks.length > 10) {
+              throw new functions.https.HttpsError('invalid-argument', 'Max 10 mixing tracks.');
+            }
+            for (const t of mc.tracks) {
+              if (!VALID_MIX_LAYER_TYPES.includes(t.type as typeof VALID_MIX_LAYER_TYPES[number])) {
+                throw new functions.https.HttpsError('invalid-argument', `Invalid track type: ${t.type}`);
+              }
+              tracks.push({
+                id: String(t.id),
+                type: t.type,
+                label: String(t.label ?? ''),
+                enabled: Boolean(t.enabled),
+                sourceType: t.sourceType || 'none',
+                volumeDb: Math.round(Math.min(12, Math.max(-40, Number(t.volumeDb) || 0))),
+                muted: Boolean(t.muted),
+                fadeInMs: Math.round(Math.min(10000, Math.max(0, Number(t.fadeInMs) || 0))),
+                fadeOutMs: Math.round(Math.min(10000, Math.max(0, Number(t.fadeOutMs) || 0))),
+                loop: Boolean(t.loop),
+                duckUnderVoice: Boolean(t.duckUnderVoice),
+                // storagePath intentionally omitted — server resolves
+              });
+            }
+          }
+          // Strip server-only fields — clients cannot spoof render status
+          const sanitizedMix: AudioMixingConfig = {
+            enabled: Boolean(mc.enabled),
+            mode: mc.mode || 'preset',
+            selectedPresetId: mc.selectedPresetId,
+            selectedPresetLabel: mc.selectedPresetLabel,
+            tracks,
+            autoDuckEnabled: Boolean(mc.autoDuckEnabled),
+            fadeInMs: Math.round(Math.min(10000, Math.max(0, Number(mc.fadeInMs) || 0))),
+            fadeOutMs: Math.round(Math.min(10000, Math.max(0, Number(mc.fadeOutMs) || 0))),
+            masterGainDb: Math.round(Math.min(6, Math.max(-20, Number(mc.masterGainDb) || 0))),
+            // Server-only fields intentionally omitted:
+            // renderStatus, renderedAt, appliedOperations, processingError
+          };
+          update.mixingConfig = sanitizedMix;
         }
       }
 
