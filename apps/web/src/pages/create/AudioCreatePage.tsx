@@ -1820,9 +1820,15 @@ export function AudioCreatePage() {
               <span className="material-symbols-outlined">{coverAsset ? 'check_circle' : 'image'}</span>
               الغلاف: {coverAsset ? 'جاهز' : 'افتراضي'}
             </span>
-            <span className="acp-status-chip acp-status-chip--skip">
-              <span className="material-symbols-outlined">skip_next</span>
-              المؤثرات: تم التخطي
+            <span className={`acp-status-chip ${effectsEnabled ? 'acp-status-chip--ok' : 'acp-status-chip--skip'}`}>
+              <span className="material-symbols-outlined">{effectsEnabled ? 'check_circle' : 'skip_next'}</span>
+              المؤثرات: {effectsEnabled
+                ? (effectsMode === 'preset' && selectedPresetId
+                    ? AUDIO_PRESETS.find(p => p.id === selectedPresetId)?.label ?? 'إعداد مسبق'
+                    : effectsMode === 'manual'
+                      ? `${manualFilters.filter(f => f.enabled).length} فلاتر`
+                      : 'مفعّل')
+                : 'تم التخطي'}
             </span>
             <span className="acp-status-chip acp-status-chip--skip">
               <span className="material-symbols-outlined">skip_next</span>

@@ -21,7 +21,7 @@
 
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getFirestore, doc, getDoc } from 'firebase/firestore';
+import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
 import { getStorage, ref, getDownloadURL } from 'firebase/storage';
 import { useAuth } from '../contexts/AuthContext';
 import { formatDuration, formatFileSize } from '../lib/audioDuration';
@@ -92,14 +92,15 @@ export function AudioDetailPage() {
   const audioRef = useRef<HTMLAudioElement>(null);
   const progressRef = useRef<HTMLDivElement>(null);
 
-  // ── Load content item ──────────────────────────────────────────────────
+  // ── Load content item (real-time listener for processing updates) ──────
   useEffect(() => {
     if (!contentId) return;
-    const load = async () => {
-      setLoading(true);
-      setError(null);
-      try {
-        const snap = await getDoc(doc(db, 'contentItems', contentId));
+    setLoading(true);
+    setError(null);
+
+    const unsubscribe = onSnapshot(
+      doc(db, 'contentItems', contentId),
+      (snap) => {
         if (!snap.exists()) {
           setError('المحتوى غير موجود.');
           setItem(null);
@@ -107,14 +108,16 @@ export function AudioDetailPage() {
           const data = snap.data() as AudioContentDoc;
           setItem({ ...data, id: snap.id });
         }
-      } catch (err: unknown) {
+        setLoading(false);
+      },
+      (err) => {
         const msg = err instanceof Error ? err.message : 'فشل تحميل المحتوى.';
         setError(msg);
-      } finally {
         setLoading(false);
-      }
-    };
-    load();
+      },
+    );
+
+    return () => unsubscribe();
   }, [contentId]);
 
   // ── Load cover image (public read) ─────────────────────────────────────
