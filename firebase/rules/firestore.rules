@@ -298,6 +298,7 @@ service cloud.firestore {
       // Owner can update own non-server fields
       // Protected: counters, moderationStatus, owner snapshot, timestamps set by CF,
       // and Phase 8-E processing pipeline fields (server-only)
+      // Phase 8-J: effectsConfig is server-managed after publish (appliedStatus, etc.)
       allow update: if isOwner(resource.data.get('ownerUid', ''))
         && !request.resource.data.diff(resource.data).affectedKeys()
             .hasAny(['ownerUid', 'createdAt', 'publishedAt',
@@ -307,7 +308,7 @@ service cloud.firestore {
                      'contentProcessingStatus', 'processingStartedAt',
                      'processingCompletedAt', 'processedAudio',
                      'waveform', 'captionsProcessing', 'captionsAsset',
-                     'captionsData']);
+                     'captionsData', 'effectsConfig']);
 
       // No client delete — soft-delete via status field
       allow delete: if false;
