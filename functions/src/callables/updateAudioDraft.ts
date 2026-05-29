@@ -39,6 +39,7 @@ import type {
   AudioEffectsConfig,
   AudioMixingConfig,
   AudioMixTrack,
+  AudioEditConfig,
 } from '@sound/shared';
 import {
   validateAudioWorldKind, VALID_FILTER_IDS, VALID_PRESET_IDS,
@@ -269,6 +270,60 @@ export const updateAudioDraft = functions
             // renderStatus, renderedAt, appliedOperations, processingError
           };
           update.mixingConfig = sanitizedMix;
+        }
+      }
+
+      // ── 5d. Handle editConfig (Phase 8-L) ───────────────────────────────────
+      if (data.editConfig !== undefined) {
+        if (data.editConfig === null) {
+          update.editConfig = admin.firestore.FieldValue.delete();
+        } else {
+          const ec = data.editConfig as AudioEditConfig;
+          // Validate trim values
+          const trimStartMs = Math.round(Math.min(3600000, Math.max(0, Number(ec.trimStartMs) || 0)));
+          const trimEndMs = Math.round(Math.min(3600000, Math.max(0, Number(ec.trimEndMs) || 0)));
+          if (trimStartMs > 0 && trimEndMs > 0 && trimStartMs >= trimEndMs) {
+            throw new functions.https.HttpsError('invalid-argument', 'trimStartMs must be less than trimEndMs.');
+          }
+          // Validate cuts
+          const cuts: Array<{ id: string; startMs: number; endMs: number; label?: string }> = [];
+          if (ec.cuts && Array.isArray(ec.cuts)) {
+            if (ec.cuts.length > 1) {
+              throw new functions.https.HttpsError('invalid-argument', 'Max 1 cut segment for Phase 8-L.');
+            }
+            for (const cut of ec.cuts) {
+              const cStart = Math.round(Math.min(3600000, Math.max(0, Number(cut.startMs) || 0)));
+              const cEnd = Math.round(Math.min(3600000, Math.max(0, Number(cut.endMs) || 0)));
+              if (cStart >= cEnd) {
+                throw new functions.https.HttpsError('invalid-argument', 'Cut startMs must be less than endMs.');
+              }
+              cuts.push({
+                id: String(cut.id || `cut_${Date.now()}`),
+                startMs: cStart,
+                endMs: cEnd,
+                label: cut.label ? String(cut.label).slice(0, 50) : undefined,
+              });
+            }
+          }
+          // Validate cut doesn't overlap trim boundaries or remove all audio
+          if (cuts.length > 0 && trimEndMs > 0) {
+            const cut = cuts[0]!;
+            if (cut.startMs <= trimStartMs && cut.endMs >= trimEndMs) {
+              throw new functions.https.HttpsError('invalid-argument', 'Cut would remove all audio.');
+            }
+          }
+          // Strip server-only fields — clients cannot spoof edit status
+          const sanitizedEdit: AudioEditConfig = {
+            enabled: Boolean(ec.enabled),
+            trimStartMs: trimStartMs > 0 ? trimStartMs : undefined,
+            trimEndMs: trimEndMs > 0 ? trimEndMs : undefined,
+            cuts: cuts.length > 0 ? cuts : undefined,
+            originalDurationMs: Math.round(Math.max(0, Number(ec.originalDurationMs) || 0)),
+            editedDurationMs: Math.round(Math.max(0, Number(ec.editedDurationMs) || 0)),
+            // Server-only fields intentionally omitted:
+            // editStatus, appliedAt, processingError
+          };
+          update.editConfig = sanitizedEdit;
         }
       }
 

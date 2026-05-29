@@ -258,6 +258,21 @@ export function createAudioContentFromDraft(
           renderStatus: 'pending',
         }
       : undefined,
+    // Phase 8-L: Copy edit config, reset server-only fields to pending.
+    // Trim/cut edits are applied during processing — editStatus starts as pending.
+    editConfig: draft.editConfig?.enabled
+      ? {
+          enabled: true,
+          trimStartMs: draft.editConfig.trimStartMs,
+          trimEndMs: draft.editConfig.trimEndMs,
+          cuts: draft.editConfig.cuts?.map(c => ({
+            id: c.id, startMs: c.startMs, endMs: c.endMs, label: c.label,
+          })),
+          originalDurationMs: draft.editConfig.originalDurationMs,
+          editedDurationMs: draft.editConfig.editedDurationMs,
+          editStatus: 'pending',
+        }
+      : undefined,
     autoCue: draft.autoCue,
 
     // Phase 8-D.2 fields

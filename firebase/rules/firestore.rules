@@ -308,7 +308,8 @@ service cloud.firestore {
                      'contentProcessingStatus', 'processingStartedAt',
                      'processingCompletedAt', 'processedAudio',
                      'waveform', 'captionsProcessing', 'captionsAsset',
-                     'captionsData', 'effectsConfig', 'mixingConfig']);
+                     'captionsData', 'effectsConfig', 'mixingConfig',
+                     'editConfig']);
 
       // No client delete — soft-delete via status field
       allow delete: if false;

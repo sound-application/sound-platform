@@ -499,6 +499,38 @@ export interface AudioMixingConfig {
   processingError?: string;
 }
 
+// ─── Phase 8-L: Audio Edit (Trim/Cut) ────────────────────────────────────────
+
+/** Audio cut segment — one removed region from the middle */
+export interface AudioCutSegment {
+  id: string;
+  startMs: number;
+  endMs: number;
+  label?: string;
+}
+
+/** Status of audio edit processing */
+export type AudioEditStatus = 'notApplied' | 'pending' | 'applied' | 'failed';
+
+/** Audio edit configuration — stored on draft and published content */
+export interface AudioEditConfig {
+  enabled: boolean;
+  /** Milliseconds to trim from start (0 or undefined = no start trim) */
+  trimStartMs?: number;
+  /** New end point in milliseconds (undefined = keep original end) */
+  trimEndMs?: number;
+  /** Middle sections to remove (max 1 for Phase 8-L) */
+  cuts?: AudioCutSegment[];
+  /** Original duration in ms (client-provided for reference) */
+  originalDurationMs?: number;
+  /** Estimated edited duration (client-estimated; server recalculates) */
+  editedDurationMs?: number;
+  // Server-managed fields (not client-writable):
+  editStatus?: AudioEditStatus;
+  appliedAt?: string;
+  processingError?: string;
+}
+
 // ─── Audio Content Document ──────────────────────────────────────────────────
 //
 // Stored in: contentItems/{contentId}
@@ -633,6 +665,9 @@ export interface AudioContentDoc {
   /** Audio mixing configuration (Phase 8-K) — tracks, fading, volume, presets */
   mixingConfig?: AudioMixingConfig;
 
+  /** Audio edit configuration (Phase 8-L) — trim start/end, middle cuts */
+  editConfig?: AudioEditConfig;
+
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 
   listensCount: number;
@@ -718,6 +753,8 @@ export interface AudioDraftDoc {
   effectsConfig?: AudioEffectsConfig;
   /** Audio mixing configuration (Phase 8-K) */
   mixingConfig?: AudioMixingConfig;
+  /** Audio edit configuration (Phase 8-L) */
+  editConfig?: AudioEditConfig;
   autoCue?: AutoCueConfig;
 
   /** Whether this is child-directed content (Phase 8-D.2) */
@@ -809,6 +846,8 @@ export interface UpdateAudioDraftRequest {
   effectsConfig?: AudioEffectsConfig;
   /** Audio mixing configuration (Phase 8-K) */
   mixingConfig?: AudioMixingConfig;
+  /** Audio edit configuration (Phase 8-L) */
+  editConfig?: AudioEditConfig;
   autoCue?: AutoCueConfig;
   isChildContent?: boolean;
   placementFeed?: PlacementFeed;

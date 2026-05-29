@@ -39,10 +39,10 @@ import * as logger from 'firebase-functions/logger';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects, applyMixingMaster } from '../processing/audioProcessor';
+import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects, applyMixingMaster, applyTrimCut } from '../processing/audioProcessor';
 
 // ── Types from shared ────────────────────────────────────────────────────
-import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig, AudioMixingConfig } from '@sound/shared';
+import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig, AudioMixingConfig, AudioEditConfig } from '@sound/shared';
 import { buildEffectsChain, getRequestedFilterIds, getMixingMasterOps, buildMixingFFmpegChain } from '@sound/shared';
 
 // ── Provider registry ──────────────────────────────────────────────────
@@ -122,6 +122,65 @@ export const onAudioContentPublished = onDocumentWritten(
       // Validate: must have audio data
       if (probe.durationMs < 100) {
         throw new Error(`Audio too short or unreadable: ${probe.durationMs}ms.`);
+      }
+
+      // ── Step 3b: Trim/Cut (Phase 8-L) ──────────────────────────────────────
+      // Processing order: original → trim/cut → effects → mixing → waveform
+      // If trim/cut is enabled and FAILS, the pipeline STOPS.
+      // User intent: publishing the uncut original after edit failure is misleading.
+      const editConfig = data.editConfig as AudioEditConfig | undefined;
+      let editResult: { editApplied: boolean; editedDurationMs?: number; error?: string } | null = null;
+
+      if (editConfig?.enabled) {
+        const hasTrim = (editConfig.trimStartMs && editConfig.trimStartMs > 0) ||
+                        (editConfig.trimEndMs && editConfig.trimEndMs > 0 && editConfig.trimEndMs < probe.durationMs);
+        const hasCuts = editConfig.cuts && editConfig.cuts.length > 0;
+
+        if (hasTrim || hasCuts) {
+          const tmpTrimmed = path.join(tmpDir, `${contentId}_trimmed.m4a`);
+          logger.info(`[8L-pipeline] ${contentId}: applying trim/cut edits.`, {
+            trimStartMs: editConfig.trimStartMs,
+            trimEndMs: editConfig.trimEndMs,
+            cuts: editConfig.cuts?.length ?? 0,
+          });
+
+          const trimConfig = {
+            trimStartMs: editConfig.trimStartMs,
+            trimEndMs: editConfig.trimEndMs && editConfig.trimEndMs < probe.durationMs ? editConfig.trimEndMs : undefined,
+            cuts: editConfig.cuts,
+          };
+          editResult = await applyTrimCut(tmpOriginal, tmpTrimmed, trimConfig);
+
+          if (editResult.editApplied) {
+            // Replace original with trimmed version for subsequent pipeline steps
+            fs.copyFileSync(tmpTrimmed, tmpOriginal);
+            fs.unlinkSync(tmpTrimmed);
+            // Update probe duration to reflect trimmed audio
+            probe.durationMs = editResult.editedDurationMs ?? probe.durationMs;
+            logger.info(`[8L-pipeline] ${contentId}: trim/cut applied. New duration: ${probe.durationMs}ms.`);
+          } else {
+            // CRITICAL: Trim/cut failure STOPS the pipeline.
+            // Do NOT fall back to unedited original.
+            logger.error(`[8L-pipeline] ${contentId}: trim/cut FAILED. Stopping pipeline.`, {
+              error: editResult.error,
+            });
+            const failTimestamp = new Date().toISOString();
+            await docRef.update({
+              contentProcessingStatus: 'failed',
+              processingCompletedAt: failTimestamp,
+              'editConfig.editStatus': 'failed',
+              'editConfig.appliedAt': failTimestamp,
+              'editConfig.processingError': (editResult.error || 'فشل قص/تعديل الصوت').slice(0, 500),
+            });
+            // Clean up temp files
+            try { if (fs.existsSync(tmpTrimmed)) fs.unlinkSync(tmpTrimmed); } catch { /* ignore */ }
+            return; // STOP pipeline
+          }
+        } else {
+          // Edit enabled but no actual trim/cut values
+          logger.info(`[8L-pipeline] ${contentId}: edit enabled but no trim/cut values specified.`);
+          editResult = { editApplied: false };
+        }
       }
 
       // ── Step 4: Transcode to AAC/M4A (with effects if configured) ──────
@@ -297,6 +356,21 @@ export const onAudioContentPublished = onDocumentWritten(
         }
       } else if (mixingConfig?.enabled) {
         firestoreUpdate['mixingConfig.renderStatus'] = 'pending';
+      }
+
+      // Phase 8-L: Write edit status
+      if (editResult) {
+        const editTimestamp = new Date().toISOString();
+        if (editResult.editApplied) {
+          firestoreUpdate['editConfig.editStatus'] = 'applied';
+          firestoreUpdate['editConfig.appliedAt'] = editTimestamp;
+          firestoreUpdate['editConfig.editedDurationMs'] = editResult.editedDurationMs;
+        } else {
+          // No renderable edits (edit enabled but no trim/cut values)
+          firestoreUpdate['editConfig.editStatus'] = 'pending';
+        }
+      } else if (editConfig?.enabled) {
+        firestoreUpdate['editConfig.editStatus'] = 'pending';
       }
 
       await docRef.update(firestoreUpdate);

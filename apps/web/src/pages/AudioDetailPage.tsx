@@ -840,6 +840,60 @@ export function AudioDetailPage() {
         </div>
       )}
 
+      {/* ── 7b. Edit (Trim/Cut) Info (Phase 8-L) ──────────────────── */}
+      {item.editConfig?.enabled && (
+        <div className="adp-glass-card adp-effects-info">
+          <h3 className="adp-section-title">
+            <span className="material-symbols-outlined">content_cut</span>
+            القص والتعديل
+          </h3>
+          <p className="adp-effects-info__mode">
+            <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>tune</span>
+            {item.editConfig.trimStartMs && item.editConfig.trimStartMs > 0
+              ? `قص البداية: ${fmtTime(item.editConfig.trimStartMs)}`
+              : ''}
+            {item.editConfig.trimStartMs && item.editConfig.trimEndMs ? ' · ' : ''}
+            {item.editConfig.trimEndMs && item.editConfig.trimEndMs > 0
+              ? `قص النهاية: ${fmtTime(item.editConfig.trimEndMs)}`
+              : ''}
+            {item.editConfig.cuts && item.editConfig.cuts.length > 0
+              ? ` · ${item.editConfig.cuts.length} مقطع محذوف`
+              : ''}
+          </p>
+          {item.editConfig.editStatus === 'applied' && (
+            <p className="adp-effects-info__status adp-effects-info__status--ok">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>check_circle</span>
+              تم تطبيق القص
+              {item.editConfig.editedDurationMs ? ` — المدة: ${fmtTime(item.editConfig.editedDurationMs)}` : ''}
+            </p>
+          )}
+          {item.editConfig.editStatus === 'failed' && (
+            <p className="adp-effects-info__status adp-effects-info__status--fail">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>error_outline</span>
+              فشل القص — لم يتم نشر المحتوى
+            </p>
+          )}
+          {item.editConfig.editStatus === 'pending' && (
+            <p className="adp-effects-info__status adp-effects-info__status--wait">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>schedule</span>
+              إعدادات محفوظة — المعالجة معلقة
+            </p>
+          )}
+          {item.editConfig.editStatus !== 'applied' && item.editConfig.editStatus !== 'failed' && item.editConfig.editStatus !== 'pending' && (
+            <p className="adp-effects-info__status adp-effects-info__status--wait">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>hourglass_empty</span>
+              في الانتظار
+            </p>
+          )}
+          {item.editConfig.processingError && (
+            <p className="adp-effects-info__error">
+              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>warning</span>
+              {item.editConfig.processingError}
+            </p>
+          )}
+        </div>
+      )}
+
       {/* ── 8. Queue Section ────────────────────────────────────── */}
       <div className="adp-glass-card adp-queue">
         <h3 className="adp-section-title">التالي</h3>

@@ -508,3 +508,117 @@ export async function applyMixingMaster(
     return { mixApplied: false, appliedOperations: [], error: msg };
   }
 }
+
+// ── Phase 8-L: Audio Trim & Cut ──────────────────────────────────────────────
+
+export interface TrimCutResult {
+  editApplied: boolean;
+  editedDurationMs?: number;
+  error?: string;
+}
+
+/**
+ * Apply trim/cut edits to audio.
+ *
+ * Strategy:
+ * - Trim only (no cuts): Use atrim filter for frame-accurate trimming
+ * - One middle cut (with optional trim): Use atrim + concat filter
+ * - Writes to a new output file, never modifies input.
+ * - On failure: returns error, input file untouched.
+ */
+export async function applyTrimCut(
+  inputPath: string,
+  outputPath: string,
+  config: { trimStartMs?: number; trimEndMs?: number; cuts?: Array<{ startMs: number; endMs: number }> },
+): Promise<TrimCutResult> {
+  try {
+    const startSec = (config.trimStartMs ?? 0) / 1000;
+    const endSec = config.trimEndMs ? config.trimEndMs / 1000 : undefined;
+
+    const baseArgs = [
+      '-y',                      // overwrite output
+      '-i', inputPath,           // input
+      '-vn',                     // no video
+      '-ar', '44100',            // sample rate
+      '-ac', '2',                // stereo
+      '-b:a', '128k',           // bitrate
+      '-c:a', 'aac',            // codec
+      '-movflags', '+faststart', // streaming-friendly
+    ];
+
+    const cuts = config.cuts ?? [];
+
+    if (cuts.length === 0) {
+      // ── Trim only: simple atrim filter ──────────────────────────────────
+      let atrimExpr = `atrim=start=${startSec}`;
+      if (endSec !== undefined) {
+        atrimExpr += `:end=${endSec}`;
+      }
+      atrimExpr += ',asetpts=PTS-STARTPTS';
+
+      logger.info('[audioProcessor] Applying trim-only edit.', {
+        startSec,
+        endSec,
+        filter: atrimExpr,
+      });
+
+      const args = [...baseArgs, '-af', atrimExpr, outputPath];
+      await runFFmpeg(args);
+    } else {
+      // ── Trim + one cut: complex filter with concat ────────────────────
+      const cut = cuts[0]!;
+      const cutStartSec = cut.startMs / 1000;
+      const cutEndSec = cut.endMs / 1000;
+
+      // Build segments: before-cut and after-cut
+      let filterComplex =
+        `[0]atrim=start=${startSec}:end=${cutStartSec},asetpts=PTS-STARTPTS[a];` +
+        `[0]atrim=start=${cutEndSec}`;
+      if (endSec !== undefined) {
+        filterComplex += `:end=${endSec}`;
+      }
+      filterComplex += `,asetpts=PTS-STARTPTS[b];` +
+        `[a][b]concat=n=2:v=0:a=1[out]`;
+
+      logger.info('[audioProcessor] Applying trim+cut edit.', {
+        startSec,
+        endSec,
+        cutStartSec,
+        cutEndSec,
+        filterComplex: filterComplex.slice(0, 500),
+      });
+
+      const args = [
+        ...baseArgs,
+        '-filter_complex', filterComplex,
+        '-map', '[out]',
+        outputPath,
+      ];
+      await runFFmpeg(args);
+    }
+
+    // Verify output exists and is non-empty
+    const stat = fs.statSync(outputPath);
+    if (stat.size === 0) {
+      throw new Error('Trim/cut output is empty');
+    }
+
+    // Probe output for actual edited duration
+    const probeResult = await probeAudio(outputPath);
+
+    logger.info('[audioProcessor] Trim/cut edit applied.', {
+      editedDurationMs: probeResult.durationMs,
+      sizeBytes: stat.size,
+    });
+
+    return { editApplied: true, editedDurationMs: probeResult.durationMs };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn('[audioProcessor] Trim/cut edit failed, input file untouched.', {
+      error: msg,
+    });
+    // Clean up output file if it exists
+    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch { /* ignore */ }
+    return { editApplied: false, error: msg };
+  }
+}

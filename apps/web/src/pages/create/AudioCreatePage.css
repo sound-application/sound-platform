@@ -2104,6 +2104,142 @@
 
 .acp-back { align-self: flex-start; }
 
+/* ─── Phase 8-L: Edit / Trim / Cut panel ──────────────────────────────────── */
+
+.acp-edit-panel {
+  margin-top: 1.25rem;
+  padding: 1rem 1.25rem;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.08);
+  border-radius: 14px;
+}
+.acp-edit-panel__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  margin-bottom: 0.5rem;
+}
+.acp-edit-panel__title-row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-weight: 600;
+  font-size: 0.95rem;
+  color: var(--text-primary, #f1f1f1);
+}
+.acp-edit-controls {
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.acp-edit-control {
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+}
+.acp-edit-control__label {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #b0b0b0);
+  margin-bottom: 0.5rem;
+}
+.acp-edit-control__label .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--accent-cyan, #22d3ee);
+}
+.acp-edit-control__slider {
+  width: 100%;
+  accent-color: var(--accent-cyan, #22d3ee);
+  cursor: pointer;
+}
+.acp-edit-control__value {
+  text-align: center;
+  font-size: 0.8rem;
+  font-weight: 600;
+  color: var(--accent-cyan, #22d3ee);
+  margin-top: 0.25rem;
+  font-variant-numeric: tabular-nums;
+}
+.acp-edit-cut-section {
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+}
+.acp-edit-cut-section__header {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: var(--text-secondary, #b0b0b0);
+  margin-bottom: 0.75rem;
+}
+.acp-edit-cut-section__header .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--accent-red, #ef4444);
+}
+.acp-edit-cut-card {
+  padding: 0.75rem;
+  background: rgba(239,68,68,0.06);
+  border: 1px solid rgba(239,68,68,0.15);
+  border-radius: 8px;
+  margin-bottom: 0.5rem;
+}
+.acp-edit-cut-card__row {
+  display: flex;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+}
+.acp-edit-cut-card__field {
+  flex: 1;
+}
+.acp-edit-cut-card__field-label {
+  font-size: 0.75rem;
+  font-weight: 500;
+  color: var(--text-secondary, #b0b0b0);
+  margin-bottom: 0.25rem;
+  display: block;
+}
+.acp-edit-duration-summary {
+  padding: 0.75rem;
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.06);
+  border-radius: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.acp-edit-duration-summary__row {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.85rem;
+  color: var(--text-secondary, #b0b0b0);
+}
+.acp-edit-duration-summary__row .material-symbols-outlined {
+  font-size: 1rem;
+}
+.acp-edit-duration-summary__row strong {
+  color: var(--text-primary, #f1f1f1);
+  font-variant-numeric: tabular-nums;
+}
+.acp-edit-duration-summary__row--edited {
+  color: var(--accent-cyan, #22d3ee);
+}
+.acp-edit-duration-summary__row--edited .material-symbols-outlined {
+  color: var(--accent-cyan, #22d3ee);
+}
+.acp-edit-duration-summary__row--edited strong {
+  color: var(--accent-cyan, #22d3ee);
+}
+
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
@@ -2113,4 +2249,5 @@
   .acp-bento-grid { grid-template-columns: 1fr; }
   .acp-effects-grid { grid-template-columns: 1fr; }
   .acp-cards-row { grid-template-columns: 1fr; }
+  .acp-edit-cut-card__row { flex-direction: column; gap: 0.5rem; }
 }

@@ -63,6 +63,8 @@ import type {
   AudioMixingConfig,
   AudioMixTrack,
   AudioMixPresetId,
+  AudioEditConfig,
+  AudioCutSegment,
 } from '@sound/shared';
 import { AUDIO_PRESETS, AUDIO_FILTERS, MIXING_PRESETS as MIXING_PRESET_DEFS, createDefaultTracks, dbToPercent, percentToDb } from '@sound/shared';
 import type { PlaylistDoc } from '@sound/shared';
@@ -371,6 +373,72 @@ export function AudioCreatePage() {
     };
   };
 
+  // ── Step 7: Trim/Cut editing (Phase 8-L) ────────────────────────────────
+  const [editEnabled, setEditEnabled] = useState(false);
+  const [trimStartMs, setTrimStartMs] = useState(0);
+  const [trimEndMs, setTrimEndMs] = useState(0); // 0 = use original end
+  const [editCuts, setEditCuts] = useState<AudioCutSegment[]>([]);
+
+  const originalDurationMs = audioAsset?.durationMs || 0;
+
+  /** Estimate edited duration given trim + cuts */
+  const estimateEditedDuration = (origDur: number, tStart: number, tEnd: number, cuts: AudioCutSegment[]): number => {
+    const effectiveEnd = tEnd > 0 && tEnd < origDur ? tEnd : origDur;
+    const effectiveStart = tStart > 0 ? Math.min(tStart, effectiveEnd) : 0;
+    let duration = effectiveEnd - effectiveStart;
+    for (const cut of cuts) {
+      const cStart = Math.max(cut.startMs, effectiveStart);
+      const cEnd = Math.min(cut.endMs, effectiveEnd);
+      if (cEnd > cStart) duration -= (cEnd - cStart);
+    }
+    return Math.max(0, duration);
+  };
+
+  const editedDurationMs = editEnabled
+    ? estimateEditedDuration(originalDurationMs, trimStartMs, trimEndMs, editCuts)
+    : originalDurationMs;
+
+  const addCut = () => {
+    if (editCuts.length >= 1) return; // Phase 8-L: max 1 cut
+    const mid = Math.floor(originalDurationMs / 2);
+    const cutLen = Math.min(5000, Math.floor(originalDurationMs / 4));
+    setEditCuts([{
+      id: `cut_${Date.now()}`,
+      startMs: Math.max(0, mid - Math.floor(cutLen / 2)),
+      endMs: Math.min(originalDurationMs, mid + Math.floor(cutLen / 2)),
+    }]);
+  };
+
+  const removeCut = (cutId: string) => {
+    setEditCuts(prev => prev.filter(c => c.id !== cutId));
+  };
+
+  const updateCut = (cutId: string, updates: Partial<AudioCutSegment>) => {
+    setEditCuts(prev => prev.map(c => c.id === cutId ? { ...c, ...updates } : c));
+  };
+
+  const resetEdits = () => {
+    setEditEnabled(false);
+    setTrimStartMs(0);
+    setTrimEndMs(0);
+    setEditCuts([]);
+  };
+
+  const buildEditConfig = (): AudioEditConfig | undefined => {
+    if (!editEnabled) return undefined;
+    const hasTrim = trimStartMs > 0 || (trimEndMs > 0 && trimEndMs < originalDurationMs);
+    const hasCuts = editCuts.length > 0;
+    if (!hasTrim && !hasCuts) return undefined; // enabled but nothing set
+    return {
+      enabled: true,
+      trimStartMs: trimStartMs > 0 ? trimStartMs : undefined,
+      trimEndMs: trimEndMs > 0 && trimEndMs < originalDurationMs ? trimEndMs : undefined,
+      cuts: hasCuts ? editCuts : undefined,
+      originalDurationMs,
+      editedDurationMs,
+    };
+  };
+
   // ── Step 10: Preview playback ──────────────────────────────────────────────
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
@@ -484,6 +552,7 @@ export function AudioCreatePage() {
         autoCue: autoCueConfig,
         effectsConfig: buildEffectsConfig(),
         mixingConfig: buildMixingConfig(),
+        editConfig: buildEditConfig(),
         currentStep: String(nextStep),
       };
 
@@ -1469,7 +1538,7 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">preview</span>
-            مراجعة الصوت
+            مراجعة وتعديل الصوت
           </h1>
           <div className="acp-form">
             {audioAsset ? (
@@ -1494,11 +1563,149 @@ export function AudioCreatePage() {
                 <p>لا يوجد ملف صوتي. ارجع للخطوة السابقة.</p>
               </div>
             )}
+
+            {/* ── Phase 8-L: Trim/Cut Editor ──────────────────────────── */}
+            {audioAsset && audioAsset.durationMs && audioAsset.durationMs > 0 && (
+              <div className="acp-edit-panel" id="audio-edit-panel">
+                <div className="acp-edit-panel__header">
+                  <div className="acp-edit-panel__title-row">
+                    <span className="material-symbols-outlined">content_cut</span>
+                    <span>قص وتعديل الصوت</span>
+                    <span className="acp-badge acp-badge--optional">اختياري</span>
+                  </div>
+                  <button
+                    type="button"
+                    role="switch"
+                    aria-checked={editEnabled}
+                    className={`acp-toggle-switch ${editEnabled ? 'acp-toggle-switch--on' : ''}`}
+                    onClick={() => setEditEnabled(!editEnabled)}
+                  >
+                    <span className="acp-toggle-switch__thumb" />
+                  </button>
+                </div>
+
+                {editEnabled && (
+                  <div className="acp-edit-controls">
+                    {/* Trim start */}
+                    <div className="acp-edit-control" id="edit-trim-start">
+                      <div className="acp-edit-control__label">
+                        <span className="material-symbols-outlined">first_page</span>
+                        قص البداية
+                      </div>
+                      <input
+                        type="range"
+                        className="acp-edit-control__slider"
+                        min={0}
+                        max={Math.max(0, (trimEndMs > 0 ? trimEndMs : originalDurationMs) - 1000)}
+                        step={100}
+                        value={trimStartMs}
+                        onChange={e => setTrimStartMs(Number(e.target.value))}
+                      />
+                      <div className="acp-edit-control__value">
+                        {formatDuration(trimStartMs)}
+                      </div>
+                    </div>
+
+                    {/* Trim end */}
+                    <div className="acp-edit-control" id="edit-trim-end">
+                      <div className="acp-edit-control__label">
+                        <span className="material-symbols-outlined">last_page</span>
+                        قص النهاية
+                      </div>
+                      <input
+                        type="range"
+                        className="acp-edit-control__slider"
+                        min={Math.max(1000, trimStartMs + 1000)}
+                        max={originalDurationMs}
+                        step={100}
+                        value={trimEndMs > 0 ? trimEndMs : originalDurationMs}
+                        onChange={e => {
+                          const v = Number(e.target.value);
+                          setTrimEndMs(v >= originalDurationMs ? 0 : v);
+                        }}
+                      />
+                      <div className="acp-edit-control__value">
+                        {formatDuration(trimEndMs > 0 ? trimEndMs : originalDurationMs)}
+                      </div>
+                    </div>
+
+                    {/* Middle cut */}
+                    <div className="acp-edit-cut-section" id="edit-middle-cut">
+                      <div className="acp-edit-cut-section__header">
+                        <span className="material-symbols-outlined">content_cut</span>
+                        <span>حذف مقطع من المنتصف</span>
+                        <span className="acp-hint">(حد أقصى: 1)</span>
+                      </div>
+                      {editCuts.map(cut => (
+                        <div key={cut.id} className="acp-edit-cut-card">
+                          <div className="acp-edit-cut-card__row">
+                            <div className="acp-edit-cut-card__field">
+                              <span className="acp-edit-cut-card__field-label">من:</span>
+                              <input
+                                type="range"
+                                className="acp-edit-control__slider"
+                                min={trimStartMs}
+                                max={Math.max(trimStartMs, cut.endMs - 500)}
+                                step={100}
+                                value={cut.startMs}
+                                onChange={e => updateCut(cut.id, { startMs: Number(e.target.value) })}
+                              />
+                              <span className="acp-edit-control__value">{formatDuration(cut.startMs)}</span>
+                            </div>
+                            <div className="acp-edit-cut-card__field">
+                              <span className="acp-edit-cut-card__field-label">إلى:</span>
+                              <input
+                                type="range"
+                                className="acp-edit-control__slider"
+                                min={Math.min(cut.startMs + 500, trimEndMs > 0 ? trimEndMs : originalDurationMs)}
+                                max={trimEndMs > 0 ? trimEndMs : originalDurationMs}
+                                step={100}
+                                value={cut.endMs}
+                                onChange={e => updateCut(cut.id, { endMs: Number(e.target.value) })}
+                              />
+                              <span className="acp-edit-control__value">{formatDuration(cut.endMs)}</span>
+                            </div>
+                          </div>
+                          <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={() => removeCut(cut.id)}>
+                            <span className="material-symbols-outlined">delete</span> إزالة القص
+                          </button>
+                        </div>
+                      ))}
+                      {editCuts.length === 0 && (
+                        <button type="button" className="acp-btn acp-btn--outline acp-btn--sm" onClick={addCut}>
+                          <span className="material-symbols-outlined">add</span> إضافة قص
+                        </button>
+                      )}
+                    </div>
+
+                    {/* Duration summary */}
+                    <div className="acp-edit-duration-summary">
+                      <div className="acp-edit-duration-summary__row">
+                        <span className="material-symbols-outlined">schedule</span>
+                        <span>المدة الأصلية:</span>
+                        <strong>{formatDuration(originalDurationMs)}</strong>
+                      </div>
+                      <div className="acp-edit-duration-summary__row acp-edit-duration-summary__row--edited">
+                        <span className="material-symbols-outlined">timer</span>
+                        <span>المدة بعد التعديل:</span>
+                        <strong>{formatDuration(editedDurationMs)}</strong>
+                      </div>
+                    </div>
+
+                    {/* Reset button */}
+                    <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetEdits}>
+                      <span className="material-symbols-outlined">restart_alt</span> إعادة ضبط التعديلات
+                    </button>
+                  </div>
+                )}
+              </div>
+            )}
+
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => { setAudioAsset(null); uploader.reset(); recorder.reset(); setStep(6); }} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">refresh</span> إعادة التسجيل / الرفع
               </button>
-              <button className="acp-btn acp-btn--primary" onClick={() => setStep(8)} disabled={!audioAsset} type="button">
+              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(8)} disabled={!audioAsset} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> تأكيد ومتابعة
               </button>
             </div>
@@ -2001,6 +2208,12 @@ export function AudioCreatePage() {
                     : 'ضبط يدوي'}`
                 : 'المكساج: تم التخطي'}
             </span>
+            <span className={`acp-status-chip ${editEnabled ? 'acp-status-chip--done' : 'acp-status-chip--skip'}`}>
+              <span className="material-symbols-outlined">{editEnabled ? 'content_cut' : 'skip_next'}</span>
+              {editEnabled
+                ? `القص: ${formatDuration(editedDurationMs)}`
+                : 'القص: تم التخطي'}
+            </span>
           </div>
 
           {/* Safety / review checklist */}
@@ -2234,6 +2447,28 @@ export function AudioCreatePage() {
                   <>
                     <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
                     تم التخطي — لم يتم تطبيق أي خلط
+                  </>
+                )}
+              </div>
+              <div className="acp-rd-card__row">
+                <span>القص والتعديل:</span>
+                {editEnabled ? (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: 'var(--accent-teal, #2dd4bf)' }}>check_circle</span>
+                    قص مفعّل
+                    <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
+                      {trimStartMs > 0 && `بداية: ${formatDuration(trimStartMs)}`}
+                      {trimStartMs > 0 && (trimEndMs > 0 || editCuts.length > 0) && ' · '}
+                      {trimEndMs > 0 && trimEndMs < originalDurationMs && `نهاية: ${formatDuration(trimEndMs)}`}
+                      {trimEndMs > 0 && editCuts.length > 0 && ' · '}
+                      {editCuts.length > 0 && `${editCuts.length} مقطع محذوف`}
+                      {` · المدة: ${formatDuration(editedDurationMs)}`}
+                    </span>
+                  </>
+                ) : (
+                  <>
+                    <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
+                    لم يتم تطبيق أي قص
                   </>
                 )}
               </div>
