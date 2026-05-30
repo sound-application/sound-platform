@@ -1,0 +1,60 @@
+{
+  "title": "تعديل الملف الشخصي",
+  "back": "العودة",
+  "syncNotice": "بعد الحفظ، يُحدَّث الملف الشخصي العام تلقائياً خلال <1>5–10 ثوان</1> عبر نظام المزامنة.",
+  "errors": {
+    "displayNameRequired": "الاسم المعروض مطلوب",
+    "usernameRequired": "اسم المستخدم مطلوب",
+    "usernameMinLength": "اسم المستخدم يجب أن يكون 3 أحرف على الأقل",
+    "genericError": "حدث خطأ",
+    "loadFailed": "⚠️ فشل تحميل البيانات:",
+    "notFound": "⚠️ لم يتم العثور على ملفك الشخصي — يرجى المحاولة لاحقاً"
+  },
+  "loading": {
+    "session": "جاري التحقق من الجلسة...",
+    "profile": "جاري تحميل بيانات الملف الشخصي..."
+  },
+  "privacyLevels": {
+    "public": "🌐 عام — مرئي للجميع",
+    "followers": "👥 المتابعون فقط",
+    "private": "🔒 خاص — مخفي"
+  },
+  "sections": {
+    "basicInfo": {
+      "title": "المعلومات الأساسية",
+      "displayName": "الاسم المعروض",
+      "displayNamePlaceholder": "اسمك كما يظهر للآخرين",
+      "username": "اسم المستخدم",
+      "usernameHint": "أحرف إنجليزية صغيرة، أرقام، وشرطة سفلية فقط",
+      "bio": "نبذة شخصية",
+      "bioPlaceholder": "اكتب نبذة قصيرة عنك..."
+    },
+    "mood": {
+      "title": "الحالة المزاجية",
+      "description": "وصف الحالة",
+      "placeholder": "مثال: أستمع إلى موسيقى الجاز 🎷",
+      "whoCanSee": "من يرى حالتك المزاجية؟",
+      "hiddenNotice": "🔒 حالتك المزاجية ستُخفى من ملفك الشخصي العام بعد الحفظ"
+    },
+    "privacy": {
+      "title": "إعدادات الخصوصية",
+      "description": "حدد من يستطيع رؤية كل قسم من ملفك الشخصي. الأقسام المخفية تختفي كلياً من العرض العام.",
+      "activityStatus": "حالة النشاط",
+      "activityStatusDesc": "(متصل / غير متصل)",
+      "listeningActivity": "نشاط الاستماع",
+      "listeningActivityDesc": "(آخر ما استمعت إليه)",
+      "playlists": "قوائم التشغيل",
+      "playlistsDesc": "(القوائم العامة)",
+      "radioContent": "محتوى الراديو",
+      "radioContentDesc": "(المحطات والبرامج)",
+      "plusContent": "محتوى Plus",
+      "plusContentDesc": "(المحتوى الحصري)"
+    }
+  },
+  "actions": {
+    "saved": "✅ تم الحفظ — سيتم تحديث ملفك العام خلال 5–10 ثوان",
+    "viewPublicProfile": "عرض الملف العام",
+    "saving": "جاري الحفظ...",
+    "saveChanges": "حفظ التغييرات"
+  }
+}

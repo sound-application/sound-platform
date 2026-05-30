@@ -39,6 +39,8 @@ import { usePrivateProfile } from '../hooks/usePrivateProfile';
 import { db } from '../lib/firebase';
 import { LoadingScreen } from '../components/LoadingScreen';
 import type { PrivacyLevel, SectionPrivacy } from '@sound/shared';
+import { useTranslation, Trans } from 'react-i18next';
+import { TFunction } from 'i18next';
 import './EditProfilePage.css';
 import './Page.css';
 
@@ -81,12 +83,10 @@ interface EditableFields {
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
 
-// ─── Privacy Select ───────────────────────────────────────────────────────────
-
-const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string }[] = [
-  { value: 'public',    label: '🌐 عام — مرئي للجميع' },
-  { value: 'followers', label: '👥 المتابعون فقط' },
-  { value: 'private',   label: '🔒 خاص — مخفي' },
+const getPrivacyOptions = (t: TFunction): { value: PrivacyLevel; label: string }[] => [
+  { value: 'public',    label: t('privacyLevels.public') },
+  { value: 'followers', label: t('privacyLevels.followers') },
+  { value: 'private',   label: t('privacyLevels.private') },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
@@ -94,6 +94,7 @@ const PRIVACY_OPTIONS: { value: PrivacyLevel; label: string }[] = [
 export function EditProfilePage() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { t } = useTranslation('editProfile');
   const uid = currentUser?.uid ?? null;
 
   // ── Read own private document (owner-only) ─────────────────────────────────
@@ -152,9 +153,9 @@ export function EditProfilePage() {
     // Validation
     const trimmedName = fields.displayName.trim();
     const trimmedUsername = fields.username.trim();
-    if (!trimmedName) { setErrorMessage('الاسم المعروض مطلوب'); setSaveState('error'); return; }
-    if (!trimmedUsername) { setErrorMessage('اسم المستخدم مطلوب'); setSaveState('error'); return; }
-    if (trimmedUsername.length < 3) { setErrorMessage('اسم المستخدم يجب أن يكون 3 أحرف على الأقل'); setSaveState('error'); return; }
+    if (!trimmedName) { setErrorMessage(t('errors.displayNameRequired')); setSaveState('error'); return; }
+    if (!trimmedUsername) { setErrorMessage(t('errors.usernameRequired')); setSaveState('error'); return; }
+    if (trimmedUsername.length < 3) { setErrorMessage(t('errors.usernameMinLength')); setSaveState('error'); return; }
 
     setSaveState('saving');
     setErrorMessage('');
@@ -187,7 +188,7 @@ export function EditProfilePage() {
       setSaveState('saved');
     } catch (err: unknown) {
       console.error('[EditProfilePage] Failed to update users/{uid}:', err);
-      const msg = err instanceof Error ? err.message : 'حدث خطأ';
+      const msg = err instanceof Error ? err.message : t('errors.genericError');
       setErrorMessage(msg);
       setSaveState('error');
     }
@@ -195,18 +196,18 @@ export function EditProfilePage() {
 
   // ─── Loading ─────────────────────────────────────────────────────────────────
   if (!uid) {
-    return <LoadingScreen message="جاري التحقق من الجلسة..." />;
+    return <LoadingScreen message={t('loading.session')} />;
   }
 
   if (profileState.status === 'loading') {
-    return <LoadingScreen message="جاري تحميل بيانات الملف الشخصي..." />;
+    return <LoadingScreen message={t('loading.profile')} />;
   }
 
   if (profileState.status === 'error') {
     return (
       <div className="page edit-profile-page">
         <div className="edit-profile__error-banner" role="alert">
-          ⚠️ فشل تحميل البيانات: {profileState.message}
+          {t('errors.loadFailed')} {profileState.message}
         </div>
       </div>
     );
@@ -216,7 +217,7 @@ export function EditProfilePage() {
     return (
       <div className="page edit-profile-page">
         <div className="edit-profile__error-banner" role="alert">
-          ⚠️ لم يتم العثور على ملفك الشخصي — يرجى المحاولة لاحقاً
+          {t('errors.notFound')}
         </div>
       </div>
     );
@@ -232,19 +233,21 @@ export function EditProfilePage() {
         <button
           className="edit-profile__back-btn"
           onClick={() => navigate(-1)}
-          aria-label="العودة"
+          aria-label={t('back')}
           id="edit-profile-back-btn"
         >
           ←
         </button>
-        <h1 className="edit-profile__title">تعديل الملف الشخصي</h1>
+        <h1 className="edit-profile__title">{t('title')}</h1>
       </div>
 
       {/* ── Sync notice ──────────────────────────────────────────────────── */}
       <div className="edit-profile__sync-notice" role="note">
         <span className="edit-profile__sync-icon">⏱</span>
         <span>
-          بعد الحفظ، يُحدَّث الملف الشخصي العام تلقائياً خلال <strong>5–10 ثوان</strong> عبر نظام المزامنة.
+          <Trans i18nKey="syncNotice" t={t}>
+            بعد الحفظ، يُحدَّث الملف الشخصي العام تلقائياً خلال <strong>5–10 ثوان</strong> عبر نظام المزامنة.
+          </Trans>
         </span>
       </div>
 
@@ -260,12 +263,12 @@ export function EditProfilePage() {
         <section className="edit-profile__section">
           <h2 className="edit-profile__section-title">
             <span className="edit-profile__section-icon">👤</span>
-            المعلومات الأساسية
+            {t('sections.basicInfo.title')}
           </h2>
 
           <div className="edit-profile__field">
             <label className="edit-profile__label" htmlFor="edit-displayName">
-              الاسم المعروض <span className="edit-profile__required">*</span>
+              {t('sections.basicInfo.displayName')} <span className="edit-profile__required">*</span>
             </label>
             <input
               id="edit-displayName"
@@ -273,7 +276,7 @@ export function EditProfilePage() {
               type="text"
               value={fields.displayName}
               onChange={e => setField('displayName', e.target.value)}
-              placeholder="اسمك كما يظهر للآخرين"
+              placeholder={t('sections.basicInfo.displayNamePlaceholder')}
               maxLength={50}
               required
               dir="auto"
@@ -282,7 +285,7 @@ export function EditProfilePage() {
 
           <div className="edit-profile__field">
             <label className="edit-profile__label" htmlFor="edit-username">
-              اسم المستخدم <span className="edit-profile__required">*</span>
+              {t('sections.basicInfo.username')} <span className="edit-profile__required">*</span>
             </label>
             <div className="edit-profile__input-prefix-wrap">
               <span className="edit-profile__input-prefix">@</span>
@@ -299,20 +302,20 @@ export function EditProfilePage() {
               />
             </div>
             <p className="edit-profile__hint">
-              أحرف إنجليزية صغيرة، أرقام، وشرطة سفلية فقط
+              {t('sections.basicInfo.usernameHint')}
             </p>
           </div>
 
           <div className="edit-profile__field">
             <label className="edit-profile__label" htmlFor="edit-bio">
-              نبذة شخصية
+              {t('sections.basicInfo.bio')}
             </label>
             <textarea
               id="edit-bio"
               className="edit-profile__textarea"
               value={fields.bio}
               onChange={e => setField('bio', e.target.value)}
-              placeholder="اكتب نبذة قصيرة عنك..."
+              placeholder={t('sections.basicInfo.bioPlaceholder')}
               maxLength={200}
               rows={3}
               dir="auto"
@@ -327,12 +330,12 @@ export function EditProfilePage() {
         <section className="edit-profile__section">
           <h2 className="edit-profile__section-title">
             <span className="edit-profile__section-icon">🎭</span>
-            الحالة المزاجية
+            {t('sections.mood.title')}
           </h2>
 
           <div className="edit-profile__field">
             <label className="edit-profile__label" htmlFor="edit-mood">
-              وصف الحالة
+              {t('sections.mood.description')}
             </label>
             <input
               id="edit-mood"
@@ -340,7 +343,7 @@ export function EditProfilePage() {
               type="text"
               value={fields.mood}
               onChange={e => setField('mood', e.target.value)}
-              placeholder="مثال: أستمع إلى موسيقى الجاز 🎷"
+              placeholder={t('sections.mood.placeholder')}
               maxLength={80}
               dir="auto"
             />
@@ -348,16 +351,17 @@ export function EditProfilePage() {
 
           <div className="edit-profile__field">
             <label className="edit-profile__label" htmlFor="edit-privacy-mood">
-              من يرى حالتك المزاجية؟
+              {t('sections.mood.whoCanSee')}
             </label>
             <PrivacySelect
               id="edit-privacy-mood"
               value={fields.privacyMood}
               onChange={v => setField('privacyMood', v)}
+              t={t}
             />
             {fields.privacyMood === 'private' && (
               <p className="edit-profile__hint edit-profile__hint--private">
-                🔒 حالتك المزاجية ستُخفى من ملفك الشخصي العام بعد الحفظ
+                {t('sections.mood.hiddenNotice')}
               </p>
             )}
           </div>
@@ -367,11 +371,10 @@ export function EditProfilePage() {
         <section className="edit-profile__section">
           <h2 className="edit-profile__section-title">
             <span className="edit-profile__section-icon">🔐</span>
-            إعدادات الخصوصية
+            {t('sections.privacy.title')}
           </h2>
           <p className="edit-profile__section-desc">
-            حدد من يستطيع رؤية كل قسم من ملفك الشخصي.
-            الأقسام المخفية تختفي كلياً من العرض العام.
+            {t('sections.privacy.description')}
           </p>
 
           <div className="edit-profile__privacy-grid">
@@ -379,65 +382,70 @@ export function EditProfilePage() {
             <div className="edit-profile__privacy-row">
               <div className="edit-profile__privacy-label">
                 <span className="edit-profile__privacy-icon">📍</span>
-                <span>حالة النشاط</span>
-                <span className="edit-profile__privacy-desc">(متصل / غير متصل)</span>
+                <span>{t('sections.privacy.activityStatus')}</span>
+                <span className="edit-profile__privacy-desc">{t('sections.privacy.activityStatusDesc')}</span>
               </div>
               <PrivacySelect
                 id="edit-privacy-activityStatus"
                 value={fields.privacyActivityStatus}
                 onChange={v => setField('privacyActivityStatus', v)}
+                t={t}
               />
             </div>
 
             <div className="edit-profile__privacy-row">
               <div className="edit-profile__privacy-label">
                 <span className="edit-profile__privacy-icon">🎧</span>
-                <span>نشاط الاستماع</span>
-                <span className="edit-profile__privacy-desc">(آخر ما استمعت إليه)</span>
+                <span>{t('sections.privacy.listeningActivity')}</span>
+                <span className="edit-profile__privacy-desc">{t('sections.privacy.listeningActivityDesc')}</span>
               </div>
               <PrivacySelect
                 id="edit-privacy-listeningActivity"
                 value={fields.privacyListeningActivity}
                 onChange={v => setField('privacyListeningActivity', v)}
+                t={t}
               />
             </div>
 
             <div className="edit-profile__privacy-row">
               <div className="edit-profile__privacy-label">
                 <span className="edit-profile__privacy-icon">🎵</span>
-                <span>قوائم التشغيل</span>
-                <span className="edit-profile__privacy-desc">(القوائم العامة)</span>
+                <span>{t('sections.privacy.playlists')}</span>
+                <span className="edit-profile__privacy-desc">{t('sections.privacy.playlistsDesc')}</span>
               </div>
               <PrivacySelect
                 id="edit-privacy-musicPlaylists"
                 value={fields.privacyMusicPlaylists}
                 onChange={v => setField('privacyMusicPlaylists', v)}
+                t={t}
               />
             </div>
 
             <div className="edit-profile__privacy-row">
               <div className="edit-profile__privacy-label">
                 <span className="edit-profile__privacy-icon">📻</span>
-                <span>محتوى الراديو</span>
-                <span className="edit-profile__privacy-desc">(المحطات والبرامج)</span>
+                <span>{t('sections.privacy.radioContent')}</span>
+                <span className="edit-profile__privacy-desc">{t('sections.privacy.radioContentDesc')}</span>
               </div>
               <PrivacySelect
                 id="edit-privacy-radioCreatorContent"
                 value={fields.privacyRadioCreatorContent}
                 onChange={v => setField('privacyRadioCreatorContent', v)}
+                t={t}
               />
             </div>
 
             <div className="edit-profile__privacy-row">
               <div className="edit-profile__privacy-label">
                 <span className="edit-profile__privacy-icon">⭐</span>
-                <span>محتوى Plus</span>
-                <span className="edit-profile__privacy-desc">(المحتوى الحصري)</span>
+                <span>{t('sections.privacy.plusContent')}</span>
+                <span className="edit-profile__privacy-desc">{t('sections.privacy.plusContentDesc')}</span>
               </div>
               <PrivacySelect
                 id="edit-privacy-plusCreatorContent"
                 value={fields.privacyPlusCreatorContent}
                 onChange={v => setField('privacyPlusCreatorContent', v)}
+                t={t}
               />
             </div>
 
@@ -453,7 +461,7 @@ export function EditProfilePage() {
 
         {saveState === 'saved' && (
           <div className="edit-profile__banner edit-profile__banner--success" role="status">
-            ✅ تم الحفظ — سيتم تحديث ملفك العام خلال 5–10 ثوان
+            {t('actions.saved')}
           </div>
         )}
 
@@ -465,7 +473,7 @@ export function EditProfilePage() {
             onClick={() => navigate('/me')}
             id="edit-profile-view-public-btn"
           >
-            عرض الملف العام
+            {t('actions.viewPublicProfile')}
           </button>
           <button
             type="submit"
@@ -474,9 +482,9 @@ export function EditProfilePage() {
             id="edit-profile-save-btn"
           >
             {saveState === 'saving' ? (
-              <><span className="edit-profile__spinner" aria-hidden="true" /> جاري الحفظ...</>
+              <><span className="edit-profile__spinner" aria-hidden="true" /> {t('actions.saving')}</>
             ) : (
-              'حفظ التغييرات'
+              t('actions.saveChanges')
             )}
           </button>
         </div>
@@ -492,11 +500,14 @@ function PrivacySelect({
   id,
   value,
   onChange,
+  t,
 }: {
   id: string;
   value: PrivacyLevel;
   onChange: (v: PrivacyLevel) => void;
+  t: TFunction;
 }) {
+  const options = getPrivacyOptions(t);
   return (
     <select
       id={id}
@@ -504,7 +515,7 @@ function PrivacySelect({
       value={value}
       onChange={e => onChange(e.target.value as PrivacyLevel)}
     >
-      {PRIVACY_OPTIONS.map(opt => (
+      {options.map(opt => (
         <option key={opt.value} value={opt.value}>
           {opt.label}
         </option>

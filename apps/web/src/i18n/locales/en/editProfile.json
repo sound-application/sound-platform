@@ -1,0 +1,60 @@
+{
+  "title": "Edit Profile",
+  "back": "Back",
+  "syncNotice": "After saving, the public profile updates automatically within <1>5–10 seconds</1> via the sync system.",
+  "errors": {
+    "displayNameRequired": "Display name is required",
+    "usernameRequired": "Username is required",
+    "usernameMinLength": "Username must be at least 3 characters",
+    "genericError": "An error occurred",
+    "loadFailed": "⚠️ Failed to load data:",
+    "notFound": "⚠️ Profile not found — please try again later"
+  },
+  "loading": {
+    "session": "Verifying session...",
+    "profile": "Loading profile data..."
+  },
+  "privacyLevels": {
+    "public": "🌐 Public — visible to everyone",
+    "followers": "👥 Followers only",
+    "private": "🔒 Private — hidden"
+  },
+  "sections": {
+    "basicInfo": {
+      "title": "Basic Information",
+      "displayName": "Display Name",
+      "displayNamePlaceholder": "Your name as it appears to others",
+      "username": "Username",
+      "usernameHint": "Lowercase English letters, numbers, and underscores only",
+      "bio": "Bio",
+      "bioPlaceholder": "Write a short bio about yourself..."
+    },
+    "mood": {
+      "title": "Mood",
+      "description": "Mood description",
+      "placeholder": "Example: Listening to Jazz music 🎷",
+      "whoCanSee": "Who can see your mood?",
+      "hiddenNotice": "🔒 Your mood will be hidden from your public profile after saving"
+    },
+    "privacy": {
+      "title": "Privacy Settings",
+      "description": "Choose who can see each section of your profile. Hidden sections disappear entirely from public view.",
+      "activityStatus": "Activity Status",
+      "activityStatusDesc": "(Online / Offline)",
+      "listeningActivity": "Listening Activity",
+      "listeningActivityDesc": "(Last listened to)",
+      "playlists": "Playlists",
+      "playlistsDesc": "(Public playlists)",
+      "radioContent": "Radio Content",
+      "radioContentDesc": "(Stations and programs)",
+      "plusContent": "Plus Content",
+      "plusContentDesc": "(Exclusive content)"
+    }
+  },
+  "actions": {
+    "saved": "✅ Saved — your public profile will update within 5-10 seconds",
+    "viewPublicProfile": "View Public Profile",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes"
+  }
+}
