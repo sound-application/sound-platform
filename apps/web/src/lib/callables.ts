@@ -30,6 +30,8 @@ import type {
   RemoveFromPlaylistResponse,
   GetUserPlaylistsRequest,
   GetUserPlaylistsResponse,
+  RenderDraftPreviewRequest,
+  RenderDraftPreviewResponse,
 } from '@sound/shared';
 import app from './firebase';
 
@@ -86,4 +88,11 @@ export const callGetUserPlaylists = httpsCallable<
   GetUserPlaylistsRequest,
   GetUserPlaylistsResponse
 >(functions, 'getUserPlaylists');
+
+// ── Draft Render Pipeline Callables (Phase 8-L.1) ───────────────────────────
+
+export const callRenderDraftPreview = httpsCallable<
+  RenderDraftPreviewRequest,
+  RenderDraftPreviewResponse
+>(functions, 'renderAudioDraftPreview');
 

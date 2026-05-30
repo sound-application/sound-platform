@@ -41,6 +41,7 @@ import type {
   AudioMixTrack,
   AudioEditConfig,
   AudioSfxItem,
+  PreviewStage,
 } from '@sound/shared';
 import {
   validateAudioWorldKind, VALID_FILTER_IDS, VALID_PRESET_IDS,
@@ -393,6 +394,29 @@ export const updateAudioDraft = functions
 
         update.audioAsset = sanitizedAsset;
         update.audioAssetId = sanitizedAsset.assetId || null;
+      }
+
+      // ── Phase 8-L.1: Preview invalidation ────────────────────────────────────
+      // When draft configs change, mark downstream stage previews as dirty.
+      const dirtyStages: PreviewStage[] = [];
+      if (data.audioAsset !== undefined) {
+        dirtyStages.push('edit', 'effects', 'mixing', 'final');
+      }
+      if (data.editConfig !== undefined) {
+        dirtyStages.push('edit', 'effects', 'mixing', 'final');
+      }
+      if (data.effectsConfig !== undefined) {
+        dirtyStages.push('effects', 'mixing', 'final');
+      }
+      if (data.mixingConfig !== undefined) {
+        dirtyStages.push('mixing', 'final');
+      }
+      const uniqueDirty = [...new Set(dirtyStages)];
+      for (const stg of uniqueDirty) {
+        update[`previewAssets.${stg}.status`] = 'dirty';
+      }
+      if (uniqueDirty.length > 0) {
+        update.finalPreviewReady = false;
       }
 
       // ── 6. Write update to Firestore ───────────────────────────────────────

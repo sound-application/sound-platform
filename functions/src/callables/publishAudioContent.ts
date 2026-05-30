@@ -302,6 +302,34 @@ export const publishAudioContent = functions
         );
       }
 
+      // ── 4c. Validate preview readiness (Phase 8-L.1) ─────────────────────
+      // If any audio processing stages are enabled, their previews must be ready.
+      const hasEditEnabled = draft.editConfig?.enabled;
+      const hasEffectsEnabled = draft.effectsConfig?.enabled;
+      const hasMixingEnabled = draft.mixingConfig?.enabled;
+
+      if (hasEditEnabled || hasEffectsEnabled || hasMixingEnabled) {
+        const pa = draft.previewAssets;
+        if (hasEditEnabled && pa?.edit?.status !== 'ready') {
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            'يجب معاينة القص قبل النشر (Edit preview must be ready before publishing).',
+          );
+        }
+        if (hasEffectsEnabled && pa?.effects?.status !== 'ready') {
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            'يجب معاينة المؤثرات قبل النشر (Effects preview must be ready before publishing).',
+          );
+        }
+        if (hasMixingEnabled && pa?.mixing?.status !== 'ready') {
+          throw new functions.https.HttpsError(
+            'failed-precondition',
+            'يجب معاينة المكساج قبل النشر (Mixing preview must be ready before publishing).',
+          );
+        }
+      }
+
       // ── 5. Check publishing capability ─────────────────────────────────────
       // Read user's capabilities from users/{uid}
       const userDoc = await db.collection('users').doc(uid).get();
@@ -338,6 +366,14 @@ export const publishAudioContent = functions
       const now = new Date().toISOString();
 
       const contentDoc = createAudioContentFromDraft(draft, owner, contentId, now);
+
+      // Phase 8-L.1: Attach final preview path for pipeline to use as source
+      const latestPreview = draft.previewAssets?.mixing
+        ?? draft.previewAssets?.effects
+        ?? draft.previewAssets?.edit;
+      if (latestPreview?.status === 'ready' && latestPreview.storagePath) {
+        (contentDoc as unknown as Record<string, unknown>).finalPreviewStoragePath = latestPreview.storagePath;
+      }
 
       // ── 8. Write content + optionally delete draft (batch) ─────────────────
       const batch = db.batch();

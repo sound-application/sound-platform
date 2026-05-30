@@ -35,6 +35,7 @@ import {
   callUpdateAudioDraft,
   callPublishAudioContent,
   callGetUserPlaylists,
+  callRenderDraftPreview,
 } from '../../lib/callables';
 import {
   extractAudioDuration,
@@ -66,6 +67,9 @@ import type {
   AudioEditConfig,
   AudioCutSegment,
   AudioSfxItem,
+  PreviewStage,
+  PreviewStatus,
+  AudioDraftPreviewAssets,
 } from '@sound/shared';
 import { AUDIO_PRESETS, AUDIO_FILTERS, MIXING_PRESETS as MIXING_PRESET_DEFS, createDefaultTracks, dbToPercent, percentToDb } from '@sound/shared';
 import type { PlaylistDoc } from '@sound/shared';
@@ -393,6 +397,48 @@ export function AudioCreatePage() {
   const wfAnimRef = useRef<number>(0);
 
   const originalDurationMs = audioAsset?.durationMs || 0;
+
+  // ── Phase 8-L.1: Draft Render Pipeline Preview ──────────────────────────
+  const [previewAssets, setPreviewAssets] = useState<Partial<AudioDraftPreviewAssets>>({});
+  const [renderingStage, setRenderingStage] = useState<PreviewStage | null>(null);
+  const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
+
+  /** Call backend to render a stage preview. Returns playback URL. */
+  const renderPreview = async (stage: PreviewStage) => {
+    if (!draftId) return;
+    setRenderingStage(stage);
+    try {
+      const result = await callRenderDraftPreview({ draftId, stage });
+      const resp = result.data;
+      setPreviewAssets(prev => ({
+        ...prev,
+        [stage]: { stage, status: resp.status, storagePath: '', durationMs: resp.durationMs, error: resp.error },
+      }));
+      if (resp.status === 'ready' && resp.playbackUrl) {
+        setPreviewUrls(prev => ({ ...prev, [stage]: resp.playbackUrl! }));
+      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : String(err);
+      setPreviewAssets(prev => ({
+        ...prev,
+        [stage]: { stage, status: 'failed' as PreviewStatus, storagePath: '', error: msg },
+      }));
+    } finally {
+      setRenderingStage(null);
+    }
+  };
+
+  /** Get the best preview playback URL for a stage or fallback */
+  const getPreviewPlaybackUrl = (): string | null => {
+    if (mixingEnabled && previewUrls.mixing) return previewUrls.mixing;
+    if (effectsEnabled && previewUrls.effects) return previewUrls.effects;
+    if (editEnabled && previewUrls.edit) return previewUrls.edit;
+    return null;
+  };
+
+  const getStagePreviewStatus = (stage: PreviewStage): PreviewStatus => {
+    return (previewAssets[stage]?.status as PreviewStatus) || 'idle';
+  };
 
   /** Estimate edited duration given trim + cuts */
   const estimateEditedDuration = (origDur: number, tStart: number, tEnd: number, cuts: AudioCutSegment[]): number => {
@@ -1908,11 +1954,33 @@ export function AudioCreatePage() {
                       <span className="acp-waveform-controls__time">{formatDuration(editEnabled ? editedDurationMs : originalDurationMs)}</span>
                     </div>
 
-                    {/* Preview hint */}
+                    {/* Phase 8-L.1: Edit preview render button */}
                     {editEnabled && (
-                      <div className="acp-waveform-hint">
-                        <span className="material-symbols-outlined">info</span>
-                        معاينة القص فقط — المؤثرات والمكساج سيُطبقان أثناء المعالجة بعد النشر
+                      <div className="acp-render-preview-panel">
+                        <button
+                          type="button"
+                          className="acp-btn acp-btn--accent acp-btn--sm"
+                          onClick={() => renderPreview('edit')}
+                          disabled={renderingStage === 'edit'}
+                        >
+                          {renderingStage === 'edit' ? (
+                            <><span className="material-symbols-outlined acp-spin">progress_activity</span> جاري معالجة المعاينة...</>
+                          ) : getStagePreviewStatus('edit') === 'ready' ? (
+                            <><span className="material-symbols-outlined">check_circle</span> ✓ المعاينة جاهزة — إعادة المعاينة</>
+                          ) : getStagePreviewStatus('edit') === 'failed' ? (
+                            <><span className="material-symbols-outlined">error</span> فشلت المعاينة — إعادة المحاولة</>
+                          ) : getStagePreviewStatus('edit') === 'dirty' ? (
+                            <><span className="material-symbols-outlined">warning</span> الإعدادات تغيرت — أعد المعاينة</>
+                          ) : (
+                            <><span className="material-symbols-outlined">play_circle</span> معاينة القص</>
+                          )}
+                        </button>
+                        {previewUrls.edit && (
+                          <audio controls src={previewUrls.edit} className="acp-preview-audio" />
+                        )}
+                        {previewAssets.edit?.status === 'failed' && previewAssets.edit?.error && (
+                          <p className="acp-error-text">{previewAssets.edit.error}</p>
+                        )}
                       </div>
                     )}
                   </>
@@ -2188,11 +2256,36 @@ export function AudioCreatePage() {
                   </div>
                 )}
 
-                {/* Status / info text */}
-                <p className="acp-hint">
-                  <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-                  سيتم تطبيق المؤثرات أثناء معالجة الصوت بعد النشر. الملف الأصلي يبقى محفوظاً.
-                </p>
+                {/* Phase 8-L.1: Effects preview render button */}
+                <div className="acp-render-preview-panel">
+                  <button
+                    type="button"
+                    className="acp-btn acp-btn--accent acp-btn--sm"
+                    onClick={() => renderPreview('effects')}
+                    disabled={renderingStage === 'effects' || (editEnabled && getStagePreviewStatus('edit') !== 'ready')}
+                  >
+                    {renderingStage === 'effects' ? (
+                      <><span className="material-symbols-outlined acp-spin">progress_activity</span> جاري معالجة المعاينة...</>
+                    ) : getStagePreviewStatus('effects') === 'ready' ? (
+                      <><span className="material-symbols-outlined">check_circle</span> ✓ المعاينة جاهزة — إعادة المعاينة</>
+                    ) : getStagePreviewStatus('effects') === 'failed' ? (
+                      <><span className="material-symbols-outlined">error</span> فشلت المعاينة — إعادة المحاولة</>
+                    ) : getStagePreviewStatus('effects') === 'dirty' ? (
+                      <><span className="material-symbols-outlined">warning</span> الإعدادات تغيرت — أعد المعاينة</>
+                    ) : (
+                      <><span className="material-symbols-outlined">play_circle</span> معاينة المؤثرات</>
+                    )}
+                  </button>
+                  {editEnabled && getStagePreviewStatus('edit') !== 'ready' && (
+                    <p className="acp-hint">يجب معاينة القص أولاً</p>
+                  )}
+                  {previewUrls.effects && (
+                    <audio controls src={previewUrls.effects} className="acp-preview-audio" />
+                  )}
+                  {previewAssets.effects?.status === 'failed' && previewAssets.effects?.error && (
+                    <p className="acp-error-text">{previewAssets.effects.error}</p>
+                  )}
+                </div>
 
                 {/* Reset button */}
                 <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetEffects}>
@@ -2518,6 +2611,42 @@ export function AudioCreatePage() {
               </>
             )}
 
+            {/* Phase 8-L.1: Mixing preview render button */}
+            {mixingEnabled && (
+              <div className="acp-render-preview-panel">
+                <button
+                  type="button"
+                  className="acp-btn acp-btn--accent acp-btn--sm"
+                  onClick={() => renderPreview('mixing')}
+                  disabled={renderingStage === 'mixing' || (effectsEnabled && getStagePreviewStatus('effects') !== 'ready') || (editEnabled && !effectsEnabled && getStagePreviewStatus('edit') !== 'ready')}
+                >
+                  {renderingStage === 'mixing' ? (
+                    <><span className="material-symbols-outlined acp-spin">progress_activity</span> جاري معالجة المعاينة...</>
+                  ) : getStagePreviewStatus('mixing') === 'ready' ? (
+                    <><span className="material-symbols-outlined">check_circle</span> ✓ المعاينة جاهزة — إعادة المعاينة</>
+                  ) : getStagePreviewStatus('mixing') === 'failed' ? (
+                    <><span className="material-symbols-outlined">error</span> فشلت المعاينة — إعادة المحاولة</>
+                  ) : getStagePreviewStatus('mixing') === 'dirty' ? (
+                    <><span className="material-symbols-outlined">warning</span> الإعدادات تغيرت — أعد المعاينة</>
+                  ) : (
+                    <><span className="material-symbols-outlined">play_circle</span> معاينة المكساج</>
+                  )}
+                </button>
+                {effectsEnabled && getStagePreviewStatus('effects') !== 'ready' && (
+                  <p className="acp-hint">يجب معاينة المؤثرات أولاً</p>
+                )}
+                {!effectsEnabled && editEnabled && getStagePreviewStatus('edit') !== 'ready' && (
+                  <p className="acp-hint">يجب معاينة القص أولاً</p>
+                )}
+                {previewUrls.mixing && (
+                  <audio controls src={previewUrls.mixing} className="acp-preview-audio" />
+                )}
+                {previewAssets.mixing?.status === 'failed' && previewAssets.mixing?.error && (
+                  <p className="acp-error-text">{previewAssets.mixing.error}</p>
+                )}
+              </div>
+            )}
+
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(8)} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
@@ -2609,10 +2738,37 @@ export function AudioCreatePage() {
           )}
 
           {(editEnabled || effectsEnabled || mixingEnabled) && (
-            <div className="acp-waveform-hint">
-              <span className="material-symbols-outlined">info</span>
-              {editEnabled ? 'المعاينة تعكس القص فقط' : 'المعاينة تعكس الصوت الأصلي'}
-              {(effectsEnabled || mixingEnabled) && ' — المؤثرات والمكساج سيُطبقان أثناء المعالجة بعد النشر'}
+            <div className="acp-render-preview-panel">
+              {(() => {
+                const previewUrl = getPreviewPlaybackUrl();
+                const anyDirty = (editEnabled && getStagePreviewStatus('edit') !== 'ready') ||
+                  (effectsEnabled && getStagePreviewStatus('effects') !== 'ready') ||
+                  (mixingEnabled && getStagePreviewStatus('mixing') !== 'ready');
+                return (
+                  <>
+                    {previewUrl ? (
+                      <>
+                        <div className="acp-waveform-hint">
+                          <span className="material-symbols-outlined">check_circle</span>
+                          المعاينة النهائية — هذا هو الصوت الذي سيتم نشره
+                        </div>
+                        <audio controls src={previewUrl} className="acp-preview-audio" />
+                      </>
+                    ) : (
+                      <div className="acp-waveform-hint">
+                        <span className="material-symbols-outlined">warning</span>
+                        يجب معاينة كل مرحلة قبل النشر
+                      </div>
+                    )}
+                    {anyDirty && (
+                      <p className="acp-hint">
+                        <span className="material-symbols-outlined acp-hint__icon">warning</span>
+                        بعض المراحل تحتاج إعادة معاينة
+                      </p>
+                    )}
+                  </>
+                );
+              })()}
             </div>
           )}
 

@@ -556,6 +556,36 @@ export interface AudioEditConfig {
   processingError?: string;
 }
 
+// ─── Phase 8-L.1: Draft Render Pipeline Preview Assets ───────────────────────
+
+/** Stages of the draft audio render pipeline */
+export type PreviewStage = 'edit' | 'effects' | 'mixing' | 'final';
+
+/** Status of a draft preview asset */
+export type PreviewStatus = 'idle' | 'dirty' | 'rendering' | 'ready' | 'failed';
+
+/** Metadata for a single rendered draft preview asset */
+export interface AudioDraftPreviewAsset {
+  stage: PreviewStage;
+  storagePath: string;
+  durationMs?: number;
+  mimeType?: string;
+  sizeBytes?: number;
+  generatedAt?: string;
+  /** Hash of the config that produced this preview — for invalidation */
+  settingsHash?: string;
+  status: PreviewStatus;
+  error?: string;
+}
+
+/** Container for all draft preview assets by stage */
+export interface AudioDraftPreviewAssets {
+  edit?: AudioDraftPreviewAsset;
+  effects?: AudioDraftPreviewAsset;
+  mixing?: AudioDraftPreviewAsset;
+  final?: AudioDraftPreviewAsset;
+}
+
 // ─── Audio Content Document ──────────────────────────────────────────────────
 //
 // Stored in: contentItems/{contentId}
@@ -693,6 +723,9 @@ export interface AudioContentDoc {
   /** Audio edit configuration (Phase 8-L) — trim start/end, middle cuts */
   editConfig?: AudioEditConfig;
 
+  /** Phase 8-L.1: Storage path of the approved final preview (used by pipeline) */
+  finalPreviewStoragePath?: string;
+
   // ── Counters (server-only writes via Cloud Functions) ──────────────────────
 
   listensCount: number;
@@ -806,6 +839,11 @@ export interface AudioDraftDoc {
 
   /** Embedded audio asset metadata — attached after recording/upload (Phase 8-B) */
   audioAsset?: AudioAssetMeta;
+
+  /** Phase 8-L.1: Draft render pipeline preview assets */
+  previewAssets?: AudioDraftPreviewAssets;
+  /** Phase 8-L.1: Whether the final preview is ready for publish */
+  finalPreviewReady?: boolean;
 
   /** UI creation wizard step tracker — e.g. 'info', 'record', 'effects', 'publish' */
   currentStep?: string;
@@ -934,6 +972,25 @@ export interface GetAudioPlaybackUrlResponse {
   waveform?: WaveformData;
   /** Captions processing status */
   captionsStatus?: CaptionsProcessing['status'];
+}
+
+// ─── Phase 8-L.1 — Draft Render Pipeline Types ──────────────────────────────
+
+/** Request payload for renderAudioDraftPreview callable */
+export interface RenderDraftPreviewRequest {
+  draftId: string;
+  stage: PreviewStage;
+}
+
+/** Response payload for renderAudioDraftPreview callable */
+export interface RenderDraftPreviewResponse {
+  stage: PreviewStage;
+  status: PreviewStatus;
+  playbackUrl?: string;
+  durationMs?: number;
+  mimeType?: string;
+  sizeBytes?: number;
+  error?: string;
 }
 
 // ─── Live Session Document (unchanged from Phase 4-H-1) ──────────────────────

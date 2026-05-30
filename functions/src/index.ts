@@ -91,6 +91,9 @@ export { publishAudioContent }  from './callables/publishAudioContent';
 // ─── Phase 8-D — Audio Playback ─────────────────────────────────────────────
 export { getAudioPlaybackUrl }  from './callables/getAudioPlaybackUrl';
 
+// ─── Phase 8-L.1 — Draft Render Pipeline ────────────────────────────────────
+export { renderAudioDraftPreview } from './callables/renderAudioDraftPreview';
+
 // ─── Phase 8-F — Real Audio Processing Worker ───────────────────────────
 export { onAudioContentPublished } from './triggers/onAudioContentPublished';
 

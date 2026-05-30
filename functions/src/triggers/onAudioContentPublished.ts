@@ -112,198 +112,151 @@ export const onAudioContentPublished = onDocumentWritten(
       logger.info(`[8F-pipeline] ${contentId}: probing input.`);
       const probe = await probeAudio(tmpOriginal);
       logger.info(`[8F-pipeline] ${contentId}: probe result.`, {
-        durationMs: probe.durationMs,
-        codec: probe.codec,
-        sampleRate: probe.sampleRate,
-        channels: probe.channels,
-        bitrate: probe.bitrate,
-        format: probe.formatName,
+        durationMs: probe.durationMs, codec: probe.codec, sampleRate: probe.sampleRate,
       });
 
-      // Validate: must have audio data
       if (probe.durationMs < 100) {
         throw new Error(`Audio too short or unreadable: ${probe.durationMs}ms.`);
       }
 
-      // ── Step 3b: Trim/Cut (Phase 8-L) ──────────────────────────────────────
-      // Processing order: original → trim/cut → effects → mixing → waveform
-      // If trim/cut is enabled and FAILS, the pipeline STOPS.
-      // User intent: publishing the uncut original after edit failure is misleading.
+      // ── Phase 8-L.1: Check for approved preview ─────────────────────────
+      const finalPreviewPath = data.finalPreviewStoragePath as string | undefined;
       const editConfig = data.editConfig as AudioEditConfig | undefined;
-      let editResult: { editApplied: boolean; editedDurationMs?: number; error?: string } | null = null;
-
-      if (editConfig?.enabled) {
-        const hasTrim = (editConfig.trimStartMs && editConfig.trimStartMs > 0) ||
-                        (editConfig.trimEndMs && editConfig.trimEndMs > 0 && editConfig.trimEndMs < probe.durationMs);
-        const hasCuts = editConfig.cuts && editConfig.cuts.length > 0;
-
-        if (hasTrim || hasCuts) {
-          const tmpTrimmed = path.join(tmpDir, `${contentId}_trimmed.m4a`);
-          logger.info(`[8L-pipeline] ${contentId}: applying trim/cut edits.`, {
-            trimStartMs: editConfig.trimStartMs,
-            trimEndMs: editConfig.trimEndMs,
-            cuts: editConfig.cuts?.length ?? 0,
-          });
-
-          const trimConfig = {
-            trimStartMs: editConfig.trimStartMs,
-            trimEndMs: editConfig.trimEndMs && editConfig.trimEndMs < probe.durationMs ? editConfig.trimEndMs : undefined,
-            cuts: editConfig.cuts,
-          };
-          editResult = await applyTrimCut(tmpOriginal, tmpTrimmed, trimConfig);
-
-          if (editResult.editApplied) {
-            // Replace original with trimmed version for subsequent pipeline steps
-            fs.copyFileSync(tmpTrimmed, tmpOriginal);
-            fs.unlinkSync(tmpTrimmed);
-            // Update probe duration to reflect trimmed audio
-            probe.durationMs = editResult.editedDurationMs ?? probe.durationMs;
-            logger.info(`[8L-pipeline] ${contentId}: trim/cut applied. New duration: ${probe.durationMs}ms.`);
-          } else {
-            // CRITICAL: Trim/cut failure STOPS the pipeline.
-            // Do NOT fall back to unedited original.
-            logger.error(`[8L-pipeline] ${contentId}: trim/cut FAILED. Stopping pipeline.`, {
-              error: editResult.error,
-            });
-            const failTimestamp = new Date().toISOString();
-            await docRef.update({
-              contentProcessingStatus: 'failed',
-              processingCompletedAt: failTimestamp,
-              'editConfig.editStatus': 'failed',
-              'editConfig.appliedAt': failTimestamp,
-              'editConfig.processingError': (editResult.error || 'فشل قص/تعديل الصوت').slice(0, 500),
-            });
-            // Clean up temp files
-            try { if (fs.existsSync(tmpTrimmed)) fs.unlinkSync(tmpTrimmed); } catch { /* ignore */ }
-            return; // STOP pipeline
-          }
-        } else {
-          // Edit enabled but no actual trim/cut values
-          logger.info(`[8L-pipeline] ${contentId}: edit enabled but no trim/cut values specified.`);
-          editResult = { editApplied: false };
-        }
-      }
-
-      // ── Step 4: Transcode to AAC/M4A (with effects if configured) ──────
       const effectsConfig = data.effectsConfig as AudioEffectsConfig | undefined;
-      const effectsChain = effectsConfig?.enabled ? buildEffectsChain(effectsConfig) : null;
-      const requestedFilterIds = effectsConfig?.enabled ? getRequestedFilterIds(effectsConfig) : [];
-
-      let transcode;
-      let effectsResult: { effectsApplied: boolean; appliedFilters: string[]; skippedFilters: string[]; effectsError?: string } | null = null;
-
-      if (effectsChain) {
-        // Effects enabled — use effects transcoder
-        logger.info(`[8J-pipeline] ${contentId}: transcoding with effects.`, {
-          mode: effectsConfig!.mode,
-          presetId: effectsConfig!.selectedPresetId,
-          filterCount: requestedFilterIds.length,
-        });
-        const result = await transcodeWithEffects(tmpOriginal, tmpMaster, effectsChain, requestedFilterIds);
-        transcode = result;
-        effectsResult = {
-          effectsApplied: result.effectsApplied,
-          appliedFilters: result.appliedFilters,
-          skippedFilters: result.skippedFilters,
-          effectsError: result.effectsError,
-        };
-      } else {
-        // No effects — base transcode (Phase 8-F path, unchanged)
-        logger.info(`[8F-pipeline] ${contentId}: transcoding to AAC/M4A.`);
-        transcode = await transcodeToAAC(tmpOriginal, tmpMaster);
-      }
-
-      logger.info(`[8F-pipeline] ${contentId}: transcode complete.`, {
-        sizeBytes: transcode.sizeBytes,
-        durationMs: transcode.durationMs,
-        codec: transcode.codec,
-        bitrate: transcode.bitrate,
-        loudnessLufs: transcode.loudnessLufs,
-        effectsApplied: effectsResult?.effectsApplied ?? false,
-      });
-
-      // ── Step 4b: Mixing master adjustments (Phase 8-K) ──────────────────
-      // Order: original → effects → mixing/master adjustments → waveform → upload
-      // Only renders voice-only ops (volume, gain, fades).
-      // Multi-track mixing with actual layers is deferred.
       const mixingConfig = data.mixingConfig as AudioMixingConfig | undefined;
+
+      // Result trackers
+      let editResult: { editApplied: boolean; editedDurationMs?: number; error?: string } | null = null;
+      let effectsResult: { effectsApplied: boolean; appliedFilters: string[]; skippedFilters: string[]; effectsError?: string } | null = null;
       let mixingResult: { mixApplied: boolean; appliedOperations: string[]; error?: string } | null = null;
-
-      if (mixingConfig?.enabled) {
-        const mixOps = getMixingMasterOps(mixingConfig);
-
-        if (mixOps.hasRenderableOps) {
-          const mixChain = buildMixingFFmpegChain(mixOps, transcode.durationMs);
-          if (mixChain) {
-            logger.info(`[8K-pipeline] ${contentId}: applying mixing master adjustments.`, {
-              operations: mixOps.operationLabels,
-              chain: mixChain,
-              hasDeferredLayers: mixOps.hasDeferredLayers,
-            });
-            mixingResult = await applyMixingMaster(tmpMaster, mixChain, mixOps.operationLabels);
-          } else {
-            logger.info(`[8K-pipeline] ${contentId}: mixing enabled but filter chain is empty.`);
-            mixingResult = { mixApplied: false, appliedOperations: [], error: undefined };
-          }
-        } else {
-          logger.info(`[8K-pipeline] ${contentId}: mixing enabled but no renderable ops.`, {
-            hasDeferredLayers: mixOps.hasDeferredLayers,
-          });
-          mixingResult = { mixApplied: false, appliedOperations: [] };
-        }
-      }
-
-      // ── Step 4c: Multi-track layer mixing — music bed + SFX (Phase 8-L.1) ──
       let multiTrackResult: { mixApplied: boolean; layersMixed: number; layersFailed: string[]; error?: string } | null = null;
+      let masterDurationMs = probe.durationMs;
+      let masterSizeBytes = 0;
+      let masterCodec = 'aac';
 
-      if (mixingConfig?.enabled) {
-        const layers: MultiTrackLayer[] = [];
+      if (finalPreviewPath) {
+        // ── PREVIEW PATH: User already heard and approved this audio ──────
+        const tmpPreview = path.join(tmpDir, `${contentId}_preview.m4a`);
+        logger.info(`[8L1-pipeline] ${contentId}: using approved preview as source.`, { finalPreviewPath });
+        await bucket.file(finalPreviewPath).download({ destination: tmpPreview });
 
-        // Check for uploaded music bed
-        const musicTrack = (mixingConfig.tracks || []).find(
-          (t) => t.type === 'musicBed' && t.sourceType === 'uploaded' && t.storagePath && t.enabled,
-        );
-        if (musicTrack?.storagePath) {
-          try {
-            const musicLocalPath = path.join(tmpDir, `${contentId}_music_${musicTrack.fileName || 'bed'}`);
-            await bucket.file(musicTrack.storagePath).download({ destination: musicLocalPath });
-            layers.push({
-              localPath: musicLocalPath,
-              type: 'musicBed',
-              volumeDb: musicTrack.volumeDb ?? 0,
-              startMs: musicTrack.startMs ?? 0,
-              label: musicTrack.fileName || 'music bed',
+        const transcode = await transcodeToAAC(tmpPreview, tmpMaster);
+        masterDurationMs = transcode.durationMs;
+        masterSizeBytes = transcode.sizeBytes;
+        masterCodec = transcode.codec || 'aac';
+        logger.info(`[8L1-pipeline] ${contentId}: preview transcoded to master.`, { durationMs: masterDurationMs });
+        try { fs.unlinkSync(tmpPreview); } catch { /* ignore */ }
+
+        // Mark all enabled stages as 'applied' since preview included them
+        if (editConfig?.enabled) editResult = { editApplied: true, editedDurationMs: masterDurationMs };
+        if (effectsConfig?.enabled) effectsResult = { effectsApplied: true, appliedFilters: [], skippedFilters: [] };
+        if (mixingConfig?.enabled) mixingResult = { mixApplied: true, appliedOperations: ['preview-baked'] };
+
+      } else {
+        // ── NORMAL PATH: No preview — process from original ───────────────
+
+        // ── Step 3b: Trim/Cut (Phase 8-L) ─────────────────────────────────
+        if (editConfig?.enabled) {
+          const hasTrim = (editConfig.trimStartMs && editConfig.trimStartMs > 0) ||
+                          (editConfig.trimEndMs && editConfig.trimEndMs > 0 && editConfig.trimEndMs < probe.durationMs);
+          const hasCuts = editConfig.cuts && editConfig.cuts.length > 0;
+
+          if (hasTrim || hasCuts) {
+            const tmpTrimmed = path.join(tmpDir, `${contentId}_trimmed.m4a`);
+            logger.info(`[8L-pipeline] ${contentId}: applying trim/cut edits.`);
+            editResult = await applyTrimCut(tmpOriginal, tmpTrimmed, {
+              trimStartMs: editConfig.trimStartMs,
+              trimEndMs: editConfig.trimEndMs && editConfig.trimEndMs < probe.durationMs ? editConfig.trimEndMs : undefined,
+              cuts: editConfig.cuts,
             });
-            logger.info(`[8L1-pipeline] ${contentId}: downloaded music bed.`, { path: musicTrack.storagePath });
-          } catch (err) {
-            logger.warn(`[8L1-pipeline] ${contentId}: failed to download music bed.`, { error: err });
+            if (editResult.editApplied) {
+              fs.copyFileSync(tmpTrimmed, tmpOriginal);
+              fs.unlinkSync(tmpTrimmed);
+              probe.durationMs = editResult.editedDurationMs ?? probe.durationMs;
+            } else {
+              logger.error(`[8L-pipeline] ${contentId}: trim/cut FAILED. Stopping pipeline.`);
+              await docRef.update({
+                contentProcessingStatus: 'failed',
+                processingCompletedAt: new Date().toISOString(),
+                'editConfig.editStatus': 'failed',
+                'editConfig.processingError': (editResult.error || 'Trim/cut failed').slice(0, 500),
+              });
+              return;
+            }
+          } else {
+            editResult = { editApplied: false };
           }
         }
 
-        // Check for SFX items
-        const sfxItems = (mixingConfig.sfxItems || []).filter((s: AudioSfxItem) => s.enabled && s.storagePath);
-        for (const sfx of sfxItems) {
-          try {
-            const sfxLocalPath = path.join(tmpDir, `${contentId}_sfx_${sfx.id}_${sfx.fileName || 'sfx'}`);
-            await bucket.file(sfx.storagePath).download({ destination: sfxLocalPath });
-            layers.push({
-              localPath: sfxLocalPath,
-              type: 'sfx',
-              volumeDb: sfx.volumeDb ?? 0,
-              startMs: sfx.startMs ?? 0,
-              label: sfx.label || sfx.fileName || sfx.id,
-            });
-            logger.info(`[8L1-pipeline] ${contentId}: downloaded SFX item.`, { id: sfx.id, path: sfx.storagePath });
-          } catch (err) {
-            logger.warn(`[8L1-pipeline] ${contentId}: failed to download SFX item.`, { id: sfx.id, error: err });
+        // ── Step 4: Transcode to AAC (with effects if configured) ─────────
+        const effectsChain = effectsConfig?.enabled ? buildEffectsChain(effectsConfig) : null;
+        const requestedFilterIds = effectsConfig?.enabled ? getRequestedFilterIds(effectsConfig) : [];
+
+        if (effectsChain) {
+          logger.info(`[8J-pipeline] ${contentId}: transcoding with effects.`);
+          const result = await transcodeWithEffects(tmpOriginal, tmpMaster, effectsChain, requestedFilterIds);
+          masterDurationMs = result.durationMs;
+          masterSizeBytes = result.sizeBytes;
+          masterCodec = result.codec || 'aac';
+          effectsResult = {
+            effectsApplied: result.effectsApplied,
+            appliedFilters: result.appliedFilters,
+            skippedFilters: result.skippedFilters,
+            effectsError: result.effectsError,
+          };
+        } else {
+          logger.info(`[8F-pipeline] ${contentId}: transcoding to AAC/M4A.`);
+          const result = await transcodeToAAC(tmpOriginal, tmpMaster);
+          masterDurationMs = result.durationMs;
+          masterSizeBytes = result.sizeBytes;
+          masterCodec = result.codec || 'aac';
+        }
+
+        // ── Step 4b: Mixing master adjustments (Phase 8-K) ────────────────
+        if (mixingConfig?.enabled) {
+          const mixOps = getMixingMasterOps(mixingConfig);
+          if (mixOps.hasRenderableOps) {
+            const mixChain = buildMixingFFmpegChain(mixOps, masterDurationMs);
+            if (mixChain) {
+              logger.info(`[8K-pipeline] ${contentId}: applying mixing master adjustments.`);
+              mixingResult = await applyMixingMaster(tmpMaster, mixChain, mixOps.operationLabels);
+            }
+          }
+          if (!mixingResult) {
+            mixingResult = { mixApplied: false, appliedOperations: [] };
           }
         }
 
-        if (layers.length > 0) {
-          logger.info(`[8L1-pipeline] ${contentId}: mixing ${layers.length} layer(s) into voice master.`);
-          multiTrackResult = await mixMultiTrack(tmpMaster, layers);
+        // ── Step 4c: Multi-track mixing — music bed + SFX (Phase 8-L.1) ──
+        if (mixingConfig?.enabled) {
+          const layers: MultiTrackLayer[] = [];
+          const musicTrack = (mixingConfig.tracks || []).find(
+            (t) => t.type === 'musicBed' && t.sourceType === 'uploaded' && t.storagePath && t.enabled,
+          );
+          if (musicTrack?.storagePath) {
+            try {
+              const musicLocal = path.join(tmpDir, `${contentId}_music.m4a`);
+              await bucket.file(musicTrack.storagePath).download({ destination: musicLocal });
+              layers.push({ localPath: musicLocal, type: 'musicBed', volumeDb: musicTrack.volumeDb ?? 0, startMs: musicTrack.startMs ?? 0, label: musicTrack.fileName || 'music bed' });
+            } catch (err) { logger.warn(`[8L1-pipeline] Failed to download music bed.`, { error: err }); }
+          }
+          const sfxItems = (mixingConfig.sfxItems || []).filter((s: AudioSfxItem) => s.enabled && s.storagePath);
+          for (const sfx of sfxItems) {
+            try {
+              const sfxLocal = path.join(tmpDir, `${contentId}_sfx_${sfx.id}.m4a`);
+              await bucket.file(sfx.storagePath).download({ destination: sfxLocal });
+              layers.push({ localPath: sfxLocal, type: 'sfx', volumeDb: sfx.volumeDb ?? 0, startMs: sfx.startMs ?? 0, label: sfx.label || sfx.id });
+            } catch (err) { logger.warn(`[8L1-pipeline] Failed to download SFX.`, { id: sfx.id, error: err }); }
+          }
+          if (layers.length > 0) {
+            multiTrackResult = await mixMultiTrack(tmpMaster, layers);
+          }
         }
-      }
+      } // end preview vs normal path
+
+      // Re-stat master for final size
+      const masterStat = fs.statSync(tmpMaster);
+      masterSizeBytes = masterStat.size;
 
       // ── Step 5: Extract real waveform peaks ────────────────────────────
       logger.info(`[8F-pipeline] ${contentId}: extracting waveform.`);
@@ -343,12 +296,11 @@ export const onAudioContentPublished = onDocumentWritten(
 
       const processedAudio: ProcessedAudioMeta = {
         storagePath: masterStoragePath,
-        mimeType: transcode.mimeType,
-        sizeBytes: transcode.sizeBytes,
-        durationMs: transcode.durationMs,
-        bitrate: transcode.bitrate,
-        codec: transcode.codec,
-        loudnessLufs: transcode.loudnessLufs,
+        mimeType: 'audio/mp4',
+        sizeBytes: masterSizeBytes,
+        durationMs: masterDurationMs,
+        bitrate: Math.round((masterSizeBytes * 8) / (masterDurationMs / 1000)),
+        codec: masterCodec,
         createdAt: processingCompletedAt,
         sourceOriginalPath: storagePath,
       };
@@ -379,7 +331,6 @@ export const onAudioContentPublished = onDocumentWritten(
           firestoreUpdate['effectsConfig.appliedFilters'] = effectsResult.appliedFilters;
           firestoreUpdate['effectsConfig.skippedFilters'] = [];
         } else {
-          // Effects failed but base processing succeeded — content is still ready
           firestoreUpdate['effectsConfig.appliedStatus'] = 'failed';
           firestoreUpdate['effectsConfig.appliedAt'] = effectsAppliedAt;
           firestoreUpdate['effectsConfig.appliedFilters'] = [];
@@ -398,13 +349,11 @@ export const onAudioContentPublished = onDocumentWritten(
           firestoreUpdate['mixingConfig.renderedAt'] = mixRenderedAt;
           firestoreUpdate['mixingConfig.appliedOperations'] = mixingResult.appliedOperations;
         } else if (mixingResult.error) {
-          // Mixing failed but base/effects processing succeeded — content still ready
           firestoreUpdate['mixingConfig.renderStatus'] = 'failed';
           firestoreUpdate['mixingConfig.renderedAt'] = mixRenderedAt;
           firestoreUpdate['mixingConfig.appliedOperations'] = [];
           firestoreUpdate['mixingConfig.processingError'] = mixingResult.error.slice(0, 500);
         } else {
-          // No renderable ops (settings saved but no volume/fade changes, or only deferred layers)
           firestoreUpdate['mixingConfig.renderStatus'] = 'pending';
         }
       } else if (mixingConfig?.enabled) {
@@ -414,23 +363,19 @@ export const onAudioContentPublished = onDocumentWritten(
       // Phase 8-L.1: Write multi-track mix result
       if (multiTrackResult) {
         if (multiTrackResult.mixApplied) {
-          // Append to appliedOperations
           const existingOps = (firestoreUpdate['mixingConfig.appliedOperations'] as string[]) || [];
           firestoreUpdate['mixingConfig.appliedOperations'] = [
             ...existingOps,
             `multi-track: ${multiTrackResult.layersMixed} layer(s) mixed`,
           ];
-          // If mixing was 'pending' but multi-track succeeded, upgrade to 'applied'
           if (firestoreUpdate['mixingConfig.renderStatus'] === 'pending') {
             firestoreUpdate['mixingConfig.renderStatus'] = 'applied';
             firestoreUpdate['mixingConfig.renderedAt'] = new Date().toISOString();
           }
         } else if (multiTrackResult.error) {
-          // Multi-track failed but voice master preserved
           const existingErr = (firestoreUpdate['mixingConfig.processingError'] as string) || '';
           firestoreUpdate['mixingConfig.processingError'] =
             (existingErr ? existingErr + '; ' : '') + `multi-track failed: ${multiTrackResult.error.slice(0, 300)}`;
-          // Only downgrade to 'failed' if master adjustments also failed
           if (firestoreUpdate['mixingConfig.renderStatus'] !== 'applied') {
             firestoreUpdate['mixingConfig.renderStatus'] = 'failed';
           }
@@ -445,7 +390,6 @@ export const onAudioContentPublished = onDocumentWritten(
           firestoreUpdate['editConfig.appliedAt'] = editTimestamp;
           firestoreUpdate['editConfig.editedDurationMs'] = editResult.editedDurationMs;
         } else {
-          // No renderable edits (edit enabled but no trim/cut values)
           firestoreUpdate['editConfig.editStatus'] = 'pending';
         }
       } else if (editConfig?.enabled) {
@@ -456,8 +400,7 @@ export const onAudioContentPublished = onDocumentWritten(
 
       logger.info(
         `[8F-pipeline] ${contentId}: audio processing COMPLETE. ` +
-        `status=ready, source=processed, waveform=real (${peaks.length} peaks), ` +
-        `master=${transcode.sizeBytes} bytes, duration=${transcode.durationMs}ms.`,
+        `status=ready, master=${masterSizeBytes} bytes, duration=${masterDurationMs}ms.`,
       );
 
       // ── Phase 8-G: Captions pipeline ──────────────────────────────────────
