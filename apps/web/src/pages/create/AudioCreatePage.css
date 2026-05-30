@@ -2240,6 +2240,336 @@
   color: var(--accent-cyan, #22d3ee);
 }
 
+/* ─── Phase 8-L.1: Mixing toggle row layout (spacing bug fix) ─────────────── */
+
+.acp-fx-toggle-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-radius: 14px;
+  background: var(--color-bg-elevated, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+}
+.acp-fx-toggle-row__info {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.75rem;
+  flex: 1;
+  min-width: 0;
+}
+.acp-fx-toggle-row__info > .material-symbols-outlined {
+  font-size: 1.5rem;
+  color: var(--accent-gold, #e5c76b);
+  margin-top: 0.1rem;
+  flex-shrink: 0;
+}
+.acp-fx-toggle-row__info > div {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+.acp-fx-toggle-row__title {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #f1f1f1);
+  display: block;
+}
+.acp-fx-toggle-row__desc {
+  font-size: 0.78rem;
+  color: var(--color-text-muted, #888);
+  display: block;
+  line-height: 1.4;
+}
+
+/* ─── Phase 8-L.1: Waveform timeline ──────────────────────────────────────── */
+
+.acp-waveform-card {
+  background: var(--color-bg-elevated, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  border-radius: 16px;
+  padding: 1.25rem;
+  margin-bottom: 1rem;
+}
+.acp-waveform-loading {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 0.5rem;
+  padding: 2rem;
+  color: var(--color-text-muted, #888);
+  font-size: 0.85rem;
+}
+.acp-waveform-timeline {
+  position: relative;
+  width: 100%;
+  height: 100px;
+  cursor: pointer;
+  user-select: none;
+}
+.acp-waveform-timeline svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+.acp-waveform-timeline__playhead {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 2px;
+  background: var(--accent-gold, #e5c76b);
+  box-shadow: 0 0 6px var(--accent-gold, #e5c76b);
+  pointer-events: none;
+  z-index: 4;
+  transition: left 50ms linear;
+}
+.acp-waveform-controls {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 1rem;
+  margin-top: 0.75rem;
+}
+.acp-waveform-controls__time {
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  color: var(--color-text-muted, #888);
+  min-width: 3.5rem;
+  text-align: center;
+}
+.acp-waveform-controls__play {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  border: 2px solid var(--accent-gold, #e5c76b);
+  background: transparent;
+  color: var(--accent-gold, #e5c76b);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s, transform 0.15s;
+}
+.acp-waveform-controls__play:hover {
+  background: rgba(229, 199, 107, 0.12);
+  transform: scale(1.06);
+}
+.acp-waveform-controls__play .material-symbols-outlined {
+  font-size: 1.6rem;
+}
+.acp-waveform-controls__skip {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  background: transparent;
+  color: var(--color-text-secondary, #aaa);
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 0.7rem;
+  transition: background 0.15s;
+}
+.acp-waveform-controls__skip:hover {
+  background: rgba(255,255,255,0.06);
+}
+.acp-waveform-hint {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  margin-top: 0.75rem;
+  padding: 0.5rem 0.75rem;
+  border-radius: 8px;
+  background: rgba(34, 211, 238, 0.06);
+  border: 1px solid rgba(34, 211, 238, 0.15);
+  color: var(--accent-cyan, #22d3ee);
+  font-size: 0.75rem;
+  line-height: 1.4;
+}
+.acp-waveform-hint .material-symbols-outlined {
+  font-size: 0.85rem;
+  flex-shrink: 0;
+}
+
+/* ─── Phase 8-L.1: SFX item cards ─────────────────────────────────────────── */
+
+.acp-sfx-section {
+  margin-top: 1rem;
+}
+.acp-sfx-section__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 0.75rem;
+}
+.acp-sfx-section__title {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: var(--color-text-primary, #f1f1f1);
+}
+.acp-sfx-section__title .material-symbols-outlined {
+  font-size: 1.1rem;
+  color: var(--accent-gold, #e5c76b);
+}
+.acp-sfx-add-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  padding: 0.35rem 0.75rem;
+  border-radius: 8px;
+  border: 1px dashed var(--accent-gold, #e5c76b);
+  background: transparent;
+  color: var(--accent-gold, #e5c76b);
+  font-size: 0.78rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.acp-sfx-add-btn:hover { background: rgba(229,199,107,0.08); }
+.acp-sfx-add-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+  border-style: solid;
+}
+.acp-sfx-card {
+  background: var(--color-bg-elevated, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+  border-radius: 12px;
+  padding: 0.75rem 1rem;
+  margin-bottom: 0.5rem;
+}
+.acp-sfx-card__header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.5rem;
+  margin-bottom: 0.5rem;
+}
+.acp-sfx-card__name {
+  font-size: 0.82rem;
+  font-weight: 500;
+  color: var(--color-text-primary, #f1f1f1);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  flex: 1;
+  min-width: 0;
+}
+.acp-sfx-card__remove {
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: none;
+  background: rgba(239,68,68,0.12);
+  color: #ef4444;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.15s;
+}
+.acp-sfx-card__remove:hover { background: rgba(239,68,68,0.25); }
+.acp-sfx-card__remove .material-symbols-outlined { font-size: 0.9rem; }
+.acp-sfx-card__controls {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+.acp-sfx-card__field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.2rem;
+}
+.acp-sfx-card__field-label {
+  font-size: 0.68rem;
+  color: var(--color-text-muted, #888);
+}
+.acp-sfx-card__time-input {
+  width: 5.5rem;
+  padding: 0.3rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid var(--color-border, rgba(255,255,255,0.12));
+  background: var(--color-bg-primary, #0e0e10);
+  color: var(--color-text-primary, #f1f1f1);
+  font-size: 0.8rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+.acp-sfx-card__time-input:focus {
+  outline: none;
+  border-color: var(--accent-gold, #e5c76b);
+}
+.acp-sfx-card__slider {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
+  flex: 1;
+  min-width: 6rem;
+}
+.acp-sfx-card__slider .acp-range-slider { flex: 1; }
+.acp-sfx-card__slider-value {
+  font-size: 0.72rem;
+  color: var(--color-text-muted, #888);
+  min-width: 2rem;
+  text-align: right;
+}
+
+/* ─── Phase 8-L.1: Music upload area ──────────────────────────────────────── */
+
+.acp-music-upload {
+  margin-top: 0.5rem;
+  padding: 0.75rem 1rem;
+  border-radius: 10px;
+  background: var(--color-bg-elevated, rgba(255,255,255,0.04));
+  border: 1px solid var(--color-border, rgba(255,255,255,0.08));
+}
+.acp-music-upload__file-info {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+  font-size: 0.82rem;
+  color: var(--color-text-primary, #f1f1f1);
+  margin-bottom: 0.4rem;
+}
+.acp-music-upload__file-info .material-symbols-outlined {
+  font-size: 1rem;
+  color: var(--accent-teal, #2dd4bf);
+}
+.acp-music-upload__meta {
+  font-size: 0.72rem;
+  color: var(--color-text-muted, #888);
+}
+.acp-music-upload__remove {
+  margin-top: 0.35rem;
+  padding: 0.25rem 0.5rem;
+  border-radius: 6px;
+  border: 1px solid rgba(239,68,68,0.3);
+  background: transparent;
+  color: #ef4444;
+  font-size: 0.72rem;
+  cursor: pointer;
+  transition: background 0.15s;
+}
+.acp-music-upload__remove:hover { background: rgba(239,68,68,0.1); }
+
+/* ─── Phase 8-L.1: Preview waveform mini ──────────────────────────────────── */
+
+.acp-preview-waveform-mini {
+  height: 32px;
+  margin: 0.5rem 0;
+  padding: 0 0.5rem;
+}
+.acp-preview-waveform-mini svg {
+  width: 100%;
+  height: 100%;
+  display: block;
+}
+
 /* ─── Responsive ──────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {
@@ -2250,4 +2580,6 @@
   .acp-effects-grid { grid-template-columns: 1fr; }
   .acp-cards-row { grid-template-columns: 1fr; }
   .acp-edit-cut-card__row { flex-direction: column; gap: 0.5rem; }
+  .acp-sfx-card__controls { flex-direction: column; align-items: stretch; }
+  .acp-waveform-timeline { height: 80px; }
 }

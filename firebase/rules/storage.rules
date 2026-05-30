@@ -153,6 +153,32 @@ service firebase.storage {
     }
 
     // ----------------------------------------------------------
+    // audioMixAssets/{uid}/{draftId}/music/{fileName}
+    // audioMixAssets/{uid}/{draftId}/sfx/{fileName}
+    // Phase 8-L.1: Music bed and SFX file uploads for mixing.
+    // Owner-scoped. Audio MIME only. Max 50MB.
+    // Direct read DENIED — Cloud Functions download via Admin SDK
+    // for pipeline mixing.
+    // ----------------------------------------------------------
+    match /audioMixAssets/{uid}/{draftId}/{layerType}/{fileName} {
+      allow write: if request.auth != null
+        && request.auth.uid == uid
+        && request.resource.contentType.matches('audio/.*')
+        && request.resource.size < 50 * 1024 * 1024; // 50MB max
+      allow read: if false; // Cloud Functions (admin SDK) only
+    }
+
+    // ----------------------------------------------------------
+    // audioPreviews/{uid}/{draftId}/preview/{fileName}
+    // Phase 8-L.1 foundation: Server-rendered draft previews.
+    // Written by Cloud Functions only. Read via signed URL.
+    // ----------------------------------------------------------
+    match /audioPreviews/{uid}/{draftId}/{allPaths=**} {
+      allow read: if false;   // Signed URL via Cloud Function only
+      allow write: if false;  // Cloud Functions (admin SDK) only
+    }
+
+    // ----------------------------------------------------------
     // SERVER-ONLY STORAGE PATHS
     // The following paths are completely inaccessible from client
     // SDKs under any circumstances. Only Cloud Functions using

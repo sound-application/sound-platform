@@ -23,9 +23,9 @@
  * Query: ?source=record|upload → pre-selects tab in step 6
  */
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
-import { ref as storageRef, uploadBytesResumable } from 'firebase/storage';
+import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
@@ -65,6 +65,7 @@ import type {
   AudioMixPresetId,
   AudioEditConfig,
   AudioCutSegment,
+  AudioSfxItem,
 } from '@sound/shared';
 import { AUDIO_PRESETS, AUDIO_FILTERS, MIXING_PRESETS as MIXING_PRESET_DEFS, createDefaultTracks, dbToPercent, percentToDb } from '@sound/shared';
 import type { PlaylistDoc } from '@sound/shared';
@@ -189,9 +190,12 @@ const LANGUAGES = [
 // Mixing source options for background music
 const MUSIC_SOURCE_OPTIONS = [
   { id: 'none', label: 'بدون موسيقى', icon: 'music_off', available: true },
-  { id: 'uploaded', label: 'رفع من الجهاز', icon: 'upload_file', available: false },
+  { id: 'uploaded', label: 'رفع من الجهاز', icon: 'upload_file', available: true },
   { id: 'library', label: 'مكتبة Sound', icon: 'library_music', available: false },
 ];
+
+/** Max SFX items for this phase */
+const MAX_SFX_ITEMS = 3;
 
 // ── Page Component ───────────────────────────────────────────────────────────
 
@@ -370,6 +374,7 @@ export function AudioCreatePage() {
       fadeInMs: masterFadeInMs,
       fadeOutMs: masterFadeOutMs,
       masterGainDb,
+      sfxItems: sfxItems.length > 0 ? sfxItems : undefined,
     };
   };
 
@@ -378,6 +383,14 @@ export function AudioCreatePage() {
   const [trimStartMs, setTrimStartMs] = useState(0);
   const [trimEndMs, setTrimEndMs] = useState(0); // 0 = use original end
   const [editCuts, setEditCuts] = useState<AudioCutSegment[]>([]);
+
+  // Phase 8-L.1: Client-side waveform + preview playback
+  const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
+  const [waveformLoading, setWaveformLoading] = useState(false);
+  const waveformAudioRef = useRef<HTMLAudioElement>(null);
+  const [wfPlaying, setWfPlaying] = useState(false);
+  const [wfCurrentMs, setWfCurrentMs] = useState(0);
+  const wfAnimRef = useRef<number>(0);
 
   const originalDurationMs = audioAsset?.durationMs || 0;
 
@@ -439,6 +452,233 @@ export function AudioCreatePage() {
     };
   };
 
+  // ── Phase 8-L.1: Client-side waveform generation ──────────────────────────
+  useEffect(() => {
+    const audioUrl = recorder.audioUrl || (selectedFile ? URL.createObjectURL(selectedFile) : null);
+    if (!audioUrl) { setWaveformPeaks([]); return; }
+    let cancelled = false;
+    const needsRevoke = !recorder.audioUrl && !!selectedFile;
+    setWaveformLoading(true);
+    (async () => {
+      try {
+        const resp = await fetch(audioUrl);
+        const buf = await resp.arrayBuffer();
+        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
+        const decoded = await ctx.decodeAudioData(buf);
+        if (cancelled) { ctx.close(); return; }
+        const data = decoded.getChannelData(0);
+        const peakCount = 200;
+        const blockSize = Math.floor(data.length / peakCount);
+        const peaks: number[] = [];
+        for (let i = 0; i < peakCount; i++) {
+          let sum = 0;
+          const start = i * blockSize;
+          for (let j = 0; j < blockSize; j++) sum += Math.abs(data[start + j] || 0);
+          peaks.push(sum / blockSize);
+        }
+        const maxPeak = Math.max(...peaks, 0.001);
+        setWaveformPeaks(peaks.map(p => p / maxPeak));
+        ctx.close();
+      } catch { /* ignore decode errors */ }
+      if (!cancelled) setWaveformLoading(false);
+    })();
+    return () => { cancelled = true; if (needsRevoke) URL.revokeObjectURL(audioUrl); };
+  }, [recorder.audioUrl, selectedFile]);
+
+  // ── Trim/cut-aware playback (client-side preview) ──────────────────────────
+  const effectiveStart = editEnabled && trimStartMs > 0 ? trimStartMs : 0;
+  const effectiveEnd = editEnabled && trimEndMs > 0 && trimEndMs < originalDurationMs ? trimEndMs : originalDurationMs;
+
+  /** Check if a given ms is inside a cut region */
+  const isInsideCut = useCallback((ms: number): AudioCutSegment | null => {
+    if (!editEnabled) return null;
+    for (const cut of editCuts) {
+      if (ms >= cut.startMs && ms < cut.endMs) return cut;
+    }
+    return null;
+  }, [editEnabled, editCuts]);
+
+  /** Waveform playback tick — handles trim bounds + cut skipping */
+  const wfTick = useCallback(() => {
+    const audio = waveformAudioRef.current;
+    if (!audio || audio.paused) return;
+    const curMs = audio.currentTime * 1000;
+    // Stop at trim end
+    if (curMs >= effectiveEnd) {
+      audio.pause();
+      setWfPlaying(false);
+      setWfCurrentMs(effectiveEnd);
+      return;
+    }
+    // Skip cut region
+    const cut = isInsideCut(curMs);
+    if (cut) {
+      audio.currentTime = cut.endMs / 1000;
+      setWfCurrentMs(cut.endMs);
+    } else {
+      setWfCurrentMs(curMs);
+    }
+    wfAnimRef.current = requestAnimationFrame(wfTick);
+  }, [effectiveEnd, isInsideCut]);
+
+  const toggleWfPlayback = useCallback(() => {
+    const audio = waveformAudioRef.current;
+    if (!audio) return;
+    if (audio.paused) {
+      // Start from trim start if at beginning or past end
+      if (audio.currentTime * 1000 < effectiveStart || audio.currentTime * 1000 >= effectiveEnd) {
+        audio.currentTime = effectiveStart / 1000;
+      }
+      // Skip if starting inside a cut
+      const cut = isInsideCut(audio.currentTime * 1000);
+      if (cut) audio.currentTime = cut.endMs / 1000;
+      audio.play();
+      setWfPlaying(true);
+      wfAnimRef.current = requestAnimationFrame(wfTick);
+    } else {
+      audio.pause();
+      setWfPlaying(false);
+      cancelAnimationFrame(wfAnimRef.current);
+    }
+  }, [effectiveStart, effectiveEnd, isInsideCut, wfTick]);
+
+  // Cleanup animation frame on unmount
+  useEffect(() => () => cancelAnimationFrame(wfAnimRef.current), []);
+
+  // ── Phase 8-L.1: SFX items state ──────────────────────────────────────────
+  const [sfxItems, setSfxItems] = useState<AudioSfxItem[]>([]);
+  const sfxFileRef = useRef<HTMLInputElement>(null);
+  const [sfxUploading, setSfxUploading] = useState(false);
+
+  // ── Phase 8-L.1: Music bed upload state ───────────────────────────────────
+  const musicFileRef = useRef<HTMLInputElement>(null);
+  const [musicUploading, setMusicUploading] = useState(false);
+  const [musicUploadProgress, setMusicUploadProgress] = useState(0);
+
+  /** Handle music bed file selection + upload to Storage */
+  const handleMusicUpload = async (file: File) => {
+    if (!currentUser || !draftId || musicUploading) return;
+    setMusicUploading(true);
+    setMusicUploadProgress(0);
+    try {
+      const path = `audioMixAssets/${currentUser.uid}/${draftId}/music/${file.name}`;
+      const sRef = storageRef(storage, path);
+      const task = uploadBytesResumable(sRef, file);
+      task.on('state_changed', snap => setMusicUploadProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)));
+      await task;
+      // Get duration via Web Audio
+      let durMs: number | undefined;
+      try {
+        const url = URL.createObjectURL(file);
+        const audio = new Audio(url);
+        await new Promise<void>((res, rej) => { audio.onloadedmetadata = () => res(); audio.onerror = () => rej(); });
+        durMs = Math.round(audio.duration * 1000);
+        URL.revokeObjectURL(url);
+      } catch { /* ignore */ }
+      // Update the music bed track
+      const musicTrack = mixTracks.find(t => t.type === 'musicBed');
+      if (musicTrack) {
+        updateMixTrack(musicTrack.id, {
+          storagePath: path,
+          fileName: file.name,
+          mimeType: file.type,
+          sizeBytes: file.size,
+          durationMs: durMs,
+          sourceType: 'uploaded',
+          enabled: true,
+        });
+      }
+    } catch (err) {
+      console.error('Music upload failed:', err);
+    } finally {
+      setMusicUploading(false);
+      setMusicUploadProgress(0);
+    }
+  };
+
+  /** Remove music bed file */
+  const removeMusicUpload = () => {
+    const musicTrack = mixTracks.find(t => t.type === 'musicBed');
+    if (musicTrack) {
+      updateMixTrack(musicTrack.id, {
+        storagePath: undefined,
+        fileName: undefined,
+        mimeType: undefined,
+        sizeBytes: undefined,
+        durationMs: undefined,
+        sourceType: 'none',
+        enabled: false,
+      });
+    }
+  };
+
+  /** Handle SFX file selection + upload */
+  const handleSfxUpload = async (file: File) => {
+    if (!currentUser || !draftId || sfxUploading || sfxItems.length >= MAX_SFX_ITEMS) return;
+    setSfxUploading(true);
+    try {
+      const sfxId = `sfx_${Date.now()}`;
+      const path = `audioMixAssets/${currentUser.uid}/${draftId}/sfx/${sfxId}_${file.name}`;
+      const sRef = storageRef(storage, path);
+      await uploadBytesResumable(sRef, file);
+      // Get duration
+      let durMs: number | undefined;
+      try {
+        const url = URL.createObjectURL(file);
+        const audio = new Audio(url);
+        await new Promise<void>((res, rej) => { audio.onloadedmetadata = () => res(); audio.onerror = () => rej(); });
+        durMs = Math.round(audio.duration * 1000);
+        URL.revokeObjectURL(url);
+      } catch { /* ignore */ }
+      const newItem: AudioSfxItem = {
+        id: sfxId,
+        fileName: file.name,
+        storagePath: path,
+        mimeType: file.type,
+        sizeBytes: file.size,
+        durationMs: durMs,
+        startMs: 0,
+        volumeDb: 0,
+        enabled: true,
+      };
+      setSfxItems(prev => [...prev, newItem]);
+    } catch (err) {
+      console.error('SFX upload failed:', err);
+    } finally {
+      setSfxUploading(false);
+    }
+  };
+
+  /** Remove SFX item */
+  const removeSfxItem = (sfxId: string) => {
+    setSfxItems(prev => prev.filter(s => s.id !== sfxId));
+  };
+
+  /** Update SFX item */
+  const updateSfxItem = (sfxId: string, updates: Partial<AudioSfxItem>) => {
+    setSfxItems(prev => prev.map(s => s.id === sfxId ? { ...s, ...updates } : s));
+  };
+
+  /** Format ms to mm:ss.S */
+  const formatMsToTimeInput = (ms: number): string => {
+    const totalSec = ms / 1000;
+    const min = Math.floor(totalSec / 60);
+    const sec = totalSec % 60;
+    return `${String(min).padStart(2, '0')}:${sec.toFixed(1).padStart(4, '0')}`;
+  };
+
+  /** Parse mm:ss.S to ms */
+  const parseTimeInputToMs = (val: string): number => {
+    const parts = val.split(':');
+    if (parts.length === 2) {
+      const min = parseInt(parts[0] ?? '0') || 0;
+      const sec = parseFloat(parts[1] ?? '0') || 0;
+      return Math.max(0, Math.round((min * 60 + sec) * 1000));
+    }
+    const sec = parseFloat(val) || 0;
+    return Math.max(0, Math.round(sec * 1000));
+  };
+
   // ── Step 10: Preview playback ──────────────────────────────────────────────
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
@@ -463,6 +703,10 @@ export function AudioCreatePage() {
     const audio = previewAudioRef.current;
     if (!audio) return;
     if (audio.paused) {
+      // Trim/cut-aware: start from trimStart if needed
+      if (editEnabled && trimStartMs > 0 && audio.currentTime * 1000 < trimStartMs) {
+        audio.currentTime = trimStartMs / 1000;
+      }
       audio.play();
       setPreviewPlaying(true);
     } else {
@@ -470,6 +714,26 @@ export function AudioCreatePage() {
       setPreviewPlaying(false);
     }
   };
+
+  // Trim/cut-aware timeupdate for Final Preview
+  useEffect(() => {
+    const audio = previewAudioRef.current;
+    if (!audio || !editEnabled) return;
+    const handler = () => {
+      const curMs = audio.currentTime * 1000;
+      // Stop at trim end
+      if (effectiveEnd > 0 && curMs >= effectiveEnd) {
+        audio.pause();
+        setPreviewPlaying(false);
+        return;
+      }
+      // Skip cut
+      const cut = isInsideCut(curMs);
+      if (cut) audio.currentTime = cut.endMs / 1000;
+    };
+    audio.addEventListener('timeupdate', handler);
+    return () => audio.removeEventListener('timeupdate', handler);
+  }, [editEnabled, effectiveEnd, isInsideCut]);
 
   // ── Step 12: Publish ──────────────────────────────────────────────────────
   const [publishing, setPublishing] = useState(false);
@@ -1564,6 +1828,103 @@ export function AudioCreatePage() {
               </div>
             )}
 
+            {/* ── Phase 8-L.1: Waveform Timeline + Preview ─────────────── */}
+            {audioAsset && previewAudioUrl && (
+              <div className="acp-waveform-card" id="waveform-timeline">
+                {/* Hidden audio element for trim/cut-aware preview */}
+                <audio ref={waveformAudioRef} src={previewAudioUrl} preload="metadata" style={{ display: 'none' }}
+                  onEnded={() => { setWfPlaying(false); cancelAnimationFrame(wfAnimRef.current); }} />
+
+                {waveformLoading ? (
+                  <div className="acp-waveform-loading">
+                    <span className="acp-spinner" aria-hidden="true" />
+                    جاري تحليل الموجة الصوتية...
+                  </div>
+                ) : waveformPeaks.length > 0 ? (
+                  <>
+                    {/* SVG Waveform */}
+                    <div className="acp-waveform-timeline"
+                      onClick={(e) => {
+                        if (!originalDurationMs) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const pct = x / rect.width;
+                        const seekMs = pct * originalDurationMs;
+                        if (waveformAudioRef.current) {
+                          waveformAudioRef.current.currentTime = seekMs / 1000;
+                          setWfCurrentMs(seekMs);
+                        }
+                      }}
+                    >
+                      <svg viewBox="0 0 200 100" preserveAspectRatio="none">
+                        {waveformPeaks.map((peak, i) => {
+                          const barMs = (i / 200) * originalDurationMs;
+                          const isTrimmedOut = editEnabled && (barMs < effectiveStart || barMs > effectiveEnd);
+                          const isCut = editEnabled && editCuts.some(c => barMs >= c.startMs && barMs < c.endMs);
+                          const barH = Math.max(2, peak * 80);
+                          const y = 50 - barH / 2;
+                          let fill = 'url(#wfGrad)';
+                          let opacity = 1;
+                          if (isTrimmedOut) { fill = '#444'; opacity = 0.3; }
+                          else if (isCut) { fill = '#ef4444'; opacity = 0.4; }
+                          return <rect key={i} x={i} y={y} width={0.6} height={barH} rx={0.3} fill={fill} opacity={opacity} />;
+                        })}
+                        <defs>
+                          <linearGradient id="wfGrad" x1="0" y1="0" x2="0" y2="1">
+                            <stop offset="0%" stopColor="#e5c76b" />
+                            <stop offset="100%" stopColor="#22d3ee" />
+                          </linearGradient>
+                        </defs>
+                      </svg>
+                      {/* Playhead */}
+                      {originalDurationMs > 0 && (
+                        <div className="acp-waveform-timeline__playhead"
+                          style={{ left: `${(wfCurrentMs / originalDurationMs) * 100}%` }} />
+                      )}
+                    </div>
+
+                    {/* Controls */}
+                    <div className="acp-waveform-controls">
+                      <span className="acp-waveform-controls__time">{formatDuration(wfCurrentMs)}</span>
+                      <button type="button" className="acp-waveform-controls__skip"
+                        onClick={() => {
+                          if (waveformAudioRef.current) {
+                            const t = Math.max(effectiveStart / 1000, waveformAudioRef.current.currentTime - 10);
+                            waveformAudioRef.current.currentTime = t;
+                            setWfCurrentMs(t * 1000);
+                          }
+                        }}>-10</button>
+                      <button type="button" className="acp-waveform-controls__play" onClick={toggleWfPlayback} aria-label={wfPlaying ? 'إيقاف' : 'تشغيل'}>
+                        <span className="material-symbols-outlined">{wfPlaying ? 'pause' : 'play_arrow'}</span>
+                      </button>
+                      <button type="button" className="acp-waveform-controls__skip"
+                        onClick={() => {
+                          if (waveformAudioRef.current) {
+                            const t = Math.min(effectiveEnd / 1000, waveformAudioRef.current.currentTime + 10);
+                            waveformAudioRef.current.currentTime = t;
+                            setWfCurrentMs(t * 1000);
+                          }
+                        }}>+10</button>
+                      <span className="acp-waveform-controls__time">{formatDuration(editEnabled ? editedDurationMs : originalDurationMs)}</span>
+                    </div>
+
+                    {/* Preview hint */}
+                    {editEnabled && (
+                      <div className="acp-waveform-hint">
+                        <span className="material-symbols-outlined">info</span>
+                        معاينة القص فقط — المؤثرات والمكساج سيُطبقان أثناء المعالجة بعد النشر
+                      </div>
+                    )}
+                  </>
+                ) : (
+                  <div className="acp-waveform-loading">
+                    <span className="material-symbols-outlined">graphic_eq</span>
+                    لم يتمكن من تحليل الموجة الصوتية
+                  </div>
+                )}
+              </div>
+            )}
+
             {/* ── Phase 8-L: Trim/Cut Editor ──────────────────────────── */}
             {audioAsset && audioAsset.durationMs && audioAsset.durationMs > 0 && (
               <div className="acp-edit-panel" id="audio-edit-panel">
@@ -1931,7 +2292,7 @@ export function AudioCreatePage() {
                         <span className="acp-mix-track-card__value">{dbToPercent(track.volumeDb)}%</span>
                       </div>
                       {/* Source selector for non-voice tracks */}
-                      {track.type !== 'voice' && (
+                      {track.type === 'musicBed' && (
                         <div className="acp-mix-track-card__source">
                           {MUSIC_SOURCE_OPTIONS.map(opt => (
                             <button
@@ -1946,11 +2307,109 @@ export function AudioCreatePage() {
                               {!opt.available && opt.id !== 'none' && <span className="acp-gate-badge">قريباً</span>}
                             </button>
                           ))}
+                          {/* Music bed upload area */}
+                          {track.sourceType === 'uploaded' && (
+                            <div className="acp-music-upload">
+                              <input ref={musicFileRef} type="file" accept="audio/*" style={{ display: 'none' }}
+                                onChange={e => { const f = e.target.files?.[0]; if (f) handleMusicUpload(f); e.target.value = ''; }} />
+                              {track.storagePath ? (
+                                <>
+                                  <div className="acp-music-upload__file-info">
+                                    <span className="material-symbols-outlined">audio_file</span>
+                                    {track.fileName || 'ملف موسيقى'}
+                                  </div>
+                                  {track.durationMs && <div className="acp-music-upload__meta">{formatDuration(track.durationMs)} · {track.sizeBytes ? formatFileSize(track.sizeBytes) : ''}</div>}
+                                  <button type="button" className="acp-music-upload__remove" onClick={removeMusicUpload}>
+                                    <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>delete</span> إزالة
+                                  </button>
+                                </>
+                              ) : (
+                                <button type="button" className="acp-sfx-add-btn" onClick={() => musicFileRef.current?.click()} disabled={musicUploading}>
+                                  <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{musicUploading ? 'hourglass_empty' : 'upload_file'}</span>
+                                  {musicUploading ? `جاري الرفع... ${musicUploadProgress}%` : 'اختر ملف موسيقى'}
+                                </button>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      )}
+                      {/* SFX track — show source selector but disable library */}
+                      {track.type === 'sfx' && (
+                        <div className="acp-mix-track-card__source">
+                          {MUSIC_SOURCE_OPTIONS.filter(o => o.id !== 'library').map(opt => (
+                            <button
+                              key={opt.id}
+                              className={`acp-playlist-card ${track.sourceType === opt.id ? 'acp-playlist-card--selected' : ''}`}
+                              type="button"
+                              onClick={() => updateMixTrack(track.id, { sourceType: opt.id as AudioMixTrack['sourceType'], enabled: opt.id !== 'none' })}
+                            >
+                              <span className="material-symbols-outlined">{opt.icon}</span>
+                              {opt.label}
+                            </button>
+                          ))}
                         </div>
                       )}
                     </div>
                   ))}
                 </div>
+
+                {/* ── Phase 8-L.1: SFX Items Section ─────────────────────── */}
+                {mixTracks.some(t => t.type === 'sfx' && t.sourceType === 'uploaded') && (
+                  <div className="acp-sfx-section">
+                    <div className="acp-sfx-section__header">
+                      <span className="acp-sfx-section__title">
+                        <span className="material-symbols-outlined">music_note</span>
+                        مؤثرات صوتية ({sfxItems.length}/{MAX_SFX_ITEMS})
+                      </span>
+                      <input ref={sfxFileRef} type="file" accept="audio/*" style={{ display: 'none' }}
+                        onChange={e => { const f = e.target.files?.[0]; if (f) handleSfxUpload(f); e.target.value = ''; }} />
+                      <button type="button" className="acp-sfx-add-btn"
+                        onClick={() => sfxFileRef.current?.click()}
+                        disabled={sfxItems.length >= MAX_SFX_ITEMS || sfxUploading}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>{sfxUploading ? 'hourglass_empty' : 'add'}</span>
+                        {sfxUploading ? 'جاري الرفع...' : 'إضافة مؤثر'}
+                      </button>
+                    </div>
+                    {sfxItems.map(sfx => (
+                      <div className="acp-sfx-card" key={sfx.id}>
+                        <div className="acp-sfx-card__header">
+                          <span className="acp-sfx-card__name">
+                            <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginLeft: '0.25rem' }}>audio_file</span>
+                            {sfx.fileName}
+                          </span>
+                          <button type="button" className="acp-sfx-card__remove" onClick={() => removeSfxItem(sfx.id)} title="إزالة">
+                            <span className="material-symbols-outlined">close</span>
+                          </button>
+                        </div>
+                        <div className="acp-sfx-card__controls">
+                          <div className="acp-sfx-card__field">
+                            <span className="acp-sfx-card__field-label">التوقيت (دقيقة:ثانية.جزء)</span>
+                            <input type="text" className="acp-sfx-card__time-input"
+                              value={formatMsToTimeInput(sfx.startMs)}
+                              onChange={e => updateSfxItem(sfx.id, { startMs: parseTimeInputToMs(e.target.value) })}
+                              placeholder="00:00.0" />
+                          </div>
+                          <div className="acp-sfx-card__slider">
+                            <span className="acp-sfx-card__field-label">الصوت</span>
+                            <input type="range" className="acp-range-slider" min={-20} max={6}
+                              value={sfx.volumeDb} onChange={e => updateSfxItem(sfx.id, { volumeDb: Number(e.target.value) })} />
+                            <span className="acp-sfx-card__slider-value">{sfx.volumeDb > 0 ? '+' : ''}{sfx.volumeDb}dB</span>
+                          </div>
+                          <label className="acp-toggle acp-toggle--sm">
+                            <input type="checkbox" checked={sfx.enabled} onChange={e => updateSfxItem(sfx.id, { enabled: e.target.checked })} />
+                            <span className="acp-toggle__track" />
+                          </label>
+                        </div>
+                      </div>
+                    ))}
+                    {sfxItems.length === 0 && (
+                      <p className="acp-hint" style={{ textAlign: 'center' }}>
+                        <span className="material-symbols-outlined acp-hint__icon">info</span>
+                        ارفع ملفات مؤثرات صوتية وحدد التوقيت الدقيق لكل مؤثر
+                      </p>
+                    )}
+                  </div>
+                )}
 
                 {/* Advanced tools */}
                 <div className="acp-mix-advanced">
@@ -2116,7 +2575,7 @@ export function AudioCreatePage() {
                 </div>
               )}
               {audioAsset?.durationMs ? (
-                <span className="acp-preview-card__timer-badge">{formatDuration(audioAsset.durationMs)}</span>
+                <span className="acp-preview-card__timer-badge">{formatDuration(editEnabled ? editedDurationMs : audioAsset.durationMs)}</span>
               ) : null}
             </div>
             <div className="acp-preview-card__body">
@@ -2129,6 +2588,33 @@ export function AudioCreatePage() {
               </div>
             </div>
           </div>
+
+          {/* Mini waveform + preview hint */}
+          {waveformPeaks.length > 0 && (
+            <div className="acp-preview-waveform-mini">
+              <svg viewBox="0 0 200 32" preserveAspectRatio="none">
+                {waveformPeaks.map((peak, i) => {
+                  const barH = Math.max(1, peak * 24);
+                  const y = 16 - barH / 2;
+                  return <rect key={i} x={i} y={y} width={0.6} height={barH} rx={0.2} fill="url(#wfGradMini)" opacity={0.7} />;
+                })}
+                <defs>
+                  <linearGradient id="wfGradMini" x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor="#e5c76b" />
+                    <stop offset="100%" stopColor="#22d3ee" />
+                  </linearGradient>
+                </defs>
+              </svg>
+            </div>
+          )}
+
+          {(editEnabled || effectsEnabled || mixingEnabled) && (
+            <div className="acp-waveform-hint">
+              <span className="material-symbols-outlined">info</span>
+              {editEnabled ? 'المعاينة تعكس القص فقط' : 'المعاينة تعكس الصوت الأصلي'}
+              {(effectsEnabled || mixingEnabled) && ' — المؤثرات والمكساج سيُطبقان أثناء المعالجة بعد النشر'}
+            </div>
+          )}
 
           {/* Preview tabs (visual only) */}
           <div className="acp-preview-tabs">
@@ -2441,6 +2927,8 @@ export function AudioCreatePage() {
                       {masterFadeOutMs > 0 && ` · Fade Out: ${(masterFadeOutMs/1000).toFixed(1)}ث`}
                       {masterGainDb !== 0 && ` · ماستر: ${masterGainDb > 0 ? '+' : ''}${masterGainDb}dB`}
                       {autoDuckEnabled && ' · خفض تلقائي (مؤجل)'}
+                      {mixTracks.find(t => t.type === 'musicBed' && t.storagePath) && ` · موسيقى: ${mixTracks.find(t => t.type === 'musicBed')?.fileName || 'مرفوعة'}`}
+                      {sfxItems.length > 0 && ` · مؤثرات: ${sfxItems.filter(s => s.enabled).length} مؤثر`}
                     </span>
                   </>
                 ) : (

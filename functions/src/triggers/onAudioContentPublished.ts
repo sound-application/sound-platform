@@ -39,10 +39,11 @@ import * as logger from 'firebase-functions/logger';
 import * as os from 'os';
 import * as path from 'path';
 import * as fs from 'fs';
-import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects, applyMixingMaster, applyTrimCut } from '../processing/audioProcessor';
+import { probeAudio, transcodeToAAC, extractWaveformPeaks, transcodeWithEffects, applyMixingMaster, applyTrimCut, mixMultiTrack } from '../processing/audioProcessor';
+import type { MultiTrackLayer } from '../processing/audioProcessor';
 
 // ── Types from shared ────────────────────────────────────────────────────
-import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig, AudioMixingConfig, AudioEditConfig } from '@sound/shared';
+import type { ProcessedAudioMeta, WaveformData, AudioEffectsConfig, AudioMixingConfig, AudioEditConfig, AudioSfxItem } from '@sound/shared';
 import { buildEffectsChain, getRequestedFilterIds, getMixingMasterOps, buildMixingFFmpegChain } from '@sound/shared';
 
 // ── Provider registry ──────────────────────────────────────────────────
@@ -252,6 +253,58 @@ export const onAudioContentPublished = onDocumentWritten(
         }
       }
 
+      // ── Step 4c: Multi-track layer mixing — music bed + SFX (Phase 8-L.1) ──
+      let multiTrackResult: { mixApplied: boolean; layersMixed: number; layersFailed: string[]; error?: string } | null = null;
+
+      if (mixingConfig?.enabled) {
+        const layers: MultiTrackLayer[] = [];
+
+        // Check for uploaded music bed
+        const musicTrack = (mixingConfig.tracks || []).find(
+          (t) => t.type === 'musicBed' && t.sourceType === 'uploaded' && t.storagePath && t.enabled,
+        );
+        if (musicTrack?.storagePath) {
+          try {
+            const musicLocalPath = path.join(tmpDir, `${contentId}_music_${musicTrack.fileName || 'bed'}`);
+            await bucket.file(musicTrack.storagePath).download({ destination: musicLocalPath });
+            layers.push({
+              localPath: musicLocalPath,
+              type: 'musicBed',
+              volumeDb: musicTrack.volumeDb ?? 0,
+              startMs: musicTrack.startMs ?? 0,
+              label: musicTrack.fileName || 'music bed',
+            });
+            logger.info(`[8L1-pipeline] ${contentId}: downloaded music bed.`, { path: musicTrack.storagePath });
+          } catch (err) {
+            logger.warn(`[8L1-pipeline] ${contentId}: failed to download music bed.`, { error: err });
+          }
+        }
+
+        // Check for SFX items
+        const sfxItems = (mixingConfig.sfxItems || []).filter((s: AudioSfxItem) => s.enabled && s.storagePath);
+        for (const sfx of sfxItems) {
+          try {
+            const sfxLocalPath = path.join(tmpDir, `${contentId}_sfx_${sfx.id}_${sfx.fileName || 'sfx'}`);
+            await bucket.file(sfx.storagePath).download({ destination: sfxLocalPath });
+            layers.push({
+              localPath: sfxLocalPath,
+              type: 'sfx',
+              volumeDb: sfx.volumeDb ?? 0,
+              startMs: sfx.startMs ?? 0,
+              label: sfx.label || sfx.fileName || sfx.id,
+            });
+            logger.info(`[8L1-pipeline] ${contentId}: downloaded SFX item.`, { id: sfx.id, path: sfx.storagePath });
+          } catch (err) {
+            logger.warn(`[8L1-pipeline] ${contentId}: failed to download SFX item.`, { id: sfx.id, error: err });
+          }
+        }
+
+        if (layers.length > 0) {
+          logger.info(`[8L1-pipeline] ${contentId}: mixing ${layers.length} layer(s) into voice master.`);
+          multiTrackResult = await mixMultiTrack(tmpMaster, layers);
+        }
+      }
+
       // ── Step 5: Extract real waveform peaks ────────────────────────────
       logger.info(`[8F-pipeline] ${contentId}: extracting waveform.`);
       const peaks = await extractWaveformPeaks(tmpMaster, 200);
@@ -356,6 +409,32 @@ export const onAudioContentPublished = onDocumentWritten(
         }
       } else if (mixingConfig?.enabled) {
         firestoreUpdate['mixingConfig.renderStatus'] = 'pending';
+      }
+
+      // Phase 8-L.1: Write multi-track mix result
+      if (multiTrackResult) {
+        if (multiTrackResult.mixApplied) {
+          // Append to appliedOperations
+          const existingOps = (firestoreUpdate['mixingConfig.appliedOperations'] as string[]) || [];
+          firestoreUpdate['mixingConfig.appliedOperations'] = [
+            ...existingOps,
+            `multi-track: ${multiTrackResult.layersMixed} layer(s) mixed`,
+          ];
+          // If mixing was 'pending' but multi-track succeeded, upgrade to 'applied'
+          if (firestoreUpdate['mixingConfig.renderStatus'] === 'pending') {
+            firestoreUpdate['mixingConfig.renderStatus'] = 'applied';
+            firestoreUpdate['mixingConfig.renderedAt'] = new Date().toISOString();
+          }
+        } else if (multiTrackResult.error) {
+          // Multi-track failed but voice master preserved
+          const existingErr = (firestoreUpdate['mixingConfig.processingError'] as string) || '';
+          firestoreUpdate['mixingConfig.processingError'] =
+            (existingErr ? existingErr + '; ' : '') + `multi-track failed: ${multiTrackResult.error.slice(0, 300)}`;
+          // Only downgrade to 'failed' if master adjustments also failed
+          if (firestoreUpdate['mixingConfig.renderStatus'] !== 'applied') {
+            firestoreUpdate['mixingConfig.renderStatus'] = 'failed';
+          }
+        }
       }
 
       // Phase 8-L: Write edit status

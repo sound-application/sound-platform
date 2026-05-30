@@ -622,3 +622,117 @@ export async function applyTrimCut(
     return { editApplied: false, error: msg };
   }
 }
+
+// ── Phase 8-L.1: Multi-Track Mixing ──────────────────────────────────────────
+
+export interface MultiTrackLayer {
+  localPath: string;
+  type: 'musicBed' | 'sfx';
+  volumeDb: number;
+  startMs: number;
+  label?: string;
+}
+
+export interface MultiTrackMixResult {
+  mixApplied: boolean;
+  layersMixed: number;
+  layersFailed: string[];
+  error?: string;
+}
+
+/**
+ * Mixes additional audio layers (music bed, SFX) onto the voice master.
+ * Uses FFmpeg amix to layer inputs, adelay for placement, volume for levels.
+ * On failure: returns error, input file untouched (original tmpMaster preserved).
+ */
+export async function mixMultiTrack(
+  voiceMasterPath: string,
+  layers: MultiTrackLayer[],
+): Promise<MultiTrackMixResult> {
+  if (layers.length === 0) {
+    return { mixApplied: false, layersMixed: 0, layersFailed: [] };
+  }
+
+  const enabledLayers = layers.filter(l => fs.existsSync(l.localPath));
+  if (enabledLayers.length === 0) {
+    return { mixApplied: false, layersMixed: 0, layersFailed: layers.map(l => l.label || l.type) };
+  }
+
+  // Build FFmpeg command for multi-input mixing
+  const outputPath = voiceMasterPath.replace(/\.m4a$/, '_multitrack.m4a');
+  const totalInputs = 1 + enabledLayers.length; // [0] = voice, [1..n] = layers
+
+  try {
+    const args: string[] = [];
+    // Input 0: voice master
+    args.push('-i', voiceMasterPath);
+    // Inputs 1..n: layers
+    for (const layer of enabledLayers) {
+      args.push('-i', layer.localPath);
+    }
+
+    // Build filter_complex
+    const filterParts: string[] = [];
+    const mixInputLabels: string[] = ['[0:a]'];
+
+    for (let i = 0; i < enabledLayers.length; i++) {
+      const layer = enabledLayers[i]!;
+      const inputIdx = i + 1;
+      const label = `[layer${i}]`;
+
+      // Volume adjustment + delay
+      const volumeFilter = layer.volumeDb !== 0
+        ? `volume=${Math.pow(10, layer.volumeDb / 20).toFixed(4)}`
+        : null;
+      const delayFilter = layer.startMs > 0
+        ? `adelay=${Math.round(layer.startMs)}|${Math.round(layer.startMs)}`
+        : null;
+
+      const filters = [volumeFilter, delayFilter].filter(Boolean).join(',');
+      if (filters) {
+        filterParts.push(`[${inputIdx}:a]${filters}${label}`);
+      } else {
+        filterParts.push(`[${inputIdx}:a]acopy${label}`);
+      }
+      mixInputLabels.push(label);
+    }
+
+    // Combine all with amix
+    const mixFilter = `${mixInputLabels.join('')}amix=inputs=${totalInputs}:duration=first:dropout_transition=2[out]`;
+    filterParts.push(mixFilter);
+
+    args.push('-filter_complex', filterParts.join(';'));
+    args.push('-map', '[out]');
+    args.push('-c:a', 'aac', '-b:a', '128k', '-y', outputPath);
+
+    logger.info('[audioProcessor] Multi-track mix command:', { totalInputs, filterParts });
+
+    await new Promise<void>((resolve, reject) => {
+      const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
+      let stderr = '';
+      proc.stderr?.on('data', (d) => { stderr += d.toString(); });
+      proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`FFmpeg multi-track mix exited ${code}: ${stderr.slice(-500)}`)));
+      proc.on('error', reject);
+    });
+
+    // Verify output
+    const stat = fs.statSync(outputPath);
+    if (stat.size === 0) throw new Error('Multi-track mix output is empty');
+
+    // Replace voice master with mixed output
+    fs.copyFileSync(outputPath, voiceMasterPath);
+    try { fs.unlinkSync(outputPath); } catch { /* ignore */ }
+
+    logger.info('[audioProcessor] Multi-track mix applied.', {
+      layersMixed: enabledLayers.length,
+      outputSize: stat.size,
+    });
+
+    return { mixApplied: true, layersMixed: enabledLayers.length, layersFailed: [] };
+  } catch (err: unknown) {
+    const msg = err instanceof Error ? err.message : String(err);
+    logger.warn('[audioProcessor] Multi-track mix failed, voice master preserved.', { error: msg });
+    try { if (fs.existsSync(outputPath)) fs.unlinkSync(outputPath); } catch { /* ignore */ }
+    return { mixApplied: false, layersMixed: 0, layersFailed: enabledLayers.map(l => l.label || l.type), error: msg };
+  }
+}

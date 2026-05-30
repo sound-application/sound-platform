@@ -476,6 +476,29 @@ export interface AudioMixTrack {
   fadeOutMs: number;
   loop: boolean;
   duckUnderVoice: boolean;
+  // Phase 8-L.1: File metadata for uploaded tracks
+  fileName?: string;
+  mimeType?: string;
+  sizeBytes?: number;
+  durationMs?: number;
+  /** Placement on timeline in ms (mainly for SFX) */
+  startMs?: number;
+}
+
+/** Individual SFX item placed on the timeline (Phase 8-L.1) */
+export interface AudioSfxItem {
+  id: string;
+  fileName: string;
+  storagePath: string;
+  mimeType: string;
+  sizeBytes: number;
+  durationMs?: number;
+  /** Exact placement on timeline in ms */
+  startMs: number;
+  /** Volume in dB (-40 to +12) */
+  volumeDb: number;
+  enabled: boolean;
+  label?: string;
 }
 
 /** Full mixing configuration — stored on draft and published content */
@@ -492,6 +515,8 @@ export interface AudioMixingConfig {
   fadeOutMs: number;
   /** Master gain in dB (-20 to +6) */
   masterGainDb: number;
+  /** Phase 8-L.1: SFX items placed on the timeline */
+  sfxItems?: AudioSfxItem[];
   // Server-managed fields (not client-writable):
   renderStatus?: AudioMixRenderStatus;
   renderedAt?: string;

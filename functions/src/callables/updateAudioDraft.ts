@@ -40,6 +40,7 @@ import type {
   AudioMixingConfig,
   AudioMixTrack,
   AudioEditConfig,
+  AudioSfxItem,
 } from '@sound/shared';
 import {
   validateAudioWorldKind, VALID_FILTER_IDS, VALID_PRESET_IDS,
@@ -251,7 +252,41 @@ export const updateAudioDraft = functions
                 fadeOutMs: Math.round(Math.min(10000, Math.max(0, Number(t.fadeOutMs) || 0))),
                 loop: Boolean(t.loop),
                 duckUnderVoice: Boolean(t.duckUnderVoice),
-                // storagePath intentionally omitted — server resolves
+                // Phase 8-L.1: Preserve file metadata for uploaded tracks
+                ...(t.storagePath && typeof t.storagePath === 'string' && t.storagePath.startsWith(`audioMixAssets/${uid}/`)
+                  ? {
+                      storagePath: t.storagePath,
+                      fileName: t.fileName ? String(t.fileName).slice(0, 200) : undefined,
+                      mimeType: t.mimeType ? String(t.mimeType).slice(0, 100) : undefined,
+                      sizeBytes: t.sizeBytes ? Math.max(0, Number(t.sizeBytes)) : undefined,
+                      durationMs: t.durationMs ? Math.max(0, Number(t.durationMs)) : undefined,
+                      startMs: t.startMs != null ? Math.max(0, Math.min(3600000, Number(t.startMs))) : undefined,
+                    }
+                  : {}),
+              });
+            }
+          }
+          // Phase 8-L.1: Validate sfxItems
+          const sfxItems: AudioSfxItem[] = [];
+          if (mc.sfxItems && Array.isArray(mc.sfxItems)) {
+            if (mc.sfxItems.length > 10) {
+              throw new functions.https.HttpsError('invalid-argument', 'Max 10 SFX items.');
+            }
+            for (const s of mc.sfxItems) {
+              if (!s.storagePath || typeof s.storagePath !== 'string' || !s.storagePath.startsWith(`audioMixAssets/${uid}/`)) {
+                throw new functions.https.HttpsError('invalid-argument', 'Invalid SFX storagePath.');
+              }
+              sfxItems.push({
+                id: String(s.id),
+                fileName: String(s.fileName ?? '').slice(0, 200),
+                storagePath: s.storagePath,
+                mimeType: String(s.mimeType ?? 'audio/mpeg').slice(0, 100),
+                sizeBytes: Math.max(0, Number(s.sizeBytes) || 0),
+                durationMs: s.durationMs ? Math.max(0, Number(s.durationMs)) : undefined,
+                startMs: Math.max(0, Math.min(3600000, Number(s.startMs) || 0)),
+                volumeDb: Math.round(Math.min(12, Math.max(-40, Number(s.volumeDb) || 0))),
+                enabled: Boolean(s.enabled),
+                label: s.label ? String(s.label).slice(0, 50) : undefined,
               });
             }
           }
@@ -266,6 +301,7 @@ export const updateAudioDraft = functions
             fadeInMs: Math.round(Math.min(10000, Math.max(0, Number(mc.fadeInMs) || 0))),
             fadeOutMs: Math.round(Math.min(10000, Math.max(0, Number(mc.fadeOutMs) || 0))),
             masterGainDb: Math.round(Math.min(6, Math.max(-20, Number(mc.masterGainDb) || 0))),
+            sfxItems: sfxItems.length > 0 ? sfxItems : undefined,
             // Server-only fields intentionally omitted:
             // renderStatus, renderedAt, appliedOperations, processingError
           };
