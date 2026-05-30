@@ -108,5 +108,11 @@
   "notFound": {
     "title": "Page not found",
     "backHome": "Back to Home"
+  },
+  "filters": {
+    "selected": "{{count}} selected",
+    "clearAllCount": "Clear All ({{count}})",
+    "remove": "Remove {{label}}",
+    "selectedFilters": "Selected Filters"
   }
 }

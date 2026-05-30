@@ -108,5 +108,11 @@
   "notFound": {
     "title": "الصفحة غير موجودة",
     "backHome": "العودة للرئيسية"
+  },
+  "filters": {
+    "selected": "{{count}} محدد",
+    "clearAllCount": "مسح الكل ({{count}})",
+    "remove": "إزالة {{label}}",
+    "selectedFilters": "الفلاتر المحددة"
   }
 }

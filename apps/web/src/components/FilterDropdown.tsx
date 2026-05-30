@@ -29,6 +29,7 @@ import React, {
   useMemo,
 } from 'react';
 import { createPortal } from 'react-dom';
+import { useTranslation } from 'react-i18next';
 import './FilterDropdown.css';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -86,9 +87,12 @@ export function FilterDropdown({
   values,
   onToggle,
   onClear,
-  defaultLabel = 'الكل',
+  defaultLabel,
   ariaLabel,
 }: FilterDropdownProps) {
+  const { t, i18n } = useTranslation('common');
+  const actualDefaultLabel = defaultLabel ?? t('filters.all', 'الكل'); // fallback if not provided
+
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState('');
   const [rect,  setRect]  = useState<PanelRect | null>(null);
@@ -184,9 +188,9 @@ export function FilterDropdown({
   // Trigger summary
   const count = values.length;
   const displayValue =
-    count === 0  ? defaultLabel
-    : count === 1 ? (options.find((o) => o.value === values[0])?.label ?? defaultLabel)
-    : `${count} محدد`;
+    count === 0  ? actualDefaultLabel
+    : count === 1 ? (options.find((o) => o.value === values[0])?.label ?? actualDefaultLabel)
+    : t('filters.selected', { count });
 
   // Portal panel — search + options only
   const panel = open && rect ? createPortal(
@@ -211,12 +215,12 @@ export function FilterDropdown({
           ref={searchRef}
           type="search"
           className="fd-panel__search"
-          placeholder="بحث..."
+          placeholder={t('actions.search') + '...'}
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label={`بحث في ${label}`}
+          aria-label={`${t('actions.search')} ${label}`}
           autoComplete="off"
-          dir="rtl"
+          dir={i18n.dir()}
         />
       </div>
 
@@ -229,14 +233,14 @@ export function FilterDropdown({
           onClick={() => { onClear(); setQuery(''); }}
           type="button"
         >
-          مسح الكل ({count})
+          {t('filters.clearAllCount', { count })}
         </button>
       )}
 
-      {/* Options — RTL: label on right, checkbox on left */}
+      {/* Options — logical direction: label on correct side, checkbox on other */}
       <div className="fd-panel__options">
         {filtered.length === 0
-          ? <p className="fd-panel__empty">لا توجد نتائج</p>
+          ? <p className="fd-panel__empty">{t('empty.noResults')}</p>
           : filtered.map((opt) => {
               const sel = values.includes(opt.value);
               return (
@@ -301,6 +305,8 @@ export interface SelectedChipsProps {
 }
 
 export function SelectedChips({ groups }: SelectedChipsProps) {
+  const { t, i18n } = useTranslation('common');
+
   const chips = groups.flatMap((g) =>
     g.values
       .map((v) => {
@@ -318,7 +324,7 @@ export function SelectedChips({ groups }: SelectedChipsProps) {
   if (chips.length === 0) return null;
 
   return (
-    <div className="fd-chips" role="group" aria-label="الفلاتر المحددة" dir="rtl">
+    <div className="fd-chips" role="group" aria-label={t('filters.selectedFilters')} dir={i18n.dir()}>
       {chips.map((c) => (
         <span key={c.key} className="fd-chip">
           <span className="fd-chip__label">{c.label}</span>
@@ -326,7 +332,7 @@ export function SelectedChips({ groups }: SelectedChipsProps) {
             className="fd-chip__x"
             onClick={c.remove}
             type="button"
-            aria-label={`إزالة ${c.label}`}
+            aria-label={t('filters.remove', { label: c.label })}
           >×</button>
         </span>
       ))}
