@@ -30,9 +30,11 @@
  *   Latency: ~5–10 seconds (Gen1 Firestore trigger, europe-west1).
  */
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { doc, updateDoc } from 'firebase/firestore';
+import { useTranslation, Trans } from 'react-i18next';
+import { TFunction } from 'i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { usePrivateProfile } from '../hooks/usePrivateProfile';
 import { db } from '../lib/firebase';
@@ -91,13 +93,13 @@ interface AudienceDef {
   colorClass: string;
 }
 
-const AUDIENCES: AudienceDef[] = [
-  { value: 'public',    label: 'عام',           icon: '🌐', exclusive: true,  colorClass: 'aud--public'    },
-  { value: 'friends',   label: 'الأصدقاء',      icon: '🤝', exclusive: false, colorClass: 'aud--friends'   },
-  { value: 'followers', label: 'المتابعون',      icon: '👥', exclusive: false, colorClass: 'aud--followers' },
-  { value: 'following', label: 'المتابَعون',     icon: '🔔', exclusive: false, colorClass: 'aud--following' },
-  { value: 'custom',    label: 'قائمة مخصصة',   icon: '📋', exclusive: false, colorClass: 'aud--custom'    },
-  { value: 'onlyMe',    label: 'أنا فقط',       icon: '🔒', exclusive: true,  colorClass: 'aud--onlyme'    },
+const getAudiences = (t: TFunction): AudienceDef[] => [
+  { value: 'public',    label: t('audiences.public'),    icon: '🌐', exclusive: true,  colorClass: 'aud--public'    },
+  { value: 'friends',   label: t('audiences.friends'),   icon: '🤝', exclusive: false, colorClass: 'aud--friends'   },
+  { value: 'followers', label: t('audiences.followers'), icon: '👥', exclusive: false, colorClass: 'aud--followers' },
+  { value: 'following', label: t('audiences.following'), icon: '🔔', exclusive: false, colorClass: 'aud--following' },
+  { value: 'custom',    label: t('audiences.custom'),    icon: '📋', exclusive: false, colorClass: 'aud--custom'    },
+  { value: 'onlyMe',    label: t('audiences.onlyMe'),    icon: '🔒', exclusive: true,  colorClass: 'aud--onlyme'    },
 ];
 
 // ─── Section Definitions ──────────────────────────────────────────────────────
@@ -105,39 +107,39 @@ const AUDIENCES: AudienceDef[] = [
 interface SectionDef {
   key: LocalPrivacyKey;
   icon: string;
-  label: string;
-  desc: string;
+  labelKey: string;
+  descKey: string;
   group: 'identity' | 'activity' | 'creator';
   alwaysPublic?: boolean;
 }
 
 const PRIVACY_SECTIONS: SectionDef[] = [
   // ── Identity ──────────────────────────────────────────────────────────
-  { key: 'generalProfile',           icon: '👤', label: 'الملف العام',                desc: 'الاسم، النبذة، الصورة، الإحصائيات',     group: 'identity', alwaysPublic: true },
-  { key: 'mood',                     icon: '🎭', label: 'الحالة المزاجية',           desc: 'وصف حالتك الحالية',                      group: 'identity' },
-  { key: 'activityStatus',           icon: '📍', label: 'حالة النشاط',               desc: 'متصل / غير متصل',                        group: 'identity' },
-  { key: 'pinnedContent',            icon: '📌', label: 'المحتوى المثبَّت',           desc: 'العنصر الذي ثبَّته في ملفك',            group: 'identity' },
-  { key: 'achievements',             icon: '🏆', label: 'الإنجازات والشارات',         desc: 'شاراتك ونقاط الإنجاز',                  group: 'identity' },
+  { key: 'generalProfile',           icon: '👤', labelKey: 'sections.identity.generalProfile.title',        descKey: 'sections.identity.generalProfile.desc',        group: 'identity', alwaysPublic: true },
+  { key: 'mood',                     icon: '🎭', labelKey: 'sections.identity.mood.title',                  descKey: 'sections.identity.mood.desc',                  group: 'identity' },
+  { key: 'activityStatus',           icon: '📍', labelKey: 'sections.identity.activityStatus.title',        descKey: 'sections.identity.activityStatus.desc',        group: 'identity' },
+  { key: 'pinnedContent',            icon: '📌', labelKey: 'sections.identity.pinnedContent.title',         descKey: 'sections.identity.pinnedContent.desc',         group: 'identity' },
+  { key: 'achievements',             icon: '🏆', labelKey: 'sections.identity.achievements.title',          descKey: 'sections.identity.achievements.desc',          group: 'identity' },
   // ── Activity ──────────────────────────────────────────────────────────
-  { key: 'listeningActivity',        icon: '🎧', label: 'نشاط الاستماع',             desc: 'آخر ما استمعت إليه، إجمالي الوقت',      group: 'activity' },
-  { key: 'followedRadioStations',    icon: '📻', label: 'محطات الراديو المتابَعة',   desc: 'قائمة المحطات التي تتابعها',            group: 'activity' },
-  { key: 'followedRadioStationLists',icon: '📋', label: 'قوائم الراديو المتابَعة',   desc: 'قوائم المحطات التي تتابعها',            group: 'activity' },
-  { key: 'musicPlaylists',           icon: '🎵', label: 'قوائم التشغيل',             desc: 'القوائم الموسيقية العامة',               group: 'activity' },
+  { key: 'listeningActivity',        icon: '🎧', labelKey: 'sections.activity.listeningActivity.title',     descKey: 'sections.activity.listeningActivity.desc',     group: 'activity' },
+  { key: 'followedRadioStations',    icon: '📻', labelKey: 'sections.activity.followedRadioStations.title', descKey: 'sections.activity.followedRadioStations.desc', group: 'activity' },
+  { key: 'followedRadioStationLists',icon: '📋', labelKey: 'sections.activity.followedRadioStationLists.title', descKey: 'sections.activity.followedRadioStationLists.desc', group: 'activity' },
+  { key: 'musicPlaylists',           icon: '🎵', labelKey: 'sections.activity.musicPlaylists.title',        descKey: 'sections.activity.musicPlaylists.desc',        group: 'activity' },
   // ── Creator ───────────────────────────────────────────────────────────
-  { key: 'plusCreatorContent',       icon: '⭐', label: 'محتوى Plus',               desc: 'المحتوى الحصري الذي تنشره',              group: 'creator' },
-  { key: 'musicCreatorContent',      icon: '🎼', label: 'محتوى الموسيقى',           desc: 'الأغاني والألبومات التي تنشرها',         group: 'creator' },
-  { key: 'radioCreatorContent',      icon: '🎙️', label: 'محتوى الراديو',            desc: 'محطاتك، برامجك، وحلقاتك',              group: 'creator' },
+  { key: 'plusCreatorContent',       icon: '⭐', labelKey: 'sections.creator.plusCreatorContent.title',     descKey: 'sections.creator.plusCreatorContent.desc',     group: 'creator' },
+  { key: 'musicCreatorContent',      icon: '🎼', labelKey: 'sections.creator.musicCreatorContent.title',    descKey: 'sections.creator.musicCreatorContent.desc',    group: 'creator' },
+  { key: 'radioCreatorContent',      icon: '🎙️', labelKey: 'sections.creator.radioCreatorContent.title',    descKey: 'sections.creator.radioCreatorContent.desc',    group: 'creator' },
 ];
 
-const GROUP_LABELS: Record<SectionDef['group'], string> = {
-  identity: '👤 الهوية والحضور',
-  activity: '🎧 النشاط والتفاعل',
-  creator:  '🎙️ محتوى المنشئ',
-};
+const getGroupLabels = (t: TFunction): Record<SectionDef['group'], string> => ({
+  identity: `👤 ${t('groups.identity')}`,
+  activity: `🎧 ${t('groups.activity')}`,
+  creator:  `🎙️ ${t('groups.creator')}`,
+});
 
 // ─── Audience toggle logic ────────────────────────────────────────────────────
 
-function toggleAudience(current: SectionPrivacy, toggled: PrivacyAudience): SectionPrivacy {
+function toggleAudience(current: SectionPrivacy, toggled: PrivacyAudience, AUDIENCES: AudienceDef[]): SectionPrivacy {
   const def = AUDIENCES.find(a => a.value === toggled)!;
 
   // If already selected: deselect (but keep at least one audience)
@@ -164,8 +166,8 @@ function toggleAudience(current: SectionPrivacy, toggled: PrivacyAudience): Sect
 }
 
 /** Returns a human-readable summary of the current SectionPrivacy. */
-function summarizeAudiences(sp: SectionPrivacy): string {
-  if (sp.audiences.length === 0) return 'أنا فقط';
+function summarizeAudiences(sp: SectionPrivacy, t: TFunction, AUDIENCES: AudienceDef[]): string {
+  if (sp.audiences.length === 0) return t('audiences.onlyMe');
   const labels = sp.audiences.map(a => AUDIENCES.find(d => d.value === a)?.label ?? a);
   return labels.join(' + ');
 }
@@ -178,6 +180,7 @@ function isPublicProjected(sp: SectionPrivacy): boolean {
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function PrivacySettingsPage() {
+  const { t } = useTranslation('privacySettings');
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const uid = currentUser?.uid ?? null;
@@ -187,6 +190,9 @@ export function PrivacySettingsPage() {
   const [initialized, setInitialized] = useState(false);
   const [saveState, setSaveState] = useState<SaveState>('idle');
   const [errorMessage, setErrorMessage] = useState('');
+
+  const AUDIENCES = useMemo(() => getAudiences(t), [t]);
+  const GROUP_LABELS = useMemo(() => getGroupLabels(t), [t]);
 
   // ── Populate from private doc when loaded ────────────────────────────────
   useEffect(() => {
@@ -214,7 +220,7 @@ export function PrivacySettingsPage() {
   function handleToggle(key: LocalPrivacyKey, audience: PrivacyAudience) {
     setPrivacy(prev => ({
       ...prev,
-      [key]: toggleAudience(prev[key], audience),
+      [key]: toggleAudience(prev[key], audience, AUDIENCES),
     }));
     if (saveState === 'saved' || saveState === 'error') setSaveState('idle');
   }
@@ -246,7 +252,7 @@ export function PrivacySettingsPage() {
       setSaveState('saved');
     } catch (err: unknown) {
       console.error('[PrivacySettingsPage] Failed to update privacy settings:', err);
-      const msg = err instanceof Error ? err.message : 'حدث خطأ غير متوقع';
+      const msg = err instanceof Error ? err.message : t('feedback.unexpectedError');
       setErrorMessage(msg);
       setSaveState('error');
     }
@@ -254,14 +260,14 @@ export function PrivacySettingsPage() {
 
   // ─── Loading / error states ───────────────────────────────────────────────
 
-  if (!uid) return <LoadingScreen message="جاري التحقق من الجلسة..." />;
-  if (profileState.status === 'loading') return <LoadingScreen message="جاري تحميل إعدادات الخصوصية..." />;
+  if (!uid) return <LoadingScreen message={t('feedback.checkingSession')} />;
+  if (profileState.status === 'loading') return <LoadingScreen message={t('feedback.loading')} />;
 
   if (profileState.status === 'error') {
     return (
       <div className="page privacy-settings-page">
         <div className="privacy-settings__error-banner" role="alert">
-          ⚠️ فشل تحميل البيانات: {profileState.message}
+          ⚠️ {t('feedback.loadError', { message: profileState.message })}
         </div>
       </div>
     );
@@ -271,7 +277,7 @@ export function PrivacySettingsPage() {
     return (
       <div className="page privacy-settings-page">
         <div className="privacy-settings__error-banner" role="alert">
-          ⚠️ لم يتم العثور على ملفك الشخصي — يرجى المحاولة لاحقاً
+          ⚠️ {t('feedback.notFound')}
         </div>
       </div>
     );
@@ -296,15 +302,15 @@ export function PrivacySettingsPage() {
         <button
           className="privacy-settings__back-btn"
           onClick={() => navigate(-1)}
-          aria-label="العودة"
+          aria-label={t('actions.back')}
           id="privacy-settings-back-btn"
         >
           ←
         </button>
         <div className="privacy-settings__header-text">
-          <h1 className="privacy-settings__title">إعدادات الخصوصية</h1>
+          <h1 className="privacy-settings__title">{t('title')}</h1>
           <p className="privacy-settings__subtitle">
-            اختَر الجمهور الذي يرى كل قسم من ملفك — يمكن دمج أكثر من خيار
+            {t('subtitle')}
           </p>
         </div>
       </div>
@@ -313,9 +319,9 @@ export function PrivacySettingsPage() {
       <div className="privacy-settings__sync-notice" role="note">
         <span className="privacy-settings__sync-icon">⏱</span>
         <span>
-          بعد الحفظ، تُطبَّق التغييرات على ملفك العام خلال{' '}
-          <strong>5–10 ثوان</strong> عبر نظام المزامنة.
-          فقط <strong>«عام»</strong> يُظهر القسم في ملفك المرئي للجميع.
+          <Trans i18nKey="syncNotice" ns="privacySettings">
+            After saving, changes apply to your public profile within <strong>5–10 seconds</strong> via the sync system. Only <strong>"Public"</strong> makes the section visible to everyone on your profile.
+          </Trans>
         </span>
       </div>
 
@@ -326,7 +332,7 @@ export function PrivacySettingsPage() {
             <span className="privacy-settings__legend-icon">{a.icon}</span>
             <span className="privacy-settings__legend-label">{a.label}</span>
             {a.exclusive && (
-              <span className="privacy-settings__legend-badge">حصري</span>
+              <span className="privacy-settings__legend-badge">{t('badges.exclusive')}</span>
             )}
           </div>
         ))}
@@ -352,19 +358,19 @@ export function PrivacySettingsPage() {
                     </span>
                     <div className="privacy-settings__section-text">
                       <div className="privacy-settings__section-name-row">
-                        <span className="privacy-settings__section-name">{sec.label}</span>
+                        <span className="privacy-settings__section-name">{t(sec.labelKey)}</span>
                         {sec.alwaysPublic ? (
-                          <span className="privacy-settings__always-public-badge">دائماً عام</span>
+                          <span className="privacy-settings__always-public-badge">{t('badges.alwaysPublic')}</span>
                         ) : (
                           <span className={`privacy-settings__projection-dot ${isPublic ? 'dot--public' : 'dot--hidden'}`}
-                            title={isPublic ? 'مرئي في ملفك العام' : 'مخفي من ملفك العام'}
+                            title={isPublic ? t('tooltips.visible') : t('tooltips.hidden')}
                           />
                         )}
                       </div>
-                      <span className="privacy-settings__section-desc">{sec.desc}</span>
+                      <span className="privacy-settings__section-desc">{t(sec.descKey)}</span>
                       {!sec.alwaysPublic && (
                         <span className="privacy-settings__section-summary">
-                          {summarizeAudiences(sp)}
+                          {summarizeAudiences(sp, t, AUDIENCES)}
                         </span>
                       )}
                     </div>
@@ -375,6 +381,8 @@ export function PrivacySettingsPage() {
                     <AudienceChips
                       id={`privacy-${sec.key}`}
                       value={sp}
+                      AUDIENCES={AUDIENCES}
+                      t={t}
                       onToggle={(aud) => handleToggle(sec.key, aud)}
                     />
                   )}
@@ -395,7 +403,7 @@ export function PrivacySettingsPage() {
 
       {saveState === 'saved' && (
         <div className="privacy-settings__banner privacy-settings__banner--success" role="status">
-          ✅ تم حفظ إعدادات الخصوصية — سيتم تحديث ملفك العام خلال 5–10 ثوان
+          ✅ {t('feedback.saveSuccess')}
         </div>
       )}
 
@@ -407,7 +415,7 @@ export function PrivacySettingsPage() {
           onClick={() => navigate('/me')}
           id="privacy-settings-view-public-btn"
         >
-          👁 عرض الملف العام
+          👁 {t('actions.viewPublic')}
         </button>
         <button
           type="button"
@@ -417,9 +425,9 @@ export function PrivacySettingsPage() {
           id="privacy-settings-save-btn"
         >
           {saveState === 'saving' ? (
-            <><span className="privacy-settings__spinner" aria-hidden="true" /> جاري الحفظ...</>
+            <><span className="privacy-settings__spinner" aria-hidden="true" /> {t('actions.saving')}</>
           ) : (
-            'حفظ التغييرات'
+            t('actions.saveChanges')
           )}
         </button>
       </div>
@@ -435,10 +443,14 @@ export function PrivacySettingsPage() {
 function AudienceChips({
   id,
   value,
+  AUDIENCES,
+  t,
   onToggle,
 }: {
   id: string;
   value: SectionPrivacy;
+  AUDIENCES: AudienceDef[];
+  t: TFunction;
   onToggle: (aud: PrivacyAudience) => void;
 }) {
   return (
@@ -453,7 +465,7 @@ function AudienceChips({
             className={`audience-chip ${def.colorClass}${active ? ' audience-chip--active' : ''}${def.exclusive ? ' audience-chip--exclusive' : ''}`}
             onClick={() => onToggle(def.value)}
             aria-pressed={active}
-            title={def.exclusive ? `${def.label} (حصري — يلغي باقي الخيارات)` : def.label}
+            title={def.exclusive ? t('tooltips.exclusiveTooltip', { label: def.label }) : def.label}
           >
             <span className="audience-chip__icon">{def.icon}</span>
             <span className="audience-chip__label">{def.label}</span>

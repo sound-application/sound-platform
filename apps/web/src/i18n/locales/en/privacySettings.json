@@ -1,0 +1,97 @@
+{
+  "title": "Privacy Settings",
+  "subtitle": "Choose the audience that sees each section of your profile — you can combine more than one option",
+  "syncNotice": "After saving, changes apply to your public profile within <strong>5–10 seconds</strong> via the sync system. Only <strong>\"Public\"</strong> makes the section visible to everyone on your profile.",
+  "audiences": {
+    "public": "Public",
+    "friends": "Friends",
+    "followers": "Followers",
+    "following": "Following",
+    "custom": "Custom List",
+    "onlyMe": "Only Me"
+  },
+  "sections": {
+    "identity": {
+      "generalProfile": {
+        "title": "Public Profile",
+        "desc": "Name, bio, photo, stats"
+      },
+      "mood": {
+        "title": "Mood",
+        "desc": "Describe your current state"
+      },
+      "activityStatus": {
+        "title": "Activity Status",
+        "desc": "Online / Offline"
+      },
+      "pinnedContent": {
+        "title": "Pinned Content",
+        "desc": "The item you pinned to your profile"
+      },
+      "achievements": {
+        "title": "Achievements & Badges",
+        "desc": "Your badges and achievement points"
+      }
+    },
+    "activity": {
+      "listeningActivity": {
+        "title": "Listening Activity",
+        "desc": "What you recently listened to, total time"
+      },
+      "followedRadioStations": {
+        "title": "Followed Radio Stations",
+        "desc": "List of stations you follow"
+      },
+      "followedRadioStationLists": {
+        "title": "Followed Radio Station Lists",
+        "desc": "Lists of stations you follow"
+      },
+      "musicPlaylists": {
+        "title": "Playlists",
+        "desc": "Public music playlists"
+      }
+    },
+    "creator": {
+      "plusCreatorContent": {
+        "title": "Plus Content",
+        "desc": "Exclusive content you publish"
+      },
+      "musicCreatorContent": {
+        "title": "Music Content",
+        "desc": "Songs and albums you publish"
+      },
+      "radioCreatorContent": {
+        "title": "Radio Content",
+        "desc": "Your stations, shows, and episodes"
+      }
+    }
+  },
+  "groups": {
+    "identity": "Identity & Presence",
+    "activity": "Activity & Interaction",
+    "creator": "Creator Content"
+  },
+  "badges": {
+    "exclusive": "Exclusive",
+    "alwaysPublic": "Always public"
+  },
+  "tooltips": {
+    "visible": "Visible on your public profile",
+    "hidden": "Hidden from your public profile",
+    "exclusiveTooltip": "{{label}} (Exclusive — clears other options)"
+  },
+  "feedback": {
+    "checkingSession": "Checking session...",
+    "loading": "Loading privacy settings...",
+    "loadError": "Failed to load data: {{message}}",
+    "notFound": "Profile not found — please try again later",
+    "unexpectedError": "An unexpected error occurred",
+    "saveSuccess": "Privacy settings saved — your public profile will update in 5-10 seconds"
+  },
+  "actions": {
+    "back": "Back",
+    "viewPublic": "View Public Profile",
+    "saving": "Saving...",
+    "saveChanges": "Save Changes"
+  }
+}

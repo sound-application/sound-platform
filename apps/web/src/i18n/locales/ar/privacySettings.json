@@ -1,0 +1,97 @@
+{
+  "title": "إعدادات الخصوصية",
+  "subtitle": "اختَر الجمهور الذي يرى كل قسم من ملفك — يمكن دمج أكثر من خيار",
+  "syncNotice": "بعد الحفظ، تُطبَّق التغييرات على ملفك العام خلال <strong>5–10 ثوان</strong> عبر نظام المزامنة. فقط <strong>«عام»</strong> يُظهر القسم في ملفك المرئي للجميع.",
+  "audiences": {
+    "public": "عام",
+    "friends": "الأصدقاء",
+    "followers": "المتابعون",
+    "following": "المتابَعون",
+    "custom": "قائمة مخصصة",
+    "onlyMe": "أنا فقط"
+  },
+  "sections": {
+    "identity": {
+      "generalProfile": {
+        "title": "الملف العام",
+        "desc": "الاسم، النبذة، الصورة، الإحصائيات"
+      },
+      "mood": {
+        "title": "الحالة المزاجية",
+        "desc": "وصف حالتك الحالية"
+      },
+      "activityStatus": {
+        "title": "حالة النشاط",
+        "desc": "متصل / غير متصل"
+      },
+      "pinnedContent": {
+        "title": "المحتوى المثبَّت",
+        "desc": "العنصر الذي ثبَّته في ملفك"
+      },
+      "achievements": {
+        "title": "الإنجازات والشارات",
+        "desc": "شاراتك ونقاط الإنجاز"
+      }
+    },
+    "activity": {
+      "listeningActivity": {
+        "title": "نشاط الاستماع",
+        "desc": "آخر ما استمعت إليه، إجمالي الوقت"
+      },
+      "followedRadioStations": {
+        "title": "محطات الراديو المتابَعة",
+        "desc": "قائمة المحطات التي تتابعها"
+      },
+      "followedRadioStationLists": {
+        "title": "قوائم الراديو المتابَعة",
+        "desc": "قوائم المحطات التي تتابعها"
+      },
+      "musicPlaylists": {
+        "title": "قوائم التشغيل",
+        "desc": "القوائم الموسيقية العامة"
+      }
+    },
+    "creator": {
+      "plusCreatorContent": {
+        "title": "محتوى Plus",
+        "desc": "المحتوى الحصري الذي تنشره"
+      },
+      "musicCreatorContent": {
+        "title": "محتوى الموسيقى",
+        "desc": "الأغاني والألبومات التي تنشرها"
+      },
+      "radioCreatorContent": {
+        "title": "محتوى الراديو",
+        "desc": "محطاتك، برامجك، وحلقاتك"
+      }
+    }
+  },
+  "groups": {
+    "identity": "الهوية والحضور",
+    "activity": "النشاط والتفاعل",
+    "creator": "محتوى المنشئ"
+  },
+  "badges": {
+    "exclusive": "حصري",
+    "alwaysPublic": "دائماً عام"
+  },
+  "tooltips": {
+    "visible": "مرئي في ملفك العام",
+    "hidden": "مخفي من ملفك العام",
+    "exclusiveTooltip": "{{label}} (حصري — يلغي باقي الخيارات)"
+  },
+  "feedback": {
+    "checkingSession": "جاري التحقق من الجلسة...",
+    "loading": "جاري تحميل إعدادات الخصوصية...",
+    "loadError": "فشل تحميل البيانات: {{message}}",
+    "notFound": "لم يتم العثور على ملفك الشخصي — يرجى المحاولة لاحقاً",
+    "unexpectedError": "حدث خطأ غير متوقع",
+    "saveSuccess": "تم حفظ إعدادات الخصوصية — سيتم تحديث ملفك العام خلال 5–10 ثوان"
+  },
+  "actions": {
+    "back": "العودة",
+    "viewPublic": "عرض الملف العام",
+    "saving": "جاري الحفظ...",
+    "saveChanges": "حفظ التغييرات"
+  }
+}
