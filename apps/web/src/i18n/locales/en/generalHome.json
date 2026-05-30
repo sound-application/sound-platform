@@ -1,0 +1,58 @@
+{
+  "filters": {
+    "status": "Status",
+    "category": "Category",
+    "country": "Country",
+    "sort": "Sort",
+    "all": "All"
+  },
+  "statusOptions": {
+    "new": "New",
+    "trending": "Trending",
+    "featured": "Featured",
+    "saved": "Saved",
+    "unplayed": "Unplayed"
+  },
+  "categoryOptions": {
+    "story": "Stories",
+    "podcast": "Podcast",
+    "poetry": "Poetry",
+    "meditation": "Meditation",
+    "quran": "Quran",
+    "comedy": "Comedy",
+    "kids": "Kids"
+  },
+  "sortOptions": {
+    "latest": "Latest",
+    "popular": "Most Popular",
+    "shared": "Most Shared",
+    "saved": "Most Saved",
+    "rising": "Rising",
+    "following": "Following",
+    "suggested": "Suggested for you"
+  },
+  "sections": {
+    "quickStories": "Quick Stories",
+    "searchAndFilter": "Search and Filter",
+    "trendingNow": "Trending Now",
+    "topCreators": "Top Creators",
+    "plusSubscription": "Plus Subscription",
+    "recommended": "Recommended for You",
+    "playlists": "Playlists",
+    "risingCreators": "Rising Creators",
+    "followingCreators": "Creators You Follow"
+  },
+  "actions": {
+    "addStory": "Add Story",
+    "storyOf": "Story {{name}}",
+    "searchPlaceholder": "Search for audio, story, podcast...",
+    "browseCategories": "Browse Categories",
+    "seeAll": "See All",
+    "follow": "Follow",
+    "subscribeNow": "Subscribe Now"
+  },
+  "plusBanner": {
+    "eyebrow": "Plus",
+    "headline": "Enjoy an ad-free audio experience with Plus subscription"
+  }
+}

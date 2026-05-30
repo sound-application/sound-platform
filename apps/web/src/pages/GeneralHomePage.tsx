@@ -22,7 +22,9 @@
  * can replace the array without touching component structure.
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
+import { TFunction } from 'i18next';
 import './GeneralHomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../components/FilterDropdown';
 
@@ -117,26 +119,26 @@ const PLAYLISTS: PlaylistItem[] = [
 // ─── Filter Options — الحالة | التصنيف | البلد | الترتيب ─────────────────────
 // Axis order is locked by UX spec: do not reorder.
 
-const STATUS_OPTIONS: FilterOption[] = [
-  { value: 'new',        label: 'جديد'       },
-  { value: 'trending',   label: 'رائج'       },
-  { value: 'featured',   label: 'مميز'       },
-  { value: 'saved',      label: 'محفوظ'      },
-  { value: 'unplayed',   label: 'لم يُشغَّل' },
+const getStatusOptions = (t: TFunction): FilterOption[] => [
+  { value: 'new',        label: t('statusOptions.new') },
+  { value: 'trending',   label: t('statusOptions.trending') },
+  { value: 'featured',   label: t('statusOptions.featured') },
+  { value: 'saved',      label: t('statusOptions.saved') },
+  { value: 'unplayed',   label: t('statusOptions.unplayed') },
 ];
 
-const CATEGORY_OPTIONS: FilterOption[] = [
-  { value: 'story',      label: 'قصص'        },
-  { value: 'podcast',    label: 'بودكاست'    },
-  { value: 'poetry',     label: 'شعر'        },
-  { value: 'meditation', label: 'تأمل'       },
-  { value: 'quran',      label: 'تلاوة'      },
-  { value: 'comedy',     label: 'كوميديا'    },
-  { value: 'kids',       label: 'أطفال'      },
+const getCategoryOptions = (t: TFunction): FilterOption[] => [
+  { value: 'story',      label: t('categoryOptions.story') },
+  { value: 'podcast',    label: t('categoryOptions.podcast') },
+  { value: 'poetry',     label: t('categoryOptions.poetry') },
+  { value: 'meditation', label: t('categoryOptions.meditation') },
+  { value: 'quran',      label: t('categoryOptions.quran') },
+  { value: 'comedy',     label: t('categoryOptions.comedy') },
+  { value: 'kids',       label: t('categoryOptions.kids') },
 ];
 
-const COUNTRY_OPTIONS: FilterOption[] = [
-  { value: 'sa',   label: '🇸🇦 السعودية'     },
+const getCountryOptions = (t: TFunction): FilterOption[] => [
+  { value: 'sa',   label: '🇸🇦 السعودية'     }, // Keep as is or translate if needed. Assuming emojis and Arabic names.
   { value: 'ae',   label: '🇦🇪 الإمارات'     },
   { value: 'eg',   label: '🇪🇬 مصر'          },
   { value: 'kw',   label: '🇰🇼 الكويت'       },
@@ -145,14 +147,14 @@ const COUNTRY_OPTIONS: FilterOption[] = [
   { value: 'dz',   label: '🇩🇿 الجزائر'      },
 ];
 
-const SORT_OPTIONS: FilterOption[] = [
-  { value: 'latest',    label: 'الأحدث'            },
-  { value: 'popular',   label: 'الأكثر استماعاً'   },
-  { value: 'shared',    label: 'الأكثر مشاركة'    },
-  { value: 'saved',     label: 'الأكثر حفظاً'      },
-  { value: 'rising',    label: 'الأكثر صعوداً'    },
-  { value: 'following', label: 'من تتابعهم'        },
-  { value: 'suggested', label: 'المقترح لك'        },
+const getSortOptions = (t: TFunction): FilterOption[] => [
+  { value: 'latest',    label: t('sortOptions.latest') },
+  { value: 'popular',   label: t('sortOptions.popular') },
+  { value: 'shared',    label: t('sortOptions.shared') },
+  { value: 'saved',     label: t('sortOptions.saved') },
+  { value: 'rising',    label: t('sortOptions.rising') },
+  { value: 'following', label: t('sortOptions.following') },
+  { value: 'suggested', label: t('sortOptions.suggested') },
 ];
 
 // ─── Micro Icons ───────────────────────────────────────────────────────────────
@@ -207,6 +209,8 @@ function CoverFallback({ height = 120 }: { height?: number }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function GeneralHomePage() {
+  const { t } = useTranslation('generalHome');
+  
   // Filter state — each axis is independent multi-select
   const [statuses,    setStatuses]    = useState<string[]>([]);
   const [categories,  setCategories]  = useState<string[]>([]);
@@ -227,18 +231,23 @@ export function GeneralHomePage() {
   const hasFollowing  = FOLLOWING_CREATORS.length > 0;
   const hasPlaylists  = PLAYLISTS.length > 0;
 
+  const statusOptions = useMemo(() => getStatusOptions(t), [t]);
+  const categoryOptions = useMemo(() => getCategoryOptions(t), [t]);
+  const countryOptions = useMemo(() => getCountryOptions(t), [t]);
+  const sortOptions = useMemo(() => getSortOptions(t), [t]);
+
   return (
     <main className="ghp" aria-label="الرئيسية — عام">
 
       {/* ── Stories / Quick Circles ──────────────────────────────────────────── */}
       {hasStories && (
-        <section aria-label="القصص السريعة">
+        <section aria-label={t('sections.quickStories')}>
           <div className="ghp-story-row">
             {STORY_ITEMS.map((item) => (
               <button
                 key={item.uid}
                 className="ghp-story-item"
-                aria-label={item.isSelf ? 'إضافة قصة' : `قصة ${item.displayName}`}
+                aria-label={item.isSelf ? t('actions.addStory') : t('actions.storyOf', { name: item.displayName })}
               >
                 {item.isSelf ? (
                   <div className="ghp-story-ring ghp-story-ring--self">
@@ -263,7 +272,7 @@ export function GeneralHomePage() {
       )}
 
       {/* ── Search + Smart Filters (الحالة | التصنيف | البلد | الترتيب) ────── */}
-      <section aria-label="بحث وتصفية">
+      <section aria-label={t('sections.searchAndFilter')}>
 
         {/* Search bar */}
         <div className="ghp-search">
@@ -271,9 +280,9 @@ export function GeneralHomePage() {
             id="ghp-search-input"
             className="ghp-search__input"
             type="search"
-            placeholder="ابحث عن صوت، قصة، بودكاست..."
+            placeholder={t('actions.searchPlaceholder')}
             autoComplete="off"
-            dir="rtl"
+            dir="auto"
           />
           <span className="ghp-search__icon">
             <IconSearch />
@@ -283,50 +292,50 @@ export function GeneralHomePage() {
         {/* Four-axis filter dropdowns */}
         <div className="ghp-filters" style={{ marginTop: 'var(--space-3)' }}>
           <FilterDropdown
-            label="الحالة"
-            options={STATUS_OPTIONS}
+            label={t('filters.status')}
+            options={statusOptions}
             values={statuses}
             onToggle={toggle(setStatuses)}
             onClear={() => setStatuses([])}
-            defaultLabel="الكل"
-            ariaLabel="تصفية حسب الحالة"
+            defaultLabel={t('filters.all')}
+            ariaLabel={`تصفية حسب ${t('filters.status')}`}
           />
           <FilterDropdown
-            label="التصنيف"
-            options={CATEGORY_OPTIONS}
+            label={t('filters.category')}
+            options={categoryOptions}
             values={categories}
             onToggle={toggle(setCategories)}
             onClear={() => setCategories([])}
-            defaultLabel="الكل"
-            ariaLabel="تصفية حسب التصنيف"
+            defaultLabel={t('filters.all')}
+            ariaLabel={`تصفية حسب ${t('filters.category')}`}
           />
           <FilterDropdown
-            label="البلد"
-            options={COUNTRY_OPTIONS}
+            label={t('filters.country')}
+            options={countryOptions}
             values={countries}
             onToggle={toggle(setCountries)}
             onClear={() => setCountries([])}
-            defaultLabel="الكل"
-            ariaLabel="تصفية حسب البلد"
+            defaultLabel={t('filters.all')}
+            ariaLabel={`تصفية حسب ${t('filters.country')}`}
           />
           <FilterDropdown
-            label="الترتيب"
-            options={SORT_OPTIONS}
+            label={t('filters.sort')}
+            options={sortOptions}
             values={sortOrders}
             onToggle={toggle(setSortOrders)}
             onClear={() => setSortOrders([])}
-            defaultLabel="الأحدث"
-            ariaLabel="تصفية حسب الترتيب"
+            defaultLabel={t('sortOptions.latest')}
+            ariaLabel={`تصفية حسب ${t('filters.sort')}`}
           />
         </div>
 
         {/* Selected filter chips — each has X remove button */}
         <SelectedChips
           groups={[
-            { filterId: 'status',    options: STATUS_OPTIONS,   values: statuses,   onRemove: toggle(setStatuses)   },
-            { filterId: 'category',  options: CATEGORY_OPTIONS, values: categories, onRemove: toggle(setCategories) },
-            { filterId: 'country',   options: COUNTRY_OPTIONS,  values: countries,  onRemove: toggle(setCountries)  },
-            { filterId: 'sortOrder', options: SORT_OPTIONS,     values: sortOrders, onRemove: toggle(setSortOrders) },
+            { filterId: 'status',    options: statusOptions,   values: statuses,   onRemove: toggle(setStatuses)   },
+            { filterId: 'category',  options: categoryOptions, values: categories, onRemove: toggle(setCategories) },
+            { filterId: 'country',   options: countryOptions,  values: countries,  onRemove: toggle(setCountries)  },
+            { filterId: 'sortOrder', options: sortOptions,     values: sortOrders, onRemove: toggle(setSortOrders) },
           ]}
         />
 
@@ -335,9 +344,9 @@ export function GeneralHomePage() {
           className="ghp-subpage-btn"
           type="button"
           onClick={() => { /* navigate to /general/discover */ }}
-          aria-label="استعراض الأصناف"
+          aria-label={t('actions.browseCategories')}
         >
-          <span>استعراض الأصناف</span>
+          <span>{t('actions.browseCategories')}</span>
           <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
             <path
               d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V10M10 2h4m0 0v4m0-4L7 9"
@@ -352,8 +361,8 @@ export function GeneralHomePage() {
       {hasTrending && (
         <section aria-labelledby="ghp-trending-heading">
           <div className="ghp-section__header">
-            <h2 id="ghp-trending-heading" className="ghp-section__title">الرائج الآن</h2>
-            <button className="ghp-section__see-all" aria-label="عرض كل الرائج">عرض الكل</button>
+            <h2 id="ghp-trending-heading" className="ghp-section__title">{t('sections.trendingNow')}</h2>
+            <button className="ghp-section__see-all" aria-label={t('actions.seeAll')}>{t('actions.seeAll')}</button>
           </div>
           <div className="ghp-h-scroll">
             {TRENDING_ITEMS.map((item) => (
@@ -390,8 +399,8 @@ export function GeneralHomePage() {
       {hasTopCreators && (
         <section aria-labelledby="ghp-top-creators-heading">
           <div className="ghp-section__header">
-            <h2 id="ghp-top-creators-heading" className="ghp-section__title">أبرز المبدعين</h2>
-            <button className="ghp-section__see-all" aria-label="عرض كل المبدعين">عرض الكل</button>
+            <h2 id="ghp-top-creators-heading" className="ghp-section__title">{t('sections.topCreators')}</h2>
+            <button className="ghp-section__see-all" aria-label={t('actions.seeAll')}>{t('actions.seeAll')}</button>
           </div>
           <div className="ghp-creator-grid">
             {TOP_CREATORS.map((creator) => (
@@ -415,9 +424,9 @@ export function GeneralHomePage() {
                 </div>
                 <button
                   className="ghp-creator-card__follow-btn"
-                  aria-label={`متابعة ${creator.displayName}`}
+                  aria-label={t('actions.follow')}
                 >
-                  متابعة
+                  {t('actions.follow')}
                 </button>
               </article>
             ))}
@@ -426,14 +435,14 @@ export function GeneralHomePage() {
       )}
 
       {/* ── Plus Banner — editorial, not capability-gated ────────────────────── */}
-      <section aria-label="اشتراك بلس">
+      <section aria-label={t('sections.plusSubscription')}>
         <div className="ghp-plus-banner" role="complementary">
           <div className="ghp-plus-banner__text">
-            <p className="ghp-plus-banner__eyebrow">بلس</p>
-            <p className="ghp-plus-banner__headline">استمتع بتجربة صوتية بلا إعلانات مع اشتراك بلس</p>
+            <p className="ghp-plus-banner__eyebrow">{t('plusBanner.eyebrow')}</p>
+            <p className="ghp-plus-banner__headline">{t('plusBanner.headline')}</p>
           </div>
-          <button className="ghp-plus-banner__cta" aria-label="اشترك في بلس الآن">
-            اشترك الآن
+          <button className="ghp-plus-banner__cta" aria-label={t('actions.subscribeNow')}>
+            {t('actions.subscribeNow')}
           </button>
         </div>
       </section>
@@ -442,8 +451,8 @@ export function GeneralHomePage() {
       {hasRecommend && (
         <section aria-labelledby="ghp-recommended-heading">
           <div className="ghp-section__header">
-            <h2 id="ghp-recommended-heading" className="ghp-section__title">مقترح لك</h2>
-            <button className="ghp-section__see-all" aria-label="عرض كل المقترحات">عرض الكل</button>
+            <h2 id="ghp-recommended-heading" className="ghp-section__title">{t('sections.recommended')}</h2>
+            <button className="ghp-section__see-all" aria-label={t('actions.seeAll')}>{t('actions.seeAll')}</button>
           </div>
           <div className="ghp-h-scroll">
             {RECOMMENDED_ITEMS.map((item) => (
@@ -469,8 +478,8 @@ export function GeneralHomePage() {
       {hasPlaylists && (
         <section aria-labelledby="ghp-playlists-heading">
           <div className="ghp-section__header">
-            <h2 id="ghp-playlists-heading" className="ghp-section__title">قوائم التشغيل</h2>
-            <button className="ghp-section__see-all" aria-label="عرض كل القوائم">عرض الكل</button>
+            <h2 id="ghp-playlists-heading" className="ghp-section__title">{t('sections.playlists')}</h2>
+            <button className="ghp-section__see-all" aria-label={t('actions.seeAll')}>{t('actions.seeAll')}</button>
           </div>
           <div className="ghp-playlist-grid">
             {PLAYLISTS.map((pl) => (
@@ -493,8 +502,8 @@ export function GeneralHomePage() {
       {hasRising && (
         <section aria-labelledby="ghp-rising-heading">
           <div className="ghp-section__header">
-            <h2 id="ghp-rising-heading" className="ghp-section__title">مبدعون صاعدون</h2>
-            <button className="ghp-section__see-all" aria-label="عرض كل المبدعين الصاعدين">عرض الكل</button>
+            <h2 id="ghp-rising-heading" className="ghp-section__title">{t('sections.risingCreators')}</h2>
+            <button className="ghp-section__see-all" aria-label={t('actions.seeAll')}>{t('actions.seeAll')}</button>
           </div>
           <div className="ghp-rising-row">
             {RISING_CREATORS.map((creator) => (
@@ -511,8 +520,8 @@ export function GeneralHomePage() {
       {hasFollowing && (
         <section aria-labelledby="ghp-following-heading">
           <div className="ghp-section__header">
-            <h2 id="ghp-following-heading" className="ghp-section__title">مبدعون تتابعهم</h2>
-            <button className="ghp-section__see-all" aria-label="عرض كل من تتابعهم">عرض الكل</button>
+            <h2 id="ghp-following-heading" className="ghp-section__title">{t('sections.followingCreators')}</h2>
+            <button className="ghp-section__see-all" aria-label={t('actions.seeAll')}>{t('actions.seeAll')}</button>
           </div>
           <div className="ghp-follow-list">
             {FOLLOWING_CREATORS.map((creator) => (

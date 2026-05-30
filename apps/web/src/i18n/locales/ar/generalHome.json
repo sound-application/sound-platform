@@ -1,0 +1,58 @@
+{
+  "filters": {
+    "status": "الحالة",
+    "category": "التصنيف",
+    "country": "البلد",
+    "sort": "الترتيب",
+    "all": "الكل"
+  },
+  "statusOptions": {
+    "new": "جديد",
+    "trending": "رائج",
+    "featured": "مميز",
+    "saved": "محفوظ",
+    "unplayed": "لم يُشغَّل"
+  },
+  "categoryOptions": {
+    "story": "قصص",
+    "podcast": "بودكاست",
+    "poetry": "شعر",
+    "meditation": "تأمل",
+    "quran": "تلاوة",
+    "comedy": "كوميديا",
+    "kids": "أطفال"
+  },
+  "sortOptions": {
+    "latest": "الأحدث",
+    "popular": "الأكثر استماعاً",
+    "shared": "الأكثر مشاركة",
+    "saved": "الأكثر حفظاً",
+    "rising": "الأكثر صعوداً",
+    "following": "من تتابعهم",
+    "suggested": "المقترح لك"
+  },
+  "sections": {
+    "quickStories": "القصص السريعة",
+    "searchAndFilter": "بحث وتصفية",
+    "trendingNow": "الرائج الآن",
+    "topCreators": "أبرز المبدعين",
+    "plusSubscription": "اشتراك بلس",
+    "recommended": "مقترح لك",
+    "playlists": "قوائم التشغيل",
+    "risingCreators": "مبدعون صاعدون",
+    "followingCreators": "مبدعون تتابعهم"
+  },
+  "actions": {
+    "addStory": "إضافة قصة",
+    "storyOf": "قصة {{name}}",
+    "searchPlaceholder": "ابحث عن صوت، قصة، بودكاست...",
+    "browseCategories": "استعراض الأصناف",
+    "seeAll": "عرض الكل",
+    "follow": "متابعة",
+    "subscribeNow": "اشترك الآن"
+  },
+  "plusBanner": {
+    "eyebrow": "بلس",
+    "headline": "استمتع بتجربة صوتية بلا إعلانات مع اشتراك بلس"
+  }
+}
