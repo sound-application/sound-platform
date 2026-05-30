@@ -1,6 +1,6 @@
 /**
  * Sound Platform — Home Page
- * Phase: 5-B
+ * Phase: 5-B + i18n
  *
  * Cross-world aggregated feed — the first screen after authentication.
  * All authenticated users can view this screen regardless of world or capability.
@@ -30,7 +30,8 @@
  *   - Filtering uses compact glass FilterDropdown component, not chip strips or native select
  */
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
+import { useTranslation } from 'react-i18next';
 import './HomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../components/FilterDropdown';
 
@@ -142,27 +143,6 @@ const IconChevronLeft = () => (
   </svg>
 );
 
-// ─── Static filter options ─────────────────────────────────────────────────────
-const CONTENT_TYPE_OPTIONS: FilterOption[] = [
-  { value: 'story',      label: 'قصص'      },
-  { value: 'podcast',    label: 'بودكاست'  },
-  { value: 'poetry',     label: 'شعر'      },
-  { value: 'meditation', label: 'تأمل'     },
-  { value: 'music',      label: 'موسيقى'   },
-];
-
-const SORT_ORDER_OPTIONS: FilterOption[] = [
-  { value: 'latest',    label: 'الأحدث'            },
-  { value: 'popular',   label: 'الأكثر استماعاً'    },
-  { value: 'shared',    label: 'الأكثر مشاركة'     },
-  { value: 'saved',     label: 'الأكثر حفظاً'       },
-  { value: 'comments',  label: 'الأكثر تعليقاً'    },
-  { value: 'rising',    label: 'الأكثر صعوداً'     },
-  { value: 'nearby',    label: 'الأقرب لك'         },
-  { value: 'following', label: 'من تتابعهم'       },
-  { value: 'suggested', label: 'المقترح لك'        },
-];
-
 // ─── Avatar placeholder (initials) ────────────────────────────────────────────
 function AvatarFallback({ name, size = 60 }: { name: string; size?: number }) {
   const initial = name.trim().charAt(0);
@@ -204,6 +184,29 @@ function CoverFallback({ height = 120 }: { height?: number }) {
 
 // ─── Component ────────────────────────────────────────────────────────────────
 export function HomePage() {
+  const { t } = useTranslation('home');
+
+  // Filter options derived from translations
+  const CONTENT_TYPE_OPTIONS: FilterOption[] = useMemo(() => [
+    { value: 'story',      label: t('filters.story') },
+    { value: 'podcast',    label: t('filters.podcast') },
+    { value: 'poetry',     label: t('filters.poetry') },
+    { value: 'meditation', label: t('filters.meditation') },
+    { value: 'music',      label: t('filters.music') },
+  ], [t]);
+
+  const SORT_ORDER_OPTIONS: FilterOption[] = useMemo(() => [
+    { value: 'latest',    label: t('filters.latest') },
+    { value: 'popular',   label: t('filters.popular') },
+    { value: 'shared',    label: t('filters.shared') },
+    { value: 'saved',     label: t('filters.saved') },
+    { value: 'comments',  label: t('filters.comments') },
+    { value: 'rising',    label: t('filters.rising') },
+    { value: 'nearby',    label: t('filters.nearby') },
+    { value: 'following', label: t('filters.following') },
+    { value: 'suggested', label: t('filters.suggested') },
+  ], [t]);
+
   // Filter state — multi-select string arrays
   const [contentTypes, setContentTypes] = useState<string[]>([]);
   const [sortOrders,   setSortOrders]   = useState<string[]>([]);
@@ -230,50 +233,55 @@ export function HomePage() {
   const hasPlaylists = PLAYLISTS.length > 0;
 
   return (
-    <main className="home-page" aria-label="الرئيسية">
+    <main className="home-page" aria-label={t('pageLabel')}>
 
       {/* ── Stories / Quick Circles ──────────────────────────────────────────── */}
       {hasStories && (
-        <section aria-label="القصص">
+        <section aria-label={t('stories.sectionLabel')}>
           <div className="story-row">
-            {STORY_ITEMS.map((item) => (
-              <button
-                key={item.uid}
-                className="story-item"
-                aria-label={item.isSelf ? 'إضافة قصة' : `قصة ${item.displayName}`}
-              >
-                {item.isSelf ? (
-                  <div className="story-ring story-ring--self" style={{ width: 60, height: 60, position: 'relative' }}>
-                    <AvatarFallback name={item.displayName} size={56} />
-                    <span className="story-ring__add" aria-hidden="true">+</span>
-                  </div>
-                ) : (
-                  <div className="story-ring">
-                    <div className="story-ring__inner">
-                      {item.avatarUrl
-                        ? <img className="story-ring__avatar" src={item.avatarUrl} alt={item.displayName} />
-                        : <AvatarFallback name={item.displayName} size={56} />
-                      }
+            {STORY_ITEMS.map((item) => {
+              // Override self display name from translations, leaving others as backend mock
+              const displayName = item.isSelf ? t('stories.addStory') : item.displayName;
+              const ariaLabel = item.isSelf ? t('stories.addStory') : t('stories.userStory', { name: displayName });
+              
+              return (
+                <button
+                  key={item.uid}
+                  className="story-item"
+                  aria-label={ariaLabel}
+                >
+                  {item.isSelf ? (
+                    <div className="story-ring story-ring--self" style={{ width: 60, height: 60, position: 'relative' }}>
+                      <AvatarFallback name={displayName} size={56} />
+                      <span className="story-ring__add" aria-hidden="true">+</span>
                     </div>
-                  </div>
-                )}
-                <span className="story-item__name">{item.displayName}</span>
-              </button>
-            ))}
+                  ) : (
+                    <div className="story-ring">
+                      <div className="story-ring__inner">
+                        {item.avatarUrl
+                          ? <img className="story-ring__avatar" src={item.avatarUrl} alt={displayName} />
+                          : <AvatarFallback name={displayName} size={56} />
+                        }
+                      </div>
+                    </div>
+                  )}
+                  <span className="story-item__name">{displayName}</span>
+                </button>
+              );
+            })}
           </div>
         </section>
       )}
 
       {/* ── Search + Smart Filters ──────────────────────────────────────────── */}
-      <section aria-label="بحث وتصفية">
+      <section aria-label={t('search.sectionLabel')}>
         <div className="home-search">
           <input
             id="home-search-input"
             className="home-search__input"
             type="search"
-            placeholder="ابحث عن صوت، قصة، بودكاست..."
+            placeholder={t('search.placeholder')}
             autoComplete="off"
-            dir="rtl"
           />
           <span className="home-search__icon">
             <IconSearch />
@@ -283,22 +291,22 @@ export function HomePage() {
         {/* Smart compact glass dropdowns — DESIGN.md filter_controls rule */}
         <div className="home-filters" style={{ marginTop: 'var(--space-3)' }}>
           <FilterDropdown
-            label="نوع المحتوى"
+            label={t('filters.contentType')}
             options={CONTENT_TYPE_OPTIONS}
             values={contentTypes}
             onToggle={toggleContentType}
             onClear={() => setContentTypes([])}
-            defaultLabel="الكل"
-            ariaLabel="تصفية حسب نوع المحتوى"
+            defaultLabel={t('filters.all')}
+            ariaLabel={t('filters.contentTypeAria')}
           />
           <FilterDropdown
-            label="الترتيب"
+            label={t('filters.sortOrder')}
             options={SORT_ORDER_OPTIONS}
             values={sortOrders}
             onToggle={toggleSortOrder}
             onClear={() => setSortOrders([])}
-            defaultLabel="الأحدث"
-            ariaLabel="تصفية حسب الترتيب"
+            defaultLabel={t('filters.sortDefault')}
+            ariaLabel={t('filters.sortOrderAria')}
           />
         </div>
         {/* Selected filter chips — appear below filter row, each has X remove */}
@@ -324,9 +332,9 @@ export function HomePage() {
           className="fd-subpage-btn"
           type="button"
           onClick={() => { /* navigate to /discover later */ }}
-          aria-label="استعراض الأصناف"
+          aria-label={t('search.browseCategories')}
         >
-          <span>استعراض الأصناف</span>
+          <span>{t('search.browseCategories')}</span>
           <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
             <path
               d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V10M10 2h4m0 0v4m0-4L7 9"
@@ -341,8 +349,8 @@ export function HomePage() {
       {hasTrending && (
         <section aria-labelledby="trending-heading">
           <div className="home-section__header">
-            <h2 id="trending-heading" className="home-section__title">الرائج الآن</h2>
-            <button className="home-section__see-all" aria-label="عرض كل الرائج">عرض الكل</button>
+            <h2 id="trending-heading" className="home-section__title">{t('trending.title')}</h2>
+            <button className="home-section__see-all" aria-label={t('trending.seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="h-scroll">
             {TRENDING_ITEMS.map((item) => (
@@ -371,12 +379,12 @@ export function HomePage() {
       {hasTopCreators && (
         <section aria-labelledby="top-creators-heading">
           <div className="home-section__header">
-            <h2 id="top-creators-heading" className="home-section__title">أفضل المبدعين</h2>
-            <button className="home-section__see-all" aria-label="عرض كل المبدعين">عرض الكل</button>
+            <h2 id="top-creators-heading" className="home-section__title">{t('topCreators.title')}</h2>
+            <button className="home-section__see-all" aria-label={t('topCreators.seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="creator-grid">
             {TOP_CREATORS.map((creator) => (
-              <article key={creator.uid} className="creator-card" aria-label={`ملف ${creator.displayName}`}>
+              <article key={creator.uid} className="creator-card" aria-label={t('topCreators.profileOf', { name: creator.displayName })}>
                 <AvatarFallback name={creator.displayName} size={64} />
                 <div>
                   <p className="creator-card__name">{creator.displayName}</p>
@@ -384,8 +392,8 @@ export function HomePage() {
                     <p className="creator-card__followers">{creator.followerLabel}</p>
                   )}
                 </div>
-                <button className="creator-card__follow-btn" aria-label={`متابعة ${creator.displayName}`}>
-                  متابعة
+                <button className="creator-card__follow-btn" aria-label={t('topCreators.followAria', { name: creator.displayName })}>
+                  {t('topCreators.follow')}
                 </button>
               </article>
             ))}
@@ -394,14 +402,14 @@ export function HomePage() {
       )}
 
       {/* ── Plus Banner — editorial section, not a marketing hero ──────────── */}
-      <section aria-label="اشتراك بلس">
+      <section aria-label={t('plusBanner.sectionLabel')}>
         <div className="plus-banner" role="complementary">
           <div className="plus-banner__text">
-            <p className="plus-banner__eyebrow">بلس</p>
-            <p className="plus-banner__headline">استمتع بتجربة صوتية بلا إعلانات مع اشتراك بلس</p>
+            <p className="plus-banner__eyebrow">{t('plusBanner.eyebrow')}</p>
+            <p className="plus-banner__headline">{t('plusBanner.headline')}</p>
           </div>
-          <button className="plus-banner__cta" aria-label="اشترك في بلس الآن">
-            اشترك الآن
+          <button className="plus-banner__cta" aria-label={t('plusBanner.ctaAria')}>
+            {t('plusBanner.cta')}
           </button>
         </div>
       </section>
@@ -410,8 +418,8 @@ export function HomePage() {
       {hasRecommend && (
         <section aria-labelledby="recommended-heading">
           <div className="home-section__header">
-            <h2 id="recommended-heading" className="home-section__title">مقترح لك</h2>
-            <button className="home-section__see-all" aria-label="عرض كل المقترحات">عرض الكل</button>
+            <h2 id="recommended-heading" className="home-section__title">{t('recommended.title')}</h2>
+            <button className="home-section__see-all" aria-label={t('recommended.seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="h-scroll">
             {RECOMMENDED_ITEMS.map((item) => (
@@ -434,8 +442,8 @@ export function HomePage() {
       {hasPlaylists && (
         <section aria-labelledby="playlists-heading">
           <div className="home-section__header">
-            <h2 id="playlists-heading" className="home-section__title">قوائم التشغيل</h2>
-            <button className="home-section__see-all" aria-label="عرض كل القوائم">عرض الكل</button>
+            <h2 id="playlists-heading" className="home-section__title">{t('playlists.title')}</h2>
+            <button className="home-section__see-all" aria-label={t('playlists.seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="playlist-grid">
             {PLAYLISTS.map((pl) => (
@@ -455,8 +463,8 @@ export function HomePage() {
       {hasRising && (
         <section aria-labelledby="rising-heading">
           <div className="home-section__header">
-            <h2 id="rising-heading" className="home-section__title">مبدعون صاعدون</h2>
-            <button className="home-section__see-all" aria-label="عرض كل المبدعين الصاعدين">عرض الكل</button>
+            <h2 id="rising-heading" className="home-section__title">{t('risingCreators.title')}</h2>
+            <button className="home-section__see-all" aria-label={t('risingCreators.seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="rising-row">
             {RISING_CREATORS.map((creator) => (
@@ -473,12 +481,12 @@ export function HomePage() {
       {hasFollowing && (
         <section aria-labelledby="following-heading">
           <div className="home-section__header">
-            <h2 id="following-heading" className="home-section__title">مبدعون تتابعهم</h2>
-            <button className="home-section__see-all" aria-label="عرض كل من تتابعهم">عرض الكل</button>
+            <h2 id="following-heading" className="home-section__title">{t('followingCreators.title')}</h2>
+            <button className="home-section__see-all" aria-label={t('followingCreators.seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="follow-list">
             {FOLLOWING_CREATORS.map((creator) => (
-              <article key={creator.uid} className="follow-item" aria-label={`ملف ${creator.displayName}`}>
+              <article key={creator.uid} className="follow-item" aria-label={t('topCreators.profileOf', { name: creator.displayName })}>
                 <AvatarFallback name={creator.displayName} size={44} />
                 <div className="follow-item__info">
                   <p className="follow-item__name">{creator.displayName}</p>
