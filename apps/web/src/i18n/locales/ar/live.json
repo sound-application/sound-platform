@@ -1,1 +1,193 @@
-﻿{}
+{
+  "filters": {
+    "status": {
+      "label": "الحالة",
+      "ariaLabel": "تصفية حسب الحالة",
+      "live_now": "لايف الآن",
+      "guest_open": "يستقبل ضيوف",
+      "following": "من أتابعهم",
+      "nearby": "قريب مني",
+      "exclusive": "حصري بلس",
+      "live": "على الهواء الآن",
+      "recorded": "مسجل",
+      "upcoming": "قريباً"
+    },
+    "category": {
+      "label": "التصنيف",
+      "ariaLabel": "تصفية حسب التصنيف",
+      "culture": "ثقافة",
+      "poetry": "شعر",
+      "podcast": "بودكاست",
+      "stories": "قصص",
+      "dev": "تقنية",
+      "debates": "نقاشات",
+      "creative": "إبداع",
+      "literature": "أدب",
+      "tech": "تقنية",
+      "philosophy": "فكر",
+      "music": "موسيقى",
+      "news": "أخبار",
+      "quran": "قرآن",
+      "sports": "رياضة",
+      "radio_stories": "حكايات",
+      "radio_podcast": "بودكاست إذاعي",
+      "kids": "أطفال"
+    },
+    "country": {
+      "label": "البلد",
+      "ariaLabel": "تصفية حسب البلد",
+      "sa": "السعودية",
+      "eg": "مصر",
+      "ae": "الإمارات",
+      "kw": "الكويت",
+      "jo": "الأردن",
+      "ma": "المغرب",
+      "intl": "عالمي",
+      "radio_intl": "دولية"
+    },
+    "sort": {
+      "label": "الترتيب",
+      "ariaLabel": "ترتيب الغرف",
+      "ariaLabelRadio": "ترتيب الإذاعات",
+      "newest": "الأحدث",
+      "most_heard": "الأكثر استماعاً",
+      "most_active": "الأكثر تفاعلاً",
+      "following": "من أتابعهم",
+      "suggested": "المقترح لك",
+      "exclusive": "الحصري أولاً",
+      "top_rated": "الأعلى تقييماً",
+      "most_listened": "الأعلى استماعاً",
+      "on_air": "على الهواء الآن",
+      "nearest": "الأقرب لك",
+      "radio_newest": "الأحدث إضافة",
+      "most_followed": "الأكثر متابعة",
+      "upcoming": "البرامج القادمة"
+    }
+  },
+  "search": {
+    "general": {
+      "placeholder": "ابحث في لايف عام",
+      "ariaLabel": "بحث في لايف عام"
+    },
+    "plus": {
+      "placeholder": "ابحث في لايف بلس",
+      "ariaLabel": "بحث في لايف بلس"
+    },
+    "radio": {
+      "placeholder": "ابحث في إذاعات راديو",
+      "ariaLabel": "بحث في إذاعات راديو"
+    },
+    "clearAria": "مسح البحث"
+  },
+  "actions": {
+    "join": "انضمام",
+    "guestRequest": "طلب ضيف",
+    "guestRequestAria": "طلب انضمام كضيف",
+    "preview": "معاينة",
+    "previewAria": "معاينة الغرفة",
+    "seeAll": "عرض الكل",
+    "prev": "السابق",
+    "next": "التالي",
+    "browseCategories": "استعراض الأصناف",
+    "subscribe": "اشترك",
+    "upgrade": "ترقية",
+    "create": "إنشاء",
+    "listenNow": "استمع الآن",
+    "play": "تشغيل",
+    "save": "حفظ",
+    "saved": "محفوظة",
+    "saveAria": "حفظ المحطة",
+    "shareAria": "مشاركة",
+    "reset": "إعادة الضبط"
+  },
+  "sections": {
+    "featuredRooms": "غرف مميزة",
+    "activeRooms": "غرف نشطة",
+    "followingRooms": "من أتابعهم",
+    "guestOpenRooms": "مفتوحة للضيوف",
+    "plusActiveRooms": "غرف بلس النشطة",
+    "plusFollowingRooms": "من أتابعهم — بلس",
+    "onAirNow": "على الهواء الآن",
+    "myStations": "محطاتي",
+    "allStations": "كل الإذاعات",
+    "radioTabs": {
+      "saved": "المحفوظة",
+      "followed": "أتابعها",
+      "popular": "الأكثر استماعاً"
+    }
+  },
+  "meta": {
+    "speakers": "متحدثين",
+    "listeners": "مستمع",
+    "next": "التالي:"
+  },
+  "badges": {
+    "live": "لايف",
+    "plusLive": "بلس لايف",
+    "guestRequest": "طلب ضيف",
+    "liveEn": "LIVE",
+    "plus": "بلس",
+    "recorded": "مسجل",
+    "upcoming": "قريباً",
+    "onAir": "على الهواء"
+  },
+  "emptyStates": {
+    "noGeneralRooms": "لا توجد غرف تطابق الفلاتر المختارة",
+    "noPlusRooms": "لا توجد غرف بلس تطابق الفلاتر المختارة",
+    "noRadioStations": "لا توجد إذاعات تطابق البحث أو الفلاتر المختارة",
+    "noMyStations": "لا توجد محطات في هذه القائمة"
+  },
+  "sponsors": {
+    "tagSponsorship": "رعاية",
+    "tagPlus": "بلس",
+    "proName": "Sound Pro",
+    "proDesc": "ارفع صوتك — اشترك الآن واحصل على أدوات البث المتقدمة",
+    "proAction": "اكتشف",
+    "plusName": "Sound Plus",
+    "plusDesc": "انضم إلى بلس واستمتع بغرف حصرية وأدوات بث متقدمة",
+    "radioTitle": "هل لديك إذاعة أو جهة إعلامية؟",
+    "radioHint": "يتم الطلب عبر مراجعة وتواصل مع شريك إذاعي معتمد",
+    "radioAction": "طلب إنشاء"
+  },
+  "createCTA": {
+    "generalTitle": "هل تريد بدء لايف؟",
+    "generalHint": "شارك أفكارك وصوتك مع المجتمع الآن",
+    "plusTitle": "ابدأ لايف بلس",
+    "plusHint": "أنشئ غرفة حصرية لجمهور بلس",
+    "plusLockedTitle": "إنشاء لايف بلس",
+    "plusLockedHint": "يتطلب اشتراك بلس نشط لبدء غرفة حصرية",
+    "eligibility": "حسب الأهلية",
+    "plusSubscriber": "مشترك بلس"
+  },
+  "footerNotes": {
+    "general": "يمكنك الاستماع لأي لايف عام. طلب الانضمام كضيف يعتمد على إعدادات المضيف وأهلية الحساب.",
+    "plus": "غرف بلس حصرية للمشتركين. يمكنك الاستماع والانضمام كضيف حسب إعدادات المضيف وحالة اشتراكك.",
+    "radio": "إذاعات راديو مباشرة وشريكة داخل Sound. الاستماع مجاني للجميع."
+  },
+  "comingSoon": {
+    "musicTitle": "لايف موسيقى",
+    "musicHint": "قريباً — حفلات وجلسات استماع"
+  },
+  "worldMeta": {
+    "general": {
+      "title": "لايف",
+      "subtitle": "غرف صوتية مباشرة من المجتمع"
+    },
+    "plus": {
+      "title": "لايف — بلس",
+      "subtitle": "غرف حصرية لمبدعي بلس"
+    },
+    "music": {
+      "title": "لايف — موسيقى",
+      "subtitle": "حفلات وجلسات استماع وفعاليات موسيقية"
+    },
+    "radio": {
+      "title": "لايف — راديو",
+      "subtitle": "البث المباشر والبرامج المجدولة"
+    },
+    "tournaments": {
+      "title": "لايف — مسابقات",
+      "subtitle": "نشاط المسابقات الجاري"
+    }
+  }
+}

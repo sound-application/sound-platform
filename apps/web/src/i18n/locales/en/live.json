@@ -1,1 +1,193 @@
-﻿{}
+{
+  "filters": {
+    "status": {
+      "label": "Status",
+      "ariaLabel": "Filter by status",
+      "live_now": "Live Now",
+      "guest_open": "Guest Open",
+      "following": "Following",
+      "nearby": "Nearby",
+      "exclusive": "Plus Exclusive",
+      "live": "On Air Now",
+      "recorded": "Recorded",
+      "upcoming": "Upcoming"
+    },
+    "category": {
+      "label": "Category",
+      "ariaLabel": "Filter by category",
+      "culture": "Culture",
+      "poetry": "Poetry",
+      "podcast": "Podcast",
+      "stories": "Stories",
+      "dev": "Tech",
+      "debates": "Debates",
+      "creative": "Creative",
+      "literature": "Literature",
+      "tech": "Tech",
+      "philosophy": "Philosophy",
+      "music": "Music",
+      "news": "News",
+      "quran": "Quran",
+      "sports": "Sports",
+      "radio_stories": "Stories",
+      "radio_podcast": "Radio Podcast",
+      "kids": "Kids"
+    },
+    "country": {
+      "label": "Country",
+      "ariaLabel": "Filter by country",
+      "sa": "Saudi Arabia",
+      "eg": "Egypt",
+      "ae": "UAE",
+      "kw": "Kuwait",
+      "jo": "Jordan",
+      "ma": "Morocco",
+      "intl": "Global",
+      "radio_intl": "International"
+    },
+    "sort": {
+      "label": "Sort",
+      "ariaLabel": "Sort rooms",
+      "ariaLabelRadio": "Sort stations",
+      "newest": "Newest",
+      "most_heard": "Most Heard",
+      "most_active": "Most Active",
+      "following": "Following",
+      "suggested": "Suggested for you",
+      "exclusive": "Exclusive First",
+      "top_rated": "Top Rated",
+      "most_listened": "Most Listened",
+      "on_air": "On Air Now",
+      "nearest": "Nearest to you",
+      "radio_newest": "Newest Added",
+      "most_followed": "Most Followed",
+      "upcoming": "Upcoming Shows"
+    }
+  },
+  "search": {
+    "general": {
+      "placeholder": "Search General Live",
+      "ariaLabel": "Search General Live"
+    },
+    "plus": {
+      "placeholder": "Search Plus Live",
+      "ariaLabel": "Search Plus Live"
+    },
+    "radio": {
+      "placeholder": "Search Radio Stations",
+      "ariaLabel": "Search Radio Stations"
+    },
+    "clearAria": "Clear search"
+  },
+  "actions": {
+    "join": "Join",
+    "guestRequest": "Guest Request",
+    "guestRequestAria": "Request to join as guest",
+    "preview": "Preview",
+    "previewAria": "Preview room",
+    "seeAll": "See All",
+    "prev": "Prev",
+    "next": "Next",
+    "browseCategories": "Browse Categories",
+    "subscribe": "Subscribe",
+    "upgrade": "Upgrade",
+    "create": "Create",
+    "listenNow": "Listen Now",
+    "play": "Play",
+    "save": "Save",
+    "saved": "Saved",
+    "saveAria": "Save station",
+    "shareAria": "Share",
+    "reset": "Reset Filters"
+  },
+  "sections": {
+    "featuredRooms": "Featured Rooms",
+    "activeRooms": "Active Rooms",
+    "followingRooms": "Following",
+    "guestOpenRooms": "Open for Guests",
+    "plusActiveRooms": "Active Plus Rooms",
+    "plusFollowingRooms": "Following — Plus",
+    "onAirNow": "On Air Now",
+    "myStations": "My Stations",
+    "allStations": "All Stations",
+    "radioTabs": {
+      "saved": "Saved",
+      "followed": "Following",
+      "popular": "Popular"
+    }
+  },
+  "meta": {
+    "speakers": "speakers",
+    "listeners": "listeners",
+    "next": "Next:"
+  },
+  "badges": {
+    "live": "Live",
+    "plusLive": "Plus Live",
+    "guestRequest": "Guest Request",
+    "liveEn": "LIVE",
+    "plus": "Plus",
+    "recorded": "Recorded",
+    "upcoming": "Upcoming",
+    "onAir": "On Air"
+  },
+  "emptyStates": {
+    "noGeneralRooms": "No rooms match the selected filters",
+    "noPlusRooms": "No Plus rooms match the selected filters",
+    "noRadioStations": "No stations match your search or filters",
+    "noMyStations": "No stations in this list"
+  },
+  "sponsors": {
+    "tagSponsorship": "Sponsor",
+    "tagPlus": "Plus",
+    "proName": "Sound Pro",
+    "proDesc": "Elevate your voice — subscribe now for advanced broadcasting tools",
+    "proAction": "Discover",
+    "plusName": "Sound Plus",
+    "plusDesc": "Join Plus and enjoy exclusive rooms and advanced broadcasting tools",
+    "radioTitle": "Do you own a station or media outlet?",
+    "radioHint": "Requests are reviewed by our certified broadcasting partners",
+    "radioAction": "Request Station"
+  },
+  "createCTA": {
+    "generalTitle": "Want to start a live?",
+    "generalHint": "Share your thoughts and voice with the community now",
+    "plusTitle": "Start Plus Live",
+    "plusHint": "Create an exclusive room for Plus members",
+    "plusLockedTitle": "Create Plus Live",
+    "plusLockedHint": "Requires an active Plus subscription to start an exclusive room",
+    "eligibility": "Based on eligibility",
+    "plusSubscriber": "Plus Member"
+  },
+  "footerNotes": {
+    "general": "You can listen to any general live. Joining as a guest depends on host settings and account eligibility.",
+    "plus": "Plus rooms are exclusive to subscribers. You can listen and join as a guest based on host settings and your subscription status.",
+    "radio": "Live and partner radio stations inside Sound. Listening is free for everyone."
+  },
+  "comingSoon": {
+    "musicTitle": "Live Music",
+    "musicHint": "Coming soon — concerts and listening parties"
+  },
+  "worldMeta": {
+    "general": {
+      "title": "Live",
+      "subtitle": "Live audio rooms from the community"
+    },
+    "plus": {
+      "title": "Live — Plus",
+      "subtitle": "Exclusive rooms for Plus creators"
+    },
+    "music": {
+      "title": "Live — Music",
+      "subtitle": "Concerts, listening parties, and musical events"
+    },
+    "radio": {
+      "title": "Live — Radio",
+      "subtitle": "Live broadcasts and scheduled shows"
+    },
+    "tournaments": {
+      "title": "Live — Tournaments",
+      "subtitle": "Ongoing tournament activity"
+    }
+  }
+}
