@@ -1,1 +1,209 @@
-﻿{}
+{
+  "privacyCenter": {
+    "title": "Privacy Center",
+    "subtitle": {
+      "loading": "Loading...",
+      "saving": "Saving...",
+      "saved": "✅ Saved",
+      "error": "⚠️ {{error}}",
+      "idle": "Control who sees what"
+    },
+    "backAria": "Back to account menu",
+    "save": "Save",
+    "saving": "...",
+    "saveAria": "Save privacy settings",
+    "loadNote": "Loading your saved settings...",
+    "loadError": "Failed to load settings — {{error}}",
+    "serverBadgeAria": "Enforced by server",
+    "serverBadge": "Server",
+    "optionsAria": "{{label}} options"
+  },
+  "options": {
+    "public": "Public",
+    "followers": "Followers",
+    "following": "Following",
+    "friends": "Friends",
+    "specificList": "Specific List",
+    "exceptSelected": "Except Selected",
+    "manualSelected": "Selected People",
+    "onlyMe": "Only Me",
+    "everyone": "Everyone",
+    "off": "Off",
+    "on": "On",
+    "offToggle": "Off",
+    "auto": "Automatic",
+    "manual": "Manual Approval",
+    "exact": "Exact",
+    "city": "City Only",
+    "hidden": "Hidden",
+    "manage": "Manage",
+    "server": "Server Enforced"
+  },
+  "privacyGroups": {
+    "profileAndIdentity": {
+      "heading": "Profile and Identity",
+      "profileVisibility": { "label": "Who can see my profile", "desc": "Photo, name, bio, and basic info" },
+      "profileStats": { "label": "Show statistics", "desc": "Followers, following, likes, and listens" },
+      "socialLinks": { "label": "Social Links", "desc": "Links that appear on your profile" },
+      "badges": { "label": "Badges and Verification", "desc": "Verification badges, awards, and achievements" }
+    },
+    "storiesAndRing": {
+      "heading": "Stories and Profile Ring",
+      "storiesVisibility": { "label": "Who can see my stories", "desc": "Stories that appear as a ring around your profile picture" },
+      "storyRing": { "label": "Show story ring", "desc": "Show active story ring around profile picture" },
+      "storyReplies": { "label": "Story Replies", "desc": "Who can reply or react to your stories" }
+    },
+    "listeningNow": {
+      "heading": "Listening Now",
+      "listeningNow": { "label": "Who can see Listening Now", "desc": "Content you are currently listening to" },
+      "listeningWorldSwitch": { "label": "Allow jumping from Listening Now", "desc": "If content is in another world, allow opening it directly" }
+    },
+    "mood": {
+      "heading": "My Mood",
+      "moodVisibility": { "label": "Who can see my mood", "desc": "Your mood playlists built from others' content" },
+      "moodSource": { "label": "Show content source in mood", "desc": "Show original creator inside my mood playlists" }
+    },
+    "saved": {
+      "heading": "Saved Content",
+      "savedVisibility": { "label": "Who can see saved content", "desc": "Content you saved to listen later" },
+      "savedLists": { "label": "Saved Lists", "desc": "Lists of others' content saved by you" }
+    },
+    "reposts": {
+      "heading": "Reposts",
+      "repostsVisibility": { "label": "Who can see reposts", "desc": "Content you reposted or shared" }
+    },
+    "subscriptions": {
+      "heading": "Subscriptions",
+      "subscriptionsVisibility": { "label": "Who can see subscriptions", "desc": "Content from accounts you follow" }
+    },
+    "sessions": {
+      "heading": "Journeys / Sessions",
+      "sessionsVisibility": { "label": "Who can see Journeys / Sessions", "desc": "On Road sessions and related routes" },
+      "sessionsLocation": { "label": "Location accuracy in Journeys", "desc": "Show exact location, city only, or hidden" }
+    },
+    "messages": {
+      "heading": "Messages and Communication",
+      "messages": { "label": "Who can message me", "desc": "Direct messages and connection requests" },
+      "followRequests": { "label": "Follow Requests", "desc": "Automatic or manual approval for following" },
+      "groupInvites": { "label": "Group Invites", "desc": "Who can invite you to a group chat" }
+    },
+    "giftsAndPoints": {
+      "heading": "Gifts and Points",
+      "receiveGifts": { "label": "Receive Gifts", "desc": "Who can send you virtual gifts" },
+      "receivePoints": { "label": "Receive Points", "desc": "Allow receiving points from other members" },
+      "pointsBalance": { "label": "Show Points Balance", "desc": "Show your points balance on your profile" }
+    },
+    "discover": {
+      "heading": "Appearance in Discover",
+      "discoverProfile": { "label": "Appear in Discover", "desc": "Show your profile and content in Discover recommendations" },
+      "followSuggestions": { "label": "Follow Suggestions", "desc": "Appear as a follow suggestion to users" }
+    },
+    "guardian": {
+      "heading": "Kids and Guardian",
+      "guardianEnforcement": { "label": "Apply Guardian Settings", "desc": "Child and guardian settings enforced by server — not just a UI setting" },
+      "childStories": { "label": "Child Access to Stories", "desc": "Stories available to kids are subject to age review and guardian settings" },
+      "childMessages": { "label": "Child Messages and Accounts", "desc": "Following, messages, gifts, and tournaments subject to guardian rules" }
+    },
+    "blocking": {
+      "heading": "Blocking and Muting",
+      "blockedAccounts": { "label": "Blocked Accounts", "desc": "Users you have completely blocked" },
+      "mutedAccounts": { "label": "Muted Accounts", "desc": "Users or specific content you have muted" }
+    }
+  },
+  "hub": {
+    "soonBadge": "Soon",
+    "sheetAria": "Account and Control Menu",
+    "sheetTitle": "Account and Settings",
+    "closeAria": "Close account menu",
+    "defaultName": "Sound User",
+    "badgeAria": "Verification Badge",
+    "viewProfile": "View Profile",
+    "viewProfileAria": "View my profile",
+    "editProfile": "Edit Profile",
+    "editProfileAria": "Edit my profile"
+  },
+  "sections": {
+    "account": {
+      "heading": "Account",
+      "editProfile": { "label": "Edit Profile", "desc": "Photo, name, and personal info" },
+      "settings": { "label": "Account Settings", "desc": "Email, password, and general settings" },
+      "security": { "label": "Security and Login", "desc": "Active devices and 2FA" },
+      "language": { "label": "Language and Region", "desc": "Arabic, Timezone" },
+      "accessibility": { "label": "Accessibility", "desc": "Text size, contrast, and translation" },
+      "logout": { "label": "Log Out" }
+    },
+    "privacy": {
+      "heading": "Privacy",
+      "center": { "label": "Privacy Center", "desc": "View and edit all privacy settings" },
+      "profileVisibility": { "label": "Who can see my profile" },
+      "storiesVisibility": { "label": "Who can see my stories" },
+      "listeningVisibility": { "label": "Who can see Listening Now" },
+      "moodVisibility": { "label": "Who can see my mood" },
+      "savedVisibility": { "label": "Who can see saved content" },
+      "repostsVisibility": { "label": "Who can see reposts" },
+      "subscriptionsVisibility": { "label": "Who can see subscriptions" },
+      "sessionsVisibility": { "label": "Who can see Journeys / Sessions" },
+      "statsVisibility": { "label": "Show / Hide Statistics" },
+      "messages": { "label": "Messages and Communication" },
+      "gifts": { "label": "Gifts and Points" },
+      "discover": { "label": "Appear in Discover" },
+      "blocking": { "label": "Blocking and Muting" }
+    },
+    "activity": {
+      "heading": "Activity and Communication",
+      "inbox": { "label": "Messages / Inbox" },
+      "notifications": { "label": "Notifications" },
+      "comments": { "label": "Comments and Replies" },
+      "followers": { "label": "Followers and Following" },
+      "reports": { "label": "Reports you sent" },
+      "blocked": { "label": "Blocked Users" }
+    },
+    "monetization": {
+      "heading": "Subscriptions and Money",
+      "subscriptions": { "label": "Plans and Subscriptions" },
+      "wallet": { "label": "Wallet" },
+      "earnings": { "label": "Earnings" },
+      "payments": { "label": "Withdrawals and Payments" },
+      "gifts": { "label": "Gifts and Points" }
+    },
+    "ads": {
+      "heading": "Ads",
+      "myAds": { "label": "My Ads" },
+      "createAd": { "label": "Create Ad" },
+      "whyAd": { "label": "Why am I seeing this ad" },
+      "reportAd": { "label": "Report Ads" }
+    },
+    "radio": {
+      "heading": "Radio",
+      "requests": { "label": "Broadcast Requests" },
+      "myStation": { "label": "My Station" },
+      "contact": { "label": "Contact Station" },
+      "advertise": { "label": "Advertise with us" },
+      "messages": { "label": "Program Messages" }
+    },
+    "music": {
+      "heading": "Music and Rights",
+      "rights": { "label": "Music Rights" },
+      "labels": { "label": "Record Labels" },
+      "artists": { "label": "Artists and Contributors" },
+      "reviews": { "label": "Rights Reviews" },
+      "eligibility": { "label": "Music Eligibility Status" }
+    },
+    "tournaments": {
+      "heading": "Tournaments",
+      "myTournaments": { "label": "My Tournaments" },
+      "invites": { "label": "Invites / Closed Tournaments" },
+      "voting": { "label": "Voting and Judging" },
+      "awards": { "label": "Awards / Medals" },
+      "entries": { "label": "My Entries" }
+    },
+    "support": {
+      "heading": "Support and Trust",
+      "helpCenter": { "label": "Help Center" },
+      "contact": { "label": "Contact Support" },
+      "tickets": { "label": "Tickets and Disputes" },
+      "reportBug": { "label": "Report a Bug" },
+      "policy": { "label": "Terms and Policies" }
+    }
+  }
+}

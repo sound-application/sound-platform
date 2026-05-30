@@ -1,1 +1,209 @@
-﻿{}
+{
+  "privacyCenter": {
+    "title": "مركز الخصوصية",
+    "subtitle": {
+      "loading": "جاري التحميل...",
+      "saving": "جاري الحفظ...",
+      "saved": "✅ تم الحفظ",
+      "error": "⚠️ {{error}}",
+      "idle": "تحكم في من يرى ماذا"
+    },
+    "backAria": "العودة إلى قائمة الحساب",
+    "save": "حفظ",
+    "saving": "...",
+    "saveAria": "حفظ إعدادات الخصوصية",
+    "loadNote": "جاري تحميل إعداداتك المحفوظة...",
+    "loadError": "فشل تحميل الإعدادات — {{error}}",
+    "serverBadgeAria": "يطبقه الخادم",
+    "serverBadge": "الخادم",
+    "optionsAria": "خيارات {{label}}"
+  },
+  "options": {
+    "public": "عام",
+    "followers": "المتابعون",
+    "following": "من أتابعهم",
+    "friends": "الأصدقاء",
+    "specificList": "قائمة محددة",
+    "exceptSelected": "قائمة / أصدقاء باستثناء",
+    "manualSelected": "أشخاص محددون",
+    "onlyMe": "أنا فقط",
+    "everyone": "الجميع",
+    "off": "إيقاف",
+    "on": "مفعل",
+    "offToggle": "متوقف",
+    "auto": "تلقائي",
+    "manual": "موافقة يدوية",
+    "exact": "دقيق",
+    "city": "المدينة فقط",
+    "hidden": "مخفي",
+    "manage": "إدارة",
+    "server": "تطبيق من الخادم"
+  },
+  "privacyGroups": {
+    "profileAndIdentity": {
+      "heading": "الملف والهوية",
+      "profileVisibility": { "label": "من يرى ملفي الشخصي", "desc": "الصورة والاسم والنبذة والبيانات الأساسية" },
+      "profileStats": { "label": "إظهار الإحصائيات", "desc": "المتابعون والمتابعة والإعجابات والاستماعات" },
+      "socialLinks": { "label": "الروابط الاجتماعية", "desc": "الروابط التي تظهر في الملف الشخصي" },
+      "badges": { "label": "الشارات والتحقق", "desc": "شارات التحقق والجوائز والإنجازات" }
+    },
+    "storiesAndRing": {
+      "heading": "القصص ودائرة الصورة",
+      "storiesVisibility": { "label": "من يرى القصص", "desc": "القصص التي تظهر كدائرة حول صورة الملف" },
+      "storyRing": { "label": "إظهار دائرة القصة", "desc": "إظهار وجود قصة نشطة حول صورة الملف الشخصي" },
+      "storyReplies": { "label": "الرد على القصص", "desc": "من يستطيع الرد أو التفاعل مع القصة" }
+    },
+    "listeningNow": {
+      "heading": "الاستماع الآن",
+      "listeningNow": { "label": "من يرى الاستماع الآن", "desc": "المحتوى الذي تستمع إليه حالياً وقد ينقل الزائر لعالمه" },
+      "listeningWorldSwitch": { "label": "السماح بالانتقال من الاستماع الآن", "desc": "إذا كان المحتوى في عالم آخر يمكن فتحه مباشرة" }
+    },
+    "mood": {
+      "heading": "مزاجي",
+      "moodVisibility": { "label": "من يرى مزاجي", "desc": "قوائمك المزاجية المبنية من محتوى الآخرين" },
+      "moodSource": { "label": "ظهور مصدر المحتوى داخل مزاجي", "desc": "إظهار صاحب المحتوى الأصلي داخل قوائم مزاجي" }
+    },
+    "saved": {
+      "heading": "المحفوظات",
+      "savedVisibility": { "label": "من يرى المحفوظات", "desc": "المحتوى الذي حفظته للاستماع لاحقاً" },
+      "savedLists": { "label": "قوائم المحفوظات", "desc": "قوائم محتوى الآخرين المحفوظة عندك" }
+    },
+    "reposts": {
+      "heading": "الإعادات",
+      "repostsVisibility": { "label": "من يرى الإعادات", "desc": "المحتوى الذي أعدت نشره أو مشاركته" }
+    },
+    "subscriptions": {
+      "heading": "الاشتراكات",
+      "subscriptionsVisibility": { "label": "من يرى الاشتراكات", "desc": "المحتوى القادم من الحسابات التي تتابعها" }
+    },
+    "sessions": {
+      "heading": "الرحلات / الجلسات",
+      "sessionsVisibility": { "label": "من يرى الرحلات / الجلسات", "desc": "جلسات On Road والمسارات المرتبطة بها" },
+      "sessionsLocation": { "label": "دقة الموقع داخل الرحلات", "desc": "هل يظهر الموقع بدقة أم كمدينة فقط أم يخفى" }
+    },
+    "messages": {
+      "heading": "الرسائل والتواصل",
+      "messages": { "label": "من يستطيع مراسلتي", "desc": "الرسائل المباشرة وطلبات التواصل" },
+      "followRequests": { "label": "طلبات المتابعة", "desc": "الموافقة التلقائية أو اليدوية على المتابعة" },
+      "groupInvites": { "label": "دعوات المجموعات", "desc": "من يستطيع دعوتك لمحادثة جماعية" }
+    },
+    "giftsAndPoints": {
+      "heading": "الهدايا والنقاط",
+      "receiveGifts": { "label": "استقبال الهدايا", "desc": "من يستطيع إرسال هدايا افتراضية لك" },
+      "receivePoints": { "label": "استقبال النقاط", "desc": "السماح باستقبال نقاط من أعضاء آخرين" },
+      "pointsBalance": { "label": "إظهار رصيد النقاط", "desc": "إظهار رصيد نقاطك على الملف الشخصي" }
+    },
+    "discover": {
+      "heading": "الظهور في اكتشف",
+      "discoverProfile": { "label": "الظهور في اكتشف", "desc": "ظهور ملفك ومحتواك في توصيات اكتشف" },
+      "followSuggestions": { "label": "اقتراحات المتابعة", "desc": "ظهورك كاقتراح متابعة للمستخدمين" }
+    },
+    "guardian": {
+      "heading": "الأطفال والوصي",
+      "guardianEnforcement": { "label": "تطبيق إعدادات الوصي", "desc": "إعدادات الطفل والوصي يطبقها الخادم — ليست إعداداً في الواجهة فقط" },
+      "childStories": { "label": "وصول الطفل للقصص", "desc": "القصص المتاحة للأطفال تخضع لمراجعة العمر وإعدادات الوصي من الخادم" },
+      "childMessages": { "label": "رسائل وحسابات الأطفال", "desc": "المتابعة والرسائل والهدايا والمسابقات تخضع للوصي وتُطبَّق من الخادم" }
+    },
+    "blocking": {
+      "heading": "الحظر والكتم",
+      "blockedAccounts": { "label": "الحسابات المحظورة", "desc": "المستخدمون الذين حظرتهم تماماً" },
+      "mutedAccounts": { "label": "الحسابات المكتومة", "desc": "المستخدمون الذين كتمت محتواهم أو محتوى معين منهم" }
+    }
+  },
+  "hub": {
+    "soonBadge": "قريباً",
+    "sheetAria": "قائمة الحساب والتحكم",
+    "sheetTitle": "الحساب والإعدادات",
+    "closeAria": "إغلاق قائمة الحساب",
+    "defaultName": "مستخدم Sound",
+    "badgeAria": "شارة التحقق",
+    "viewProfile": "عرض ملفي",
+    "viewProfileAria": "عرض ملفي الشخصي",
+    "editProfile": "تعديل الملف",
+    "editProfileAria": "تعديل الملف الشخصي"
+  },
+  "sections": {
+    "account": {
+      "heading": "الحساب",
+      "editProfile": { "label": "تعديل الملف الشخصي", "desc": "الصورة والاسم والمعلومات الشخصية" },
+      "settings": { "label": "إعدادات الحساب", "desc": "البريد وكلمة المرور والإعدادات العامة" },
+      "security": { "label": "الأمان وتسجيل الدخول", "desc": "الأجهزة النشطة والمصادقة الثنائية" },
+      "language": { "label": "اللغة والمنطقة", "desc": "العربية، المنطقة الزمنية" },
+      "accessibility": { "label": "إمكانية الوصول", "desc": "حجم النص والتباين والترجمة" },
+      "logout": { "label": "تسجيل الخروج" }
+    },
+    "privacy": {
+      "heading": "الخصوصية",
+      "center": { "label": "مركز الخصوصية", "desc": "عرض وتعديل كل إعدادات الخصوصية" },
+      "profileVisibility": { "label": "من يرى ملفي" },
+      "storiesVisibility": { "label": "من يرى القصص" },
+      "listeningVisibility": { "label": "من يرى حالة الاستماع الآن" },
+      "moodVisibility": { "label": "من يرى مزاجي" },
+      "savedVisibility": { "label": "من يرى المحفوظات" },
+      "repostsVisibility": { "label": "من يرى الإعادات" },
+      "subscriptionsVisibility": { "label": "من يرى الاشتراكات" },
+      "sessionsVisibility": { "label": "من يرى الرحلات / الجلسات" },
+      "statsVisibility": { "label": "إظهار / إخفاء الإحصائيات" },
+      "messages": { "label": "الرسائل والتواصل" },
+      "gifts": { "label": "الهدايا والنقاط" },
+      "discover": { "label": "الظهور في اكتشف" },
+      "blocking": { "label": "الحظر والكتم" }
+    },
+    "activity": {
+      "heading": "النشاط والتواصل",
+      "inbox": { "label": "الرسائل / الوارد" },
+      "notifications": { "label": "الإشعارات" },
+      "comments": { "label": "التعليقات والردود" },
+      "followers": { "label": "المتابعون والمتابعة" },
+      "reports": { "label": "البلاغات التي أرسلتها" },
+      "blocked": { "label": "المستخدمون المحظورون" }
+    },
+    "monetization": {
+      "heading": "الاشتراكات والمال",
+      "subscriptions": { "label": "الباقات والاشتراكات" },
+      "wallet": { "label": "المحفظة" },
+      "earnings": { "label": "الأرباح" },
+      "payments": { "label": "السحب والمدفوعات" },
+      "gifts": { "label": "الهدايا والنقاط" }
+    },
+    "ads": {
+      "heading": "الإعلانات",
+      "myAds": { "label": "إعلاناتي" },
+      "createAd": { "label": "إنشاء إعلان" },
+      "whyAd": { "label": "لماذا أرى هذا الإعلان" },
+      "reportAd": { "label": "بلاغات الإعلانات" }
+    },
+    "radio": {
+      "heading": "الراديو",
+      "requests": { "label": "طلبات الإذاعة" },
+      "myStation": { "label": "إذاعتي" },
+      "contact": { "label": "تواصل المحطة" },
+      "advertise": { "label": "أعلن معنا" },
+      "messages": { "label": "رسائل البرامج" }
+    },
+    "music": {
+      "heading": "الموسيقى والحقوق",
+      "rights": { "label": "حقوق الموسيقى" },
+      "labels": { "label": "شركات الإنتاج" },
+      "artists": { "label": "الفنانين والمساهمين" },
+      "reviews": { "label": "مراجعات الحقوق" },
+      "eligibility": { "label": "حالة الأهلية الموسيقية" }
+    },
+    "tournaments": {
+      "heading": "المسابقات",
+      "myTournaments": { "label": "مسابقاتي" },
+      "invites": { "label": "الدعوات / المسابقات المغلقة" },
+      "voting": { "label": "التصويت والتحكيم" },
+      "awards": { "label": "الجوائز / الميداليات" },
+      "entries": { "label": "مشاركاتي" }
+    },
+    "support": {
+      "heading": "الدعم والثقة",
+      "helpCenter": { "label": "مركز المساعدة" },
+      "contact": { "label": "تواصل مع الدعم" },
+      "tickets": { "label": "التذاكر والاعتراضات" },
+      "reportBug": { "label": "الإبلاغ عن مشكلة" },
+      "policy": { "label": "شروط وسياسات" }
+    }
+  }
+}

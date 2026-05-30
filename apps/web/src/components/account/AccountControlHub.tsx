@@ -1,6 +1,6 @@
 /**
  * Sound Platform — Account Control Hub
- * Phase: 5-G (Privacy Foundation — UI-only inventory, 13 groups)
+ * Phase: 5-G (Privacy Foundation — UI-only inventory, 13 groups) + i18n
  *
  * Full-screen glass sheet that opens from the AppHeader avatar button.
  * Contains 9 account-management sections + an inline Privacy Center panel.
@@ -17,8 +17,10 @@
  * Backend placeholders are marked // SCHEMA GAP or // COMING SOON.
  */
 
-import React, { useEffect, useCallback, useState } from 'react';
+import React, { useEffect, useCallback, useState, useMemo } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { TFunction } from 'i18next';
 import { signOut as firebaseSignOut } from 'firebase/auth';
 import { doc, onSnapshot, setDoc } from 'firebase/firestore';
 import { useAuth } from '../../contexts/AuthContext';
@@ -46,8 +48,6 @@ interface HubSection {
 
 // ═══ Privacy Center placeholder values ═══════════════════════════════════════
 
-// SCHEMA GAP: privacy settings are not yet in Firestore; these are UI-only defaults.
-// Server-side enforcement comes later. The UI inventory must still be complete now.
 interface PrivacyOption {
   id: string;
   label: string;
@@ -59,8 +59,6 @@ interface PrivacyRow {
   desc: string;
   value: string;
   options: PrivacyOption[];
-  /** True for rows that are enforced server-side only — not editable from UI yet.
-   *  Renders as a static info badge instead of selectable chips. */
   serverEnforced?: boolean;
 }
 
@@ -69,177 +67,183 @@ interface PrivacyGroup {
   rows: PrivacyRow[];
 }
 
-const AUDIENCE_OPTIONS: PrivacyOption[] = [
-  { id: 'public', label: 'عام' },
-  { id: 'followers', label: 'المتابعون' },
-  { id: 'following', label: 'من أتابعهم' },
-  { id: 'friends', label: 'الأصدقاء' },
-  { id: 'specific-list', label: 'قائمة محددة' },
-  { id: 'except-selected', label: 'قائمة / أصدقاء باستثناء' },
-  { id: 'manual-selected', label: 'أشخاص محددون' },
-  { id: 'only-me', label: 'أنا فقط' },
+// ── Helpers to get translated static data ──
+
+const getAudienceOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'public', label: t('options.public') },
+  { id: 'followers', label: t('options.followers') },
+  { id: 'following', label: t('options.following') },
+  { id: 'friends', label: t('options.friends') },
+  { id: 'specific-list', label: t('options.specificList') },
+  { id: 'except-selected', label: t('options.exceptSelected') },
+  { id: 'manual-selected', label: t('options.manualSelected') },
+  { id: 'only-me', label: t('options.onlyMe') },
 ];
 
-const CONTACT_OPTIONS: PrivacyOption[] = [
-  { id: 'everyone', label: 'الجميع' },
-  { id: 'followers', label: 'المتابعون' },
-  { id: 'following', label: 'من أتابعهم' },
-  { id: 'friends', label: 'الأصدقاء' },
-  { id: 'off', label: 'إيقاف' },
+const getContactOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'everyone', label: t('options.everyone') },
+  { id: 'followers', label: t('options.followers') },
+  { id: 'following', label: t('options.following') },
+  { id: 'friends', label: t('options.friends') },
+  { id: 'off', label: t('options.off') },
 ];
 
-const TOGGLE_OPTIONS: PrivacyOption[] = [
-  { id: 'on', label: 'مفعل' },
-  { id: 'off', label: 'متوقف' },
+const getToggleOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'on', label: t('options.on') },
+  { id: 'off', label: t('options.offToggle') },
 ];
 
-const APPROVAL_OPTIONS: PrivacyOption[] = [
-  { id: 'auto', label: 'تلقائي' },
-  { id: 'manual', label: 'موافقة يدوية' },
+const getApprovalOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'auto', label: t('options.auto') },
+  { id: 'manual', label: t('options.manual') },
 ];
 
-const LOCATION_OPTIONS: PrivacyOption[] = [
-  { id: 'exact', label: 'دقيق' },
-  { id: 'city', label: 'المدينة فقط' },
-  { id: 'hidden', label: 'مخفي' },
+const getLocationOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'exact', label: t('options.exact') },
+  { id: 'city', label: t('options.city') },
+  { id: 'hidden', label: t('options.hidden') },
 ];
 
-const MANAGEMENT_OPTIONS: PrivacyOption[] = [
-  { id: 'manage', label: 'إدارة' },
+const getManagementOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'manage', label: t('options.manage') },
 ];
 
-const SERVER_OPTIONS: PrivacyOption[] = [
-  { id: 'server', label: 'تطبيق من الخادم' },
+const getServerOptions = (t: TFunction): PrivacyOption[] => [
+  { id: 'server', label: t('options.server') },
 ];
 
-const PRIVACY_GROUPS: PrivacyGroup[] = [
+const getPrivacyGroups = (t: TFunction): PrivacyGroup[] => [
   {
-    heading: 'الملف والهوية',
+    heading: t('privacyGroups.profileAndIdentity.heading'),
     rows: [
-      { id: 'profile-visibility', label: 'من يرى ملفي الشخصي', desc: 'الصورة والاسم والنبذة والبيانات الأساسية', value: 'public', options: AUDIENCE_OPTIONS },
-      { id: 'profile-stats', label: 'إظهار الإحصائيات', desc: 'المتابعون والمتابعة والإعجابات والاستماعات', value: 'followers', options: AUDIENCE_OPTIONS },
-      { id: 'social-links', label: 'الروابط الاجتماعية', desc: 'الروابط التي تظهر في الملف الشخصي', value: 'public', options: AUDIENCE_OPTIONS },
-      { id: 'badges', label: 'الشارات والتحقق', desc: 'شارات التحقق والجوائز والإنجازات', value: 'public', options: AUDIENCE_OPTIONS },
+      { id: 'profile-visibility', label: t('privacyGroups.profileAndIdentity.profileVisibility.label'), desc: t('privacyGroups.profileAndIdentity.profileVisibility.desc'), value: 'public', options: getAudienceOptions(t) },
+      { id: 'profile-stats', label: t('privacyGroups.profileAndIdentity.profileStats.label'), desc: t('privacyGroups.profileAndIdentity.profileStats.desc'), value: 'followers', options: getAudienceOptions(t) },
+      { id: 'social-links', label: t('privacyGroups.profileAndIdentity.socialLinks.label'), desc: t('privacyGroups.profileAndIdentity.socialLinks.desc'), value: 'public', options: getAudienceOptions(t) },
+      { id: 'badges', label: t('privacyGroups.profileAndIdentity.badges.label'), desc: t('privacyGroups.profileAndIdentity.badges.desc'), value: 'public', options: getAudienceOptions(t) },
     ],
   },
   {
-    heading: 'القصص ودائرة الصورة',
+    heading: t('privacyGroups.storiesAndRing.heading'),
     rows: [
-      { id: 'stories-visibility', label: 'من يرى القصص', desc: 'القصص التي تظهر كدائرة حول صورة الملف', value: 'followers', options: AUDIENCE_OPTIONS },
-      { id: 'story-ring', label: 'إظهار دائرة القصة', desc: 'إظهار وجود قصة نشطة حول صورة الملف الشخصي', value: 'followers', options: AUDIENCE_OPTIONS },
-      { id: 'story-replies', label: 'الرد على القصص', desc: 'من يستطيع الرد أو التفاعل مع القصة', value: 'friends', options: CONTACT_OPTIONS },
+      { id: 'stories-visibility', label: t('privacyGroups.storiesAndRing.storiesVisibility.label'), desc: t('privacyGroups.storiesAndRing.storiesVisibility.desc'), value: 'followers', options: getAudienceOptions(t) },
+      { id: 'story-ring', label: t('privacyGroups.storiesAndRing.storyRing.label'), desc: t('privacyGroups.storiesAndRing.storyRing.desc'), value: 'followers', options: getAudienceOptions(t) },
+      { id: 'story-replies', label: t('privacyGroups.storiesAndRing.storyReplies.label'), desc: t('privacyGroups.storiesAndRing.storyReplies.desc'), value: 'friends', options: getContactOptions(t) },
     ],
   },
   {
-    heading: 'الاستماع الآن',
+    heading: t('privacyGroups.listeningNow.heading'),
     rows: [
-      { id: 'listening-now', label: 'من يرى الاستماع الآن', desc: 'المحتوى الذي تستمع إليه حالياً وقد ينقل الزائر لعالمه', value: 'followers', options: AUDIENCE_OPTIONS },
-      { id: 'listening-world-switch', label: 'السماح بالانتقال من الاستماع الآن', desc: 'إذا كان المحتوى في عالم آخر يمكن فتحه مباشرة', value: 'on', options: TOGGLE_OPTIONS },
+      { id: 'listening-now', label: t('privacyGroups.listeningNow.listeningNow.label'), desc: t('privacyGroups.listeningNow.listeningNow.desc'), value: 'followers', options: getAudienceOptions(t) },
+      { id: 'listening-world-switch', label: t('privacyGroups.listeningNow.listeningWorldSwitch.label'), desc: t('privacyGroups.listeningNow.listeningWorldSwitch.desc'), value: 'on', options: getToggleOptions(t) },
     ],
   },
   {
-    heading: 'مزاجي',
+    heading: t('privacyGroups.mood.heading'),
     rows: [
-      { id: 'mood-visibility', label: 'من يرى مزاجي', desc: 'قوائمك المزاجية المبنية من محتوى الآخرين', value: 'followers', options: AUDIENCE_OPTIONS },
-      { id: 'mood-source', label: 'ظهور مصدر المحتوى داخل مزاجي', desc: 'إظهار صاحب المحتوى الأصلي داخل قوائم مزاجي', value: 'on', options: TOGGLE_OPTIONS },
+      { id: 'mood-visibility', label: t('privacyGroups.mood.moodVisibility.label'), desc: t('privacyGroups.mood.moodVisibility.desc'), value: 'followers', options: getAudienceOptions(t) },
+      { id: 'mood-source', label: t('privacyGroups.mood.moodSource.label'), desc: t('privacyGroups.mood.moodSource.desc'), value: 'on', options: getToggleOptions(t) },
     ],
   },
   {
-    heading: 'المحفوظات',
+    heading: t('privacyGroups.saved.heading'),
     rows: [
-      { id: 'saved-visibility', label: 'من يرى المحفوظات', desc: 'المحتوى الذي حفظته للاستماع لاحقاً', value: 'only-me', options: AUDIENCE_OPTIONS },
-      { id: 'saved-lists', label: 'قوائم المحفوظات', desc: 'قوائم محتوى الآخرين المحفوظة عندك', value: 'only-me', options: AUDIENCE_OPTIONS },
+      { id: 'saved-visibility', label: t('privacyGroups.saved.savedVisibility.label'), desc: t('privacyGroups.saved.savedVisibility.desc'), value: 'only-me', options: getAudienceOptions(t) },
+      { id: 'saved-lists', label: t('privacyGroups.saved.savedLists.label'), desc: t('privacyGroups.saved.savedLists.desc'), value: 'only-me', options: getAudienceOptions(t) },
     ],
   },
   {
-    heading: 'الإعادات',
+    heading: t('privacyGroups.reposts.heading'),
     rows: [
-      { id: 'reposts-visibility', label: 'من يرى الإعادات', desc: 'المحتوى الذي أعدت نشره أو مشاركته', value: 'public', options: AUDIENCE_OPTIONS },
+      { id: 'reposts-visibility', label: t('privacyGroups.reposts.repostsVisibility.label'), desc: t('privacyGroups.reposts.repostsVisibility.desc'), value: 'public', options: getAudienceOptions(t) },
     ],
   },
   {
-    heading: 'الاشتراكات',
+    heading: t('privacyGroups.subscriptions.heading'),
     rows: [
-      { id: 'subscriptions-visibility', label: 'من يرى الاشتراكات', desc: 'المحتوى القادم من الحسابات التي تتابعها', value: 'followers', options: AUDIENCE_OPTIONS },
+      { id: 'subscriptions-visibility', label: t('privacyGroups.subscriptions.subscriptionsVisibility.label'), desc: t('privacyGroups.subscriptions.subscriptionsVisibility.desc'), value: 'followers', options: getAudienceOptions(t) },
     ],
   },
   {
-    heading: 'الرحلات / الجلسات',
+    heading: t('privacyGroups.sessions.heading'),
     rows: [
-      { id: 'sessions-visibility', label: 'من يرى الرحلات / الجلسات', desc: 'جلسات On Road والمسارات المرتبطة بها', value: 'friends', options: AUDIENCE_OPTIONS },
-      { id: 'sessions-location', label: 'دقة الموقع داخل الرحلات', desc: 'هل يظهر الموقع بدقة أم كمدينة فقط أم يخفى', value: 'city', options: LOCATION_OPTIONS },
+      { id: 'sessions-visibility', label: t('privacyGroups.sessions.sessionsVisibility.label'), desc: t('privacyGroups.sessions.sessionsVisibility.desc'), value: 'friends', options: getAudienceOptions(t) },
+      { id: 'sessions-location', label: t('privacyGroups.sessions.sessionsLocation.label'), desc: t('privacyGroups.sessions.sessionsLocation.desc'), value: 'city', options: getLocationOptions(t) },
     ],
   },
   {
-    heading: 'الرسائل والتواصل',
+    heading: t('privacyGroups.messages.heading'),
     rows: [
-      { id: 'messages', label: 'من يستطيع مراسلتي', desc: 'الرسائل المباشرة وطلبات التواصل', value: 'followers', options: CONTACT_OPTIONS },
-      { id: 'follow-requests', label: 'طلبات المتابعة', desc: 'الموافقة التلقائية أو اليدوية على المتابعة', value: 'auto', options: APPROVAL_OPTIONS },
-      { id: 'group-invites', label: 'دعوات المجموعات', desc: 'من يستطيع دعوتك لمحادثة جماعية', value: 'friends', options: CONTACT_OPTIONS },
+      { id: 'messages', label: t('privacyGroups.messages.messages.label'), desc: t('privacyGroups.messages.messages.desc'), value: 'followers', options: getContactOptions(t) },
+      { id: 'follow-requests', label: t('privacyGroups.messages.followRequests.label'), desc: t('privacyGroups.messages.followRequests.desc'), value: 'auto', options: getApprovalOptions(t) },
+      { id: 'group-invites', label: t('privacyGroups.messages.groupInvites.label'), desc: t('privacyGroups.messages.groupInvites.desc'), value: 'friends', options: getContactOptions(t) },
     ],
   },
   {
-    heading: 'الهدايا والنقاط',
+    heading: t('privacyGroups.giftsAndPoints.heading'),
     rows: [
-      { id: 'receive-gifts', label: 'استقبال الهدايا', desc: 'من يستطيع إرسال هدايا افتراضية لك', value: 'followers', options: CONTACT_OPTIONS },
-      { id: 'receive-points', label: 'استقبال النقاط', desc: 'السماح باستقبال نقاط من أعضاء آخرين', value: 'followers', options: CONTACT_OPTIONS },
-      { id: 'points-balance', label: 'إظهار رصيد النقاط', desc: 'إظهار رصيد نقاطك على الملف الشخصي', value: 'only-me', options: AUDIENCE_OPTIONS },
+      { id: 'receive-gifts', label: t('privacyGroups.giftsAndPoints.receiveGifts.label'), desc: t('privacyGroups.giftsAndPoints.receiveGifts.desc'), value: 'followers', options: getContactOptions(t) },
+      { id: 'receive-points', label: t('privacyGroups.giftsAndPoints.receivePoints.label'), desc: t('privacyGroups.giftsAndPoints.receivePoints.desc'), value: 'followers', options: getContactOptions(t) },
+      { id: 'points-balance', label: t('privacyGroups.giftsAndPoints.pointsBalance.label'), desc: t('privacyGroups.giftsAndPoints.pointsBalance.desc'), value: 'only-me', options: getAudienceOptions(t) },
     ],
   },
   {
-    heading: 'الظهور في اكتشف',
+    heading: t('privacyGroups.discover.heading'),
     rows: [
-      { id: 'discover-profile', label: 'الظهور في اكتشف', desc: 'ظهور ملفك ومحتواك في توصيات اكتشف', value: 'on', options: TOGGLE_OPTIONS },
-      { id: 'follow-suggestions', label: 'اقتراحات المتابعة', desc: 'ظهورك كاقتراح متابعة للمستخدمين', value: 'on', options: TOGGLE_OPTIONS },
+      { id: 'discover-profile', label: t('privacyGroups.discover.discoverProfile.label'), desc: t('privacyGroups.discover.discoverProfile.desc'), value: 'on', options: getToggleOptions(t) },
+      { id: 'follow-suggestions', label: t('privacyGroups.discover.followSuggestions.label'), desc: t('privacyGroups.discover.followSuggestions.desc'), value: 'on', options: getToggleOptions(t) },
     ],
   },
   {
-    heading: 'الأطفال والوصي',
+    heading: t('privacyGroups.guardian.heading'),
     rows: [
       {
         id: 'guardian-enforcement',
-        label: 'تطبيق إعدادات الوصي',
-        desc: 'إعدادات الطفل والوصي يطبقها الخادم — ليست إعداداً في الواجهة فقط',
+        label: t('privacyGroups.guardian.guardianEnforcement.label'),
+        desc: t('privacyGroups.guardian.guardianEnforcement.desc'),
         value: 'server',
-        options: SERVER_OPTIONS,
+        options: getServerOptions(t),
         serverEnforced: true,
       },
       {
         id: 'child-stories',
-        label: 'وصول الطفل للقصص',
-        desc: 'القصص المتاحة للأطفال تخضع لمراجعة العمر وإعدادات الوصي من الخادم',
+        label: t('privacyGroups.guardian.childStories.label'),
+        desc: t('privacyGroups.guardian.childStories.desc'),
         value: 'server',
-        options: SERVER_OPTIONS,
+        options: getServerOptions(t),
         serverEnforced: true,
       },
       {
         id: 'child-messages',
-        label: 'رسائل وحسابات الأطفال',
-        desc: 'المتابعة والرسائل والهدايا والمسابقات تخضع للوصي وتُطبَّق من الخادم',
+        label: t('privacyGroups.guardian.childMessages.label'),
+        desc: t('privacyGroups.guardian.childMessages.desc'),
         value: 'server',
-        options: SERVER_OPTIONS,
+        options: getServerOptions(t),
         serverEnforced: true,
       },
     ],
   },
   {
-    heading: 'الحظر والكتم',
+    heading: t('privacyGroups.blocking.heading'),
     rows: [
-      { id: 'blocked-accounts', label: 'الحسابات المحظورة', desc: 'المستخدمون الذين حظرتهم تماماً', value: 'manage', options: MANAGEMENT_OPTIONS },
-      { id: 'muted-accounts', label: 'الحسابات المكتومة', desc: 'المستخدمون الذين كتمت محتواهم أو محتوى معين منهم', value: 'manage', options: MANAGEMENT_OPTIONS },
+      { id: 'blocked-accounts', label: t('privacyGroups.blocking.blockedAccounts.label'), desc: t('privacyGroups.blocking.blockedAccounts.desc'), value: 'manage', options: getManagementOptions(t) },
+      { id: 'muted-accounts', label: t('privacyGroups.blocking.mutedAccounts.label'), desc: t('privacyGroups.blocking.mutedAccounts.desc'), value: 'manage', options: getManagementOptions(t) },
     ],
   },
 ];
+
 
 // ═══ Privacy Center Panel ════════════════════════════════════════════════════
 
 type PrivacySaveState = 'idle' | 'loading' | 'saving' | 'saved' | 'error';
 
 function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string | null }) {
+  const { t } = useTranslation('account');
+  const groups = useMemo(() => getPrivacyGroups(t), [t]);
+
   // Local state initialised from PRIVACY_GROUPS defaults.
   // Overwritten once Firestore data loads.
   const [values, setValues] = useState<Record<string, string>>(() => {
-    return PRIVACY_GROUPS.reduce<Record<string, string>>((acc, group) => {
+    return groups.reduce<Record<string, string>>((acc, group) => {
       group.rows.forEach((row) => {
         acc[row.id] = row.value;
       });
@@ -277,7 +281,7 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
       (err) => {
         console.error('[PrivacyCenterPanel] Firestore load error:', err);
         setSaveState('error');
-        setErrorMsg('فشل تحميل الإعدادات — ' + err.message);
+        setErrorMsg(err.message);
       },
     );
     return unsub;
@@ -305,7 +309,7 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
       setSaveState('saved');
     } catch (err: unknown) {
       console.error('[PrivacyCenterPanel] Firestore save error:', err);
-      const msg = err instanceof Error ? err.message : 'حدث خطأ';
+      const msg = err instanceof Error ? err.message : 'Unknown error';
       setErrorMsg(msg);
       setSaveState('error');
     }
@@ -313,25 +317,25 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
 
 
   return (
-    <div className="ach-privacy-panel" role="region" aria-label="مركز الخصوصية">
+    <div className="ach-privacy-panel" role="region" aria-label={t('privacyCenter.title')}>
       {/* Header */}
       <div className="ach-privacy-panel__header">
         <button
           className="ach-privacy-panel__back"
           onClick={onBack}
-          aria-label="العودة إلى قائمة الحساب"
+          aria-label={t('privacyCenter.backAria')}
           type="button"
         >
           <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span>
         </button>
         <div>
-          <p className="ach-privacy-panel__title">مركز الخصوصية</p>
+          <p className="ach-privacy-panel__title">{t('privacyCenter.title')}</p>
           <p className="ach-privacy-panel__subtitle">
-            {saveState === 'loading' && 'جاري التحميل...'}
-            {saveState === 'saving' && 'جاري الحفظ...'}
-            {saveState === 'saved'  && '✅ تم الحفظ'}
-            {saveState === 'error'  && `⚠️ ${errorMsg}`}
-            {saveState === 'idle'   && 'تحكم في من يرى ماذا'}
+            {saveState === 'loading' && t('privacyCenter.subtitle.loading')}
+            {saveState === 'saving' && t('privacyCenter.subtitle.saving')}
+            {saveState === 'saved'  && t('privacyCenter.subtitle.saved')}
+            {saveState === 'error'  && t('privacyCenter.subtitle.error', { error: errorMsg })}
+            {saveState === 'idle'   && t('privacyCenter.subtitle.idle')}
           </p>
         </div>
         {/* Save button in header */}
@@ -340,9 +344,9 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
           className="ach-privacy-save-btn"
           onClick={handleSave}
           disabled={saveState === 'saving' || saveState === 'loading' || !uid}
-          aria-label="حفظ إعدادات الخصوصية"
+          aria-label={t('privacyCenter.saveAria')}
         >
-          {saveState === 'saving' ? '...' : 'حفظ'}
+          {saveState === 'saving' ? t('privacyCenter.saving') : t('privacyCenter.save')}
         </button>
       </div>
 
@@ -352,12 +356,12 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
         {saveState === 'loading' && (
           <div className="ach-privacy-note">
             <span className="material-symbols-outlined" aria-hidden="true">sync</span>
-            <span>جاري تحميل إعداداتك المحفوظة...</span>
+            <span>{t('privacyCenter.loadNote')}</span>
           </div>
         )}
 
         {/* Privacy groups */}
-        {PRIVACY_GROUPS.map((group) => (
+        {groups.map((group) => (
           <section key={group.heading} className="ach-section">
             <h3 className="ach-section__heading">{group.heading}</h3>
             <div className="ach-list">
@@ -373,9 +377,9 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
                         <span className="ach-privacy-row__label">{row.label}</span>
                         <span className="ach-privacy-row__desc">{row.desc}</span>
                       </div>
-                      <span className="ach-privacy-server-badge" aria-label="يطبقه الخادم">
+                      <span className="ach-privacy-server-badge" aria-label={t('privacyCenter.serverBadgeAria')}>
                         <span className="material-symbols-outlined" aria-hidden="true">dns</span>
-                        الخادم
+                        {t('privacyCenter.serverBadge')}
                       </span>
                     </div>
                   );
@@ -386,7 +390,7 @@ function PrivacyCenterPanel({ onBack, uid }: { onBack: () => void; uid: string |
                     <div className="ach-privacy-row__text">
                       <span className="ach-privacy-row__label">{row.label}</span>
                       <span className="ach-privacy-row__desc">{row.desc}</span>
-                      <div className="ach-privacy-row__options" aria-label={`${row.label} options`}>
+                      <div className="ach-privacy-row__options" aria-label={t('privacyCenter.optionsAria', { label: row.label })}>
                         {row.options.map((option) => (
                           <button
                             key={option.id}
@@ -421,6 +425,7 @@ interface AccountControlHubProps {
 }
 
 export function AccountControlHub({ onClose }: AccountControlHubProps) {
+  const { t, i18n } = useTranslation(['account', 'common']);
   const { currentUser } = useAuth();
   const { world } = useWorldNav();
   const navigate = useNavigate();
@@ -452,161 +457,161 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
   }, [onClose]);
 
   // ── Section definitions ──────────────────────────────────────────────────
-  const sections: HubSection[] = [
+  const sections: HubSection[] = useMemo(() => [
 
-    /* ── الحساب ─────────────────────────────────────────────────────────── */
+    /* ── Account ─────────────────────────────────────────────────────────── */
     {
-      heading: 'الحساب',
+      heading: t('sections.account.heading'),
       items: [
         {
           icon: 'manage_accounts',
-          label: 'تعديل الملف الشخصي',
-          desc: 'الصورة والاسم والمعلومات الشخصية',
+          label: t('sections.account.editProfile.label'),
+          desc: t('sections.account.editProfile.desc'),
           route: '/settings/edit-profile',
         },
         {
           icon: 'settings',
-          label: 'إعدادات الحساب',
-          desc: 'البريد وكلمة المرور والإعدادات العامة',
+          label: t('sections.account.settings.label'),
+          desc: t('sections.account.settings.desc'),
           route: '/settings',
         },
         {
           icon: 'lock',
-          label: 'الأمان وتسجيل الدخول',
-          desc: 'الأجهزة النشطة والمصادقة الثنائية',
+          label: t('sections.account.security.label'),
+          desc: t('sections.account.security.desc'),
           soon: true,
         },
         {
           icon: 'language',
-          label: 'اللغة والمنطقة',
-          desc: 'العربية، المنطقة الزمنية',
+          label: t('sections.account.language.label'),
+          desc: t('sections.account.language.desc'),
           soon: true,
         },
         {
           icon: 'accessibility',
-          label: 'إمكانية الوصول',
-          desc: 'حجم النص والتباين والترجمة',
+          label: t('sections.account.accessibility.label'),
+          desc: t('sections.account.accessibility.desc'),
           soon: true,
         },
         {
           icon: 'logout',
-          label: 'تسجيل الخروج',
+          label: t('sections.account.logout.label'),
           danger: true,
           onClick: handleSignOut,
         },
       ],
     },
 
-    /* ── الخصوصية ───────────────────────────────────────────────────────── */
+    /* ── Privacy ───────────────────────────────────────────────────────── */
     {
-      heading: 'الخصوصية',
+      heading: t('sections.privacy.heading'),
       items: [
         {
           icon: 'shield',
-          label: 'مركز الخصوصية',
-          desc: 'عرض وتعديل كل إعدادات الخصوصية',
+          label: t('sections.privacy.center.label'),
+          desc: t('sections.privacy.center.desc'),
           onClick: () => setPrivacyOpen(true),
         },
-        { icon: 'person_search', label: 'من يرى ملفي', soon: true },
-        { icon: 'auto_stories', label: 'من يرى القصص', soon: true },
-        { icon: 'hearing', label: 'من يرى حالة الاستماع الآن', soon: true },
-        { icon: 'mood', label: 'من يرى مزاجي', soon: true },
-        { icon: 'bookmarks', label: 'من يرى المحفوظات', soon: true },
-        { icon: 'repeat', label: 'من يرى الإعادات', soon: true },
-        { icon: 'subscriptions', label: 'من يرى الاشتراكات', soon: true },
-        { icon: 'route', label: 'من يرى الرحلات / الجلسات', soon: true },
-        { icon: 'bar_chart', label: 'إظهار / إخفاء الإحصائيات', soon: true },
-        { icon: 'forum', label: 'الرسائل والتواصل', soon: true },
-        { icon: 'redeem', label: 'الهدايا والنقاط', soon: true },
-        { icon: 'explore', label: 'الظهور في اكتشف', soon: true },
-        { icon: 'block', label: 'الحظر والكتم', soon: true },
+        { icon: 'person_search', label: t('sections.privacy.profileVisibility.label'), soon: true },
+        { icon: 'auto_stories', label: t('sections.privacy.storiesVisibility.label'), soon: true },
+        { icon: 'hearing', label: t('sections.privacy.listeningVisibility.label'), soon: true },
+        { icon: 'mood', label: t('sections.privacy.moodVisibility.label'), soon: true },
+        { icon: 'bookmarks', label: t('sections.privacy.savedVisibility.label'), soon: true },
+        { icon: 'repeat', label: t('sections.privacy.repostsVisibility.label'), soon: true },
+        { icon: 'subscriptions', label: t('sections.privacy.subscriptionsVisibility.label'), soon: true },
+        { icon: 'route', label: t('sections.privacy.sessionsVisibility.label'), soon: true },
+        { icon: 'bar_chart', label: t('sections.privacy.statsVisibility.label'), soon: true },
+        { icon: 'forum', label: t('sections.privacy.messages.label'), soon: true },
+        { icon: 'redeem', label: t('sections.privacy.gifts.label'), soon: true },
+        { icon: 'explore', label: t('sections.privacy.discover.label'), soon: true },
+        { icon: 'block', label: t('sections.privacy.blocking.label'), soon: true },
       ],
     },
 
-    /* ── النشاط والتواصل ─────────────────────────────────────────────────── */
+    /* ── Activity ─────────────────────────────────────────────────── */
     {
-      heading: 'النشاط والتواصل',
+      heading: t('sections.activity.heading'),
       items: [
-        { icon: 'inbox', label: 'الرسائل / الوارد', soon: true },
-        { icon: 'notifications', label: 'الإشعارات', soon: true },
-        { icon: 'comment', label: 'التعليقات والردود', soon: true },
-        { icon: 'people', label: 'المتابعون والمتابعة', soon: true },
-        { icon: 'flag', label: 'البلاغات التي أرسلتها', soon: true },
-        { icon: 'person_off', label: 'المستخدمون المحظورون', soon: true },
+        { icon: 'inbox', label: t('sections.activity.inbox.label'), soon: true },
+        { icon: 'notifications', label: t('sections.activity.notifications.label'), soon: true },
+        { icon: 'comment', label: t('sections.activity.comments.label'), soon: true },
+        { icon: 'people', label: t('sections.activity.followers.label'), soon: true },
+        { icon: 'flag', label: t('sections.activity.reports.label'), soon: true },
+        { icon: 'person_off', label: t('sections.activity.blocked.label'), soon: true },
       ],
     },
 
-    /* ── الاشتراكات والمال ──────────────────────────────────────────────── */
+    /* ── Monetization ──────────────────────────────────────────────── */
     {
-      heading: 'الاشتراكات والمال',
+      heading: t('sections.monetization.heading'),
       items: [
-        { icon: 'workspace_premium', label: 'الباقات والاشتراكات', soon: true },
-        { icon: 'account_balance_wallet', label: 'المحفظة', soon: true },
-        { icon: 'trending_up', label: 'الأرباح', soon: true },
-        { icon: 'payments', label: 'السحب والمدفوعات', soon: true },
-        { icon: 'redeem', label: 'الهدايا والنقاط', soon: true },
+        { icon: 'workspace_premium', label: t('sections.monetization.subscriptions.label'), soon: true },
+        { icon: 'account_balance_wallet', label: t('sections.monetization.wallet.label'), soon: true },
+        { icon: 'trending_up', label: t('sections.monetization.earnings.label'), soon: true },
+        { icon: 'payments', label: t('sections.monetization.payments.label'), soon: true },
+        { icon: 'redeem', label: t('sections.monetization.gifts.label'), soon: true },
       ],
     },
 
-    /* ── الإعلانات ──────────────────────────────────────────────────────── */
+    /* ── Ads ──────────────────────────────────────────────────────── */
     {
-      heading: 'الإعلانات',
+      heading: t('sections.ads.heading'),
       items: [
-        { icon: 'campaign', label: 'إعلاناتي', soon: true },
-        { icon: 'add_circle', label: 'إنشاء إعلان', soon: true },
-        { icon: 'info', label: 'لماذا أرى هذا الإعلان', soon: true },
-        { icon: 'report', label: 'بلاغات الإعلانات', soon: true },
+        { icon: 'campaign', label: t('sections.ads.myAds.label'), soon: true },
+        { icon: 'add_circle', label: t('sections.ads.createAd.label'), soon: true },
+        { icon: 'info', label: t('sections.ads.whyAd.label'), soon: true },
+        { icon: 'report', label: t('sections.ads.reportAd.label'), soon: true },
       ],
     },
 
-    /* ── الراديو ────────────────────────────────────────────────────────── */
+    /* ── Radio ────────────────────────────────────────────────────────── */
     {
-      heading: 'الراديو',
+      heading: t('sections.radio.heading'),
       items: [
-        { icon: 'radio', label: 'طلبات الإذاعة', soon: true },
-        { icon: 'broadcast_on_personal', label: 'إذاعتي', soon: true },
-        { icon: 'contact_phone', label: 'تواصل المحطة', soon: true },
-        { icon: 'ad_units', label: 'أعلن معنا', soon: true },
-        { icon: 'mail', label: 'رسائل البرامج', soon: true },
+        { icon: 'radio', label: t('sections.radio.requests.label'), soon: true },
+        { icon: 'broadcast_on_personal', label: t('sections.radio.myStation.label'), soon: true },
+        { icon: 'contact_phone', label: t('sections.radio.contact.label'), soon: true },
+        { icon: 'ad_units', label: t('sections.radio.advertise.label'), soon: true },
+        { icon: 'mail', label: t('sections.radio.messages.label'), soon: true },
       ],
     },
 
-    /* ── الموسيقى والحقوق ───────────────────────────────────────────────── */
+    /* ── Music ───────────────────────────────────────────────── */
     {
-      heading: 'الموسيقى والحقوق',
+      heading: t('sections.music.heading'),
       items: [
-        { icon: 'gavel', label: 'حقوق الموسيقى', soon: true },
-        { icon: 'business', label: 'شركات الإنتاج', soon: true },
-        { icon: 'group', label: 'الفنانين والمساهمين', soon: true },
-        { icon: 'rate_review', label: 'مراجعات الحقوق', soon: true },
-        { icon: 'verified', label: 'حالة الأهلية الموسيقية', soon: true },
+        { icon: 'gavel', label: t('sections.music.rights.label'), soon: true },
+        { icon: 'business', label: t('sections.music.labels.label'), soon: true },
+        { icon: 'group', label: t('sections.music.artists.label'), soon: true },
+        { icon: 'rate_review', label: t('sections.music.reviews.label'), soon: true },
+        { icon: 'verified', label: t('sections.music.eligibility.label'), soon: true },
       ],
     },
 
-    /* ── المسابقات ──────────────────────────────────────────────────────── */
+    /* ── Tournaments ──────────────────────────────────────────────────────── */
     {
-      heading: 'المسابقات',
+      heading: t('sections.tournaments.heading'),
       items: [
-        { icon: 'emoji_events', label: 'مسابقاتي', soon: true },
-        { icon: 'lock_open', label: 'الدعوات / المسابقات المغلقة', soon: true },
-        { icon: 'how_to_vote', label: 'التصويت والتحكيم', soon: true },
-        { icon: 'military_tech', label: 'الجوائز / الميداليات', soon: true },
-        { icon: 'assignment_turned_in', label: 'مشاركاتي', soon: true },
+        { icon: 'emoji_events', label: t('sections.tournaments.myTournaments.label'), soon: true },
+        { icon: 'lock_open', label: t('sections.tournaments.invites.label'), soon: true },
+        { icon: 'how_to_vote', label: t('sections.tournaments.voting.label'), soon: true },
+        { icon: 'military_tech', label: t('sections.tournaments.awards.label'), soon: true },
+        { icon: 'assignment_turned_in', label: t('sections.tournaments.entries.label'), soon: true },
       ],
     },
 
-    /* ── الدعم والثقة ───────────────────────────────────────────────────── */
+    /* ── Support ───────────────────────────────────────────────────── */
     {
-      heading: 'الدعم والثقة',
+      heading: t('sections.support.heading'),
       items: [
-        { icon: 'help', label: 'مركز المساعدة', soon: true },
-        { icon: 'support_agent', label: 'تواصل مع الدعم', soon: true },
-        { icon: 'receipt_long', label: 'التذاكر والاعتراضات', soon: true },
-        { icon: 'bug_report', label: 'الإبلاغ عن مشكلة', soon: true },
-        { icon: 'policy', label: 'شروط وسياسات', soon: true },
+        { icon: 'help', label: t('sections.support.helpCenter.label'), soon: true },
+        { icon: 'support_agent', label: t('sections.support.contact.label'), soon: true },
+        { icon: 'receipt_long', label: t('sections.support.tickets.label'), soon: true },
+        { icon: 'bug_report', label: t('sections.support.reportBug.label'), soon: true },
+        { icon: 'policy', label: t('sections.support.policy.label'), soon: true },
       ],
     },
-  ];
+  ], [t, handleSignOut]);
 
   // ── Render item ────────────────────────────────────────────────────────────
   const renderItem = (item: HubItem, idx: number) => {
@@ -637,11 +642,11 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
           {item.desc && <span className="ach-item__desc">{item.desc}</span>}
         </span>
         {item.soon && (
-          <span className="ach-item__badge-soon" aria-label="قريباً">قريباً</span>
+          <span className="ach-item__badge-soon" aria-label={t('hub.soonBadge')}>{t('hub.soonBadge')}</span>
         )}
         {!item.soon && !item.danger && (
           <span className="material-symbols-outlined ach-item__chevron" aria-hidden="true">
-            chevron_left
+            {i18n.dir() === 'rtl' ? 'chevron_left' : 'chevron_right'}
           </span>
         )}
       </button>
@@ -649,7 +654,7 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
   };
 
   // ── World label ────────────────────────────────────────────────────────────
-  const worldLabel = LOCKED_WORLDS[world as keyof typeof LOCKED_WORLDS] ?? world;
+  const worldLabel = t(`worlds.${world}`, { ns: 'common', defaultValue: LOCKED_WORLDS[world as keyof typeof LOCKED_WORLDS] ?? world });
 
   // ── Main render ────────────────────────────────────────────────────────────
   return (
@@ -666,16 +671,16 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
         className="ach-sheet"
         role="dialog"
         aria-modal="true"
-        aria-label="قائمة الحساب والتحكم"
+        aria-label={t('hub.sheetAria')}
       >
         {/* Sheet top header */}
         <div className="ach-sheet__header">
-          <p className="ach-sheet__title">الحساب والإعدادات</p>
+          <p className="ach-sheet__title">{t('hub.sheetTitle')}</p>
           <button
             className="ach-sheet__close"
             type="button"
             onClick={onClose}
-            aria-label="إغلاق قائمة الحساب"
+            aria-label={t('hub.closeAria')}
           >
             <span className="material-symbols-outlined" aria-hidden="true">close</span>
           </button>
@@ -691,19 +696,19 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
             <div className="ach-profile">
               <div className="ach-profile__avatar">
                 {currentUser?.photoURL ? (
-                  <img src={currentUser.photoURL} alt={currentUser.displayName ?? 'صورة'} />
+                  <img src={currentUser.photoURL} alt={currentUser.displayName ?? t('hub.defaultName')} />
                 ) : (
                   <span className="ach-profile__avatar-initial">
-                    {(currentUser?.displayName ?? currentUser?.email ?? 'م').charAt(0).toUpperCase()}
+                    {(currentUser?.displayName ?? currentUser?.email ?? 'U').charAt(0).toUpperCase()}
                   </span>
                 )}
               </div>
 
               <div className="ach-profile__info">
                 <p className="ach-profile__name">
-                  {currentUser?.displayName ?? 'مستخدم Sound'}
+                  {currentUser?.displayName ?? t('hub.defaultName')}
                   {/* SCHEMA GAP: verification badge from publicProfiles */}
-                  <span className="ach-profile__badge" aria-label="شارة التحقق">
+                  <span className="ach-profile__badge" aria-label={t('hub.badgeAria')}>
                     <span className="material-symbols-outlined" style={{ fontSize: '14px' }} aria-hidden="true">
                       verified
                     </span>
@@ -725,17 +730,17 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
                   type="button"
                   className="ach-profile__btn ach-profile__btn--view"
                   onClick={() => go(`/${world}/me`)}
-                  aria-label="عرض ملفي الشخصي"
+                  aria-label={t('hub.viewProfileAria')}
                 >
-                  عرض ملفي
+                  {t('hub.viewProfile')}
                 </button>
                 <button
                   type="button"
                   className="ach-profile__btn ach-profile__btn--edit"
                   onClick={() => go('/settings/edit-profile')}
-                  aria-label="تعديل الملف الشخصي"
+                  aria-label={t('hub.editProfileAria')}
                 >
-                  تعديل الملف
+                  {t('hub.editProfile')}
                 </button>
               </div>
             </div>
