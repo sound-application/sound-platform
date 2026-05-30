@@ -198,8 +198,15 @@ const MUSIC_SOURCE_OPTIONS = [
   { id: 'library', label: 'مكتبة Sound', icon: 'library_music', available: false },
 ];
 
-/** Max SFX items for this phase */
-const MAX_SFX_ITEMS = 3;
+// SFX source options — separate from music to avoid wrong labels
+const SFX_SOURCE_OPTIONS = [
+  { id: 'none', label: 'بدون مؤثرات', icon: 'music_off', available: true },
+  { id: 'uploaded', label: 'رفع من الجهاز', icon: 'upload_file', available: true },
+  { id: 'library', label: 'مكتبة ساوند — قريباً', icon: 'library_music', available: false },
+];
+
+/** Max SFX items — configurable, generous default */
+const MAX_SFX_ITEMS = 50;
 
 // ── Page Component ───────────────────────────────────────────────────────────
 
@@ -306,6 +313,9 @@ export function AudioCreatePage() {
     setEffectsMode('preset');
     setSelectedPresetId(null);
     setManualFilters(AUDIO_FILTERS.map(f => ({ filterId: f.id, enabled: false, intensity: f.defaultIntensity })));
+    // Clear stale preview state for effects and downstream
+    setPreviewAssets(prev => { const next = { ...prev }; delete next.effects; delete next.mixing; delete next.final; return next; });
+    setPreviewUrls(prev => { const next = { ...prev }; delete next.effects; delete next.mixing; delete next.final; return next; });
   };
 
   // Build effectsConfig for saving
@@ -363,6 +373,9 @@ export function AudioCreatePage() {
     setMasterFadeInMs(0);
     setMasterFadeOutMs(0);
     setMasterGainDb(0);
+    // Clear stale preview state for mixing and downstream
+    setPreviewAssets(prev => { const next = { ...prev }; delete next.mixing; delete next.final; return next; });
+    setPreviewUrls(prev => { const next = { ...prev }; delete next.mixing; delete next.final; return next; });
   };
 
   const buildMixingConfig = (): AudioMixingConfig | undefined => {
@@ -395,6 +408,8 @@ export function AudioCreatePage() {
   const [wfPlaying, setWfPlaying] = useState(false);
   const [wfCurrentMs, setWfCurrentMs] = useState(0);
   const wfAnimRef = useRef<number>(0);
+  const [wfDragging, setWfDragging] = useState(false);
+  const waveformTimelineRef = useRef<HTMLDivElement>(null);
 
   const originalDurationMs = audioAsset?.durationMs || 0;
 
@@ -428,12 +443,12 @@ export function AudioCreatePage() {
     }
   };
 
-  /** Get the best preview playback URL for a stage or fallback */
+  /** Get the best preview playback URL, falling back to original */
   const getPreviewPlaybackUrl = (): string | null => {
     if (mixingEnabled && previewUrls.mixing) return previewUrls.mixing;
     if (effectsEnabled && previewUrls.effects) return previewUrls.effects;
     if (editEnabled && previewUrls.edit) return previewUrls.edit;
-    return null;
+    return previewAudioUrl; // fallback to original audio
   };
 
   const getStagePreviewStatus = (stage: PreviewStage): PreviewStatus => {
@@ -481,6 +496,9 @@ export function AudioCreatePage() {
     setTrimStartMs(0);
     setTrimEndMs(0);
     setEditCuts([]);
+    // Clear stale preview state for edit and all downstream
+    setPreviewAssets(prev => { const next = { ...prev }; delete next.edit; delete next.effects; delete next.mixing; delete next.final; return next; });
+    setPreviewUrls(prev => { const next = { ...prev }; delete next.edit; delete next.effects; delete next.mixing; delete next.final; return next; });
   };
 
   const buildEditConfig = (): AudioEditConfig | undefined => {
@@ -706,20 +724,25 @@ export function AudioCreatePage() {
   };
 
   /** Format ms to mm:ss.S */
+  /** Format ms to mm:ss.mmm for SFX timing display */
   const formatMsToTimeInput = (ms: number): string => {
-    const totalSec = ms / 1000;
-    const min = Math.floor(totalSec / 60);
-    const sec = totalSec % 60;
-    return `${String(min).padStart(2, '0')}:${sec.toFixed(1).padStart(4, '0')}`;
+    const totalMs = Math.max(0, Math.round(ms));
+    const min = Math.floor(totalMs / 60000);
+    const sec = Math.floor((totalMs % 60000) / 1000);
+    const millis = totalMs % 1000;
+    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
   };
 
-  /** Parse mm:ss.S to ms */
+  /** Parse mm:ss.mmm to ms */
   const parseTimeInputToMs = (val: string): number => {
     const parts = val.split(':');
     if (parts.length === 2) {
       const min = parseInt(parts[0] ?? '0') || 0;
-      const sec = parseFloat(parts[1] ?? '0') || 0;
-      return Math.max(0, Math.round((min * 60 + sec) * 1000));
+      const secParts = (parts[1] ?? '0').split('.');
+      const sec = parseInt(secParts[0] ?? '0') || 0;
+      const msStr = (secParts[1] ?? '0').padEnd(3, '0').slice(0, 3);
+      const millis = parseInt(msStr) || 0;
+      return Math.max(0, min * 60000 + Math.min(sec, 59) * 1000 + Math.min(millis, 999));
     }
     const sec = parseFloat(val) || 0;
     return Math.max(0, Math.round(sec * 1000));
@@ -1890,17 +1913,67 @@ export function AudioCreatePage() {
                   <>
                     {/* SVG Waveform */}
                     <div className="acp-waveform-timeline"
+                      ref={waveformTimelineRef}
                       onClick={(e) => {
-                        if (!originalDurationMs) return;
+                        if (!originalDurationMs || wfDragging) return;
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
-                        const pct = x / rect.width;
+                        const pct = Math.max(0, Math.min(1, x / rect.width));
                         const seekMs = pct * originalDurationMs;
                         if (waveformAudioRef.current) {
                           waveformAudioRef.current.currentTime = seekMs / 1000;
                           setWfCurrentMs(seekMs);
                         }
                       }}
+                      onMouseDown={(e) => {
+                        if (!originalDurationMs) return;
+                        e.preventDefault();
+                        setWfDragging(true);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const seek = (clientX: number) => {
+                          const x = clientX - rect.left;
+                          const pct = Math.max(0, Math.min(1, x / rect.width));
+                          const seekMs = pct * originalDurationMs;
+                          if (waveformAudioRef.current) {
+                            waveformAudioRef.current.currentTime = seekMs / 1000;
+                            setWfCurrentMs(seekMs);
+                          }
+                        };
+                        seek(e.clientX);
+                        const onMove = (ev: MouseEvent) => seek(ev.clientX);
+                        const onUp = () => {
+                          setWfDragging(false);
+                          document.removeEventListener('mousemove', onMove);
+                          document.removeEventListener('mouseup', onUp);
+                        };
+                        document.addEventListener('mousemove', onMove);
+                        document.addEventListener('mouseup', onUp);
+                      }}
+                      onTouchStart={(e) => {
+                        if (!originalDurationMs) return;
+                        setWfDragging(true);
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const seek = (clientX: number) => {
+                          const x = clientX - rect.left;
+                          const pct = Math.max(0, Math.min(1, x / rect.width));
+                          const seekMs = pct * originalDurationMs;
+                          if (waveformAudioRef.current) {
+                            waveformAudioRef.current.currentTime = seekMs / 1000;
+                            setWfCurrentMs(seekMs);
+                          }
+                        };
+                        const t0 = e.touches[0];
+                        if (t0) seek(t0.clientX);
+                        const onMove = (ev: TouchEvent) => { const t = ev.touches[0]; if (t) seek(t.clientX); };
+                        const onEnd = () => {
+                          setWfDragging(false);
+                          document.removeEventListener('touchmove', onMove);
+                          document.removeEventListener('touchend', onEnd);
+                        };
+                        document.addEventListener('touchmove', onMove, { passive: true });
+                        document.addEventListener('touchend', onEnd);
+                      }}
+                      style={{ cursor: wfDragging ? 'grabbing' : 'pointer' }}
                     >
                       <svg viewBox="0 0 200 100" preserveAspectRatio="none">
                         {waveformPeaks.map((peak, i) => {
@@ -2429,12 +2502,13 @@ export function AudioCreatePage() {
                       {/* SFX track — show source selector but disable library */}
                       {track.type === 'sfx' && (
                         <div className="acp-mix-track-card__source">
-                          {MUSIC_SOURCE_OPTIONS.filter(o => o.id !== 'library').map(opt => (
+                          {SFX_SOURCE_OPTIONS.map(opt => (
                             <button
                               key={opt.id}
                               className={`acp-playlist-card ${track.sourceType === opt.id ? 'acp-playlist-card--selected' : ''}`}
                               type="button"
-                              onClick={() => updateMixTrack(track.id, { sourceType: opt.id as AudioMixTrack['sourceType'], enabled: opt.id !== 'none' })}
+                              onClick={() => opt.available && updateMixTrack(track.id, { sourceType: opt.id as AudioMixTrack['sourceType'], enabled: opt.id !== 'none' })}
+                              disabled={!opt.available}
                             >
                               <span className="material-symbols-outlined">{opt.icon}</span>
                               {opt.label}
@@ -2476,11 +2550,11 @@ export function AudioCreatePage() {
                         </div>
                         <div className="acp-sfx-card__controls">
                           <div className="acp-sfx-card__field">
-                            <span className="acp-sfx-card__field-label">التوقيت (دقيقة:ثانية.جزء)</span>
+                            <span className="acp-sfx-card__field-label">التوقيت (دقيقة:ثانية.ملي ثانية)</span>
                             <input type="text" className="acp-sfx-card__time-input"
                               value={formatMsToTimeInput(sfx.startMs)}
                               onChange={e => updateSfxItem(sfx.id, { startMs: parseTimeInputToMs(e.target.value) })}
-                              placeholder="00:00.0" />
+                              placeholder="00:00.000" />
                           </div>
                           <div className="acp-sfx-card__slider">
                             <span className="acp-sfx-card__field-label">الصوت</span>
@@ -2601,7 +2675,7 @@ export function AudioCreatePage() {
 
                 <p className="acp-hint">
                   <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-                  سيتم تطبيق ضبط الصوت والتدرج أثناء المعالجة. مكتبة الموسيقى ورفع الملفات ستتوفر قريباً.
+                  اضغط معاينة المكساج لسماع النتيجة قبل النشر. الملف الأصلي يبقى محفوظاً.
                 </p>
 
                 {/* Reset button */}
@@ -3059,7 +3133,7 @@ export function AudioCreatePage() {
                         ? `${manualFilters.filter(f => f.enabled).length} فلاتر يدوية`
                         : 'مفعّل'}
                     <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-                      سيتم التطبيق أثناء المعالجة
+                      المعاينة متاحة
                     </span>
                   </>
                 ) : (
