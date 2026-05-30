@@ -1,0 +1,159 @@
+{
+  "header": {
+    "title": "Create",
+    "subtitle": "What do you want to create today?",
+    "currentWorld": "Current World:",
+    "suggestedOnly": "— suggested only, not mandatory"
+  },
+  "badges": {
+    "suggested": "Suggested"
+  },
+  "groups": {
+    "creationTools": "Creation Tools",
+    "specializedWorlds": "Specialized Worlds",
+    "promotion": "Promotion",
+    "socialIdentity": "Social Identity"
+  },
+  "sessionWorlds": {
+    "general": { "label": "General", "note": "Open general session for everyone" },
+    "plus": { "label": "Plus", "note": "Exclusive session for Plus members" },
+    "music": { "label": "Music", "note": "Music session with audio content" }
+  },
+  "createTypes": {
+    "upload": {
+      "label": "Upload File",
+      "tagline": "Upload an audio file — select type first",
+      "panelHeading": "What type of content?",
+      "steps": {
+        "general": { "label": "General Audio", "note": "Podcast, reading, talk" },
+        "plus": { "label": "Plus Content", "note": "Exclusive content for subscribers" },
+        "music": { "label": "Music / Song", "note": "Unlocks rights and music publishing flow" }
+      }
+    },
+    "record": {
+      "label": "Record Audio",
+      "tagline": "Record directly from microphone",
+      "panelHeading": "Recording Destination",
+      "steps": {
+        "general": { "label": "General Audio", "note": "Publish in general world" },
+        "plus": { "label": "Plus Content", "note": "Publish exclusively for Plus members" }
+      }
+    },
+    "live": {
+      "label": "Live",
+      "tagline": "Start a live broadcast session — choose live type",
+      "panelHeading": "Live Type",
+      "steps": {
+        "general": { "label": "General Live", "note": "Open session in general world" },
+        "plus": { "label": "Plus Live", "note": "Exclusive session for Plus members" },
+        "music": { "label": "Music Live", "note": "Music event or concert" },
+        "competitions": { "label": "Competitions Live", "note": "Competition event or voting" }
+      }
+    },
+    "short": {
+      "label": "Short / Clip",
+      "tagline": "A short clip for discovery — not a story or a post",
+      "panelHeading": "Short Settings",
+      "steps": {
+        "upload": { "label": "Upload Clip", "note": "Upload a short audio/video clip" },
+        "record": { "label": "Record Clip", "note": "Record directly from device" },
+        "effects": { "label": "Add Effects", "note": "Background music, sound effects" },
+        "tags": { "label": "Tags and Discovery", "note": "Set audience and categorization" }
+      }
+    },
+    "sessions": {
+      "label": "On Road / Sessions",
+      "tagline": "Start an On Road session — choose world first",
+      "panelHeading": "Choose Session World",
+      "gateNote": "On Road / Sessions — requires permission or module activation. Visible in UI foundation mode.",
+      "steps": {
+        "details": { "label": "Session Details", "note": "Title, description, and category" },
+        "type": { "label": "Session Type", "note": "Open, closed, or on the road" },
+        "privacy": { "label": "Privacy and Audience", "note": "Who can see this session?" },
+        "location": { "label": "Location / Route (optional)", "note": "Add an optional geographic route" },
+        "start": { "label": "Start or Schedule", "note": "Start now or schedule for later" }
+      }
+    },
+    "music": {
+      "label": "Music",
+      "tagline": "Launch your music — select release type",
+      "panelHeading": "Music Release Type",
+      "steps": {
+        "song": { "label": "Song", "note": "Single track release" },
+        "album": { "label": "Album", "note": "Collection of tracks release" },
+        "artists": { "label": "Artist / Contributors", "note": "Manage artists and contributors" },
+        "label": { "label": "Record Label / Rights", "note": "Rights and music publishing flow" }
+      }
+    },
+    "radio": {
+      "label": "Radio",
+      "tagline": "Creating a radio requires permission or package",
+      "panelHeading": "Radio Requests",
+      "gateNote": "Radio locked — requires admin approval or qualifying package",
+      "steps": {
+        "request": { "label": "Request Station Creation", "note": "Submit a request to open your station" },
+        "permission": { "label": "Request Station Permission", "note": "Upload qualification documents" },
+        "contact": { "label": "Request Program / Contact Station", "note": "Submit a program pitch to an existing station" }
+      }
+    },
+    "competition": {
+      "label": "Competition",
+      "tagline": "Create an audio competition in the tournaments world",
+      "panelHeading": "Competition Creation Steps",
+      "steps": {
+        "create": { "label": "Create Competition", "note": "Set title and rules" },
+        "open": { "label": "Open Registration", "note": "Receive participation requests" },
+        "voting": { "label": "Setup Voting", "note": "Set voting mechanism and stages" },
+        "invite": { "label": "Invite Judges / Participants", "note": "Add judges and participants" }
+      }
+    },
+    "ads": {
+      "label": "Ads / Promotion",
+      "tagline": "Set up your campaign — select targeting worlds later",
+      "panelHeading": "Campaign Setup Steps",
+      "steps": {
+        "title": { "label": "Campaign Title & Goal", "note": "What do you want to promote?" },
+        "type": { "label": "Ad Type", "note": "Audio, visual, post promotion" },
+        "targeting": { "label": "Target Worlds (Multi)", "note": "Choose more than one world when setting up the campaign" },
+        "budget": { "label": "Budget & Schedule", "note": "Set amount and time period" }
+      }
+    },
+    "story": {
+      "label": "Story",
+      "tagline": "A story that disappears after 24 hours — not tied to a world",
+      "panelHeading": "Story Settings",
+      "steps": {
+        "media": { "label": "Image or Clip", "note": "Visual content for the story" },
+        "audio": { "label": "Audio / Voice Note", "note": "Attached audio recording" },
+        "audience": { "label": "Story Audience", "note": "Who can see this story?" }
+      }
+    },
+    "status": {
+      "label": "Status Update",
+      "tagline": "Update your status on your profile — your world is your identity",
+      "panelHeading": "Status Type",
+      "steps": {
+        "text": { "label": "Text Status", "note": "What's on your mind?" },
+        "music": { "label": "Music Status", "note": "A song that expresses your mood" },
+        "duration": { "label": "Status Duration", "note": "Hour, day, until deleted" }
+      }
+    },
+    "listening": {
+      "label": "What are you listening to",
+      "tagline": "Share what you're listening to — global social identity",
+      "panelHeading": "Share Listening",
+      "steps": {
+        "search": { "label": "Search for a recording", "note": "Audio, song, podcast..." },
+        "share": { "label": "Share on your profile", "note": "Appears to your followers immediately" },
+        "invite": { "label": "Invite to co-listen", "note": "Share the session with a friend" }
+      }
+    }
+  },
+  "messages": {
+    "sessionsRule": "Radio and Tournaments are not valid destinations for On Road sessions.",
+    "setupStepsAfterWorld": "Setup steps after selecting a world",
+    "adsNote": "Multi-world targeting — you can choose more than one world when setting up the campaign.",
+    "comingSoon": "Coming soon — activated after publishing verification services",
+    "phaseNote": "🔒 All creation options will be enabled gradually after publishing the permissions verification services."
+  }
+}
