@@ -443,12 +443,20 @@ export function AudioCreatePage() {
     }
   };
 
-  /** Get the best preview playback URL, falling back to original */
+  /** Get the best preview playback URL.
+   * If any stage is enabled, only return a rendered preview URL.
+   * Fall back to original audio ONLY when no stages are enabled.
+   */
   const getPreviewPlaybackUrl = (): string | null => {
+    const anyStageEnabled = editEnabled || effectsEnabled || mixingEnabled;
+    // Check rendered previews in priority order
     if (mixingEnabled && previewUrls.mixing) return previewUrls.mixing;
     if (effectsEnabled && previewUrls.effects) return previewUrls.effects;
     if (editEnabled && previewUrls.edit) return previewUrls.edit;
-    return previewAudioUrl; // fallback to original audio
+    // If any stage is enabled but no preview URL exists, return null (render required)
+    if (anyStageEnabled) return null;
+    // No stages enabled — original audio is the preview
+    return previewAudioUrl;
   };
 
   const getStagePreviewStatus = (stage: PreviewStage): PreviewStatus => {

@@ -270,8 +270,9 @@ export const updateAudioDraft = functions
           // Phase 8-L.1: Validate sfxItems
           const sfxItems: AudioSfxItem[] = [];
           if (mc.sfxItems && Array.isArray(mc.sfxItems)) {
-            if (mc.sfxItems.length > 10) {
-              throw new functions.https.HttpsError('invalid-argument', 'Max 10 SFX items.');
+            const MAX_SFX_ITEMS = 50; // Must match frontend MAX_SFX_ITEMS
+            if (mc.sfxItems.length > MAX_SFX_ITEMS) {
+              throw new functions.https.HttpsError('invalid-argument', `Max ${MAX_SFX_ITEMS} SFX items.`);
             }
             for (const s of mc.sfxItems) {
               if (!s.storagePath || typeof s.storagePath !== 'string' || !s.storagePath.startsWith(`audioMixAssets/${uid}/`)) {
