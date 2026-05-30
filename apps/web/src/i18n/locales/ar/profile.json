@@ -1,1 +1,85 @@
-﻿{}
+{
+  "tabs": {
+    "general": "عام",
+    "listening": "استماع",
+    "playlists": "قوائم",
+    "plus": "Plus",
+    "music": "موسيقى",
+    "radio": "راديو",
+    "tournaments": "مسابقات"
+  },
+  "states": {
+    "loading": "جاري تحميل الملف الشخصي...",
+    "errorTitle": "حدث خطأ",
+    "notReadyTitle": "ملفك الشخصي ليس جاهزاً بعد",
+    "notReadyDesc": "سيتم إنشاء ملفك الشخصي العام تلقائياً",
+    "accountUnavailable": "هذا الحساب غير متاح",
+    "accountUnavailableDesc": "تعذر عرض هذا الملف الشخصي.",
+    "notFoundTitle": "الملف الشخصي غير متاح",
+    "notFoundDesc": "لم يتم العثور على هذا الملف الشخصي أو أنه خاص",
+    "privateTitle": "هذا الملف الشخصي خاص",
+    "privateDesc": "لا يمكن عرض محتوى هذا الملف الشخصي حالياً",
+    "defaultName": "مستخدم Sound"
+  },
+  "actions": {
+    "share": "مشاركة",
+    "notifications": "الإشعارات",
+    "inbox": "صندوق الرسائل",
+    "settings": "الإعدادات",
+    "follow": "متابعة",
+    "unfollow": "إلغاء المتابعة",
+    "message": "رسالة",
+    "editProfile": "تعديل الملف الشخصي"
+  },
+  "badges": {
+    "verified": "موثق",
+    "listeningNow": "أستمع الآن",
+    "socialHint": "أضف روابطك الاجتماعية في تعديل الملف الشخصي",
+    "privateSectionHint": "هذا القسم خاص"
+  },
+  "emptyStates": {
+    "noBio": "لا توجد سيرة ذاتية",
+    "noListening": "لا يوجد نشاط استماع حالياً",
+    "listeningTitle": "نشاط الاستماع",
+    "listeningDesc": "ستظهر هنا أغانيك وبرامجك الأخيرة",
+    "noPlaylists": "لا توجد قوائم تشغيل بعد",
+    "playlistsTitle": "قوائم التشغيل",
+    "createPlaylist": "إنشاء قائمة",
+    "soon": "قريباً",
+    "noPlus": "لا يوجد محتوى Plus بعد",
+    "plusTitle": "محتوى Plus",
+    "publishPlus": "نشر محتوى Plus",
+    "requiresPlus": "يتطلب صلاحية Plus — قريباً",
+    "noMusic": "لا يوجد محتوى موسيقي بعد",
+    "musicTitle": "المحتوى الموسيقي",
+    "publishMusic": "نشر موسيقى",
+    "requiresMusic": "يتطلب صلاحية إنشاء موسيقى — قريباً",
+    "noRadio": "لا توجد إذاعات بعد",
+    "radioTitle": "الإذاعة",
+    "createRadio": "إنشاء إذاعة",
+    "requiresRadio": "يتطلب صلاحية راديو — قريباً",
+    "noTournaments": "لا توجد مسابقات بعد",
+    "tournamentsTitle": "المسابقات",
+    "browseTournaments": "استعراض المسابقات"
+  },
+  "drawer": {
+    "followers": "المتابعون",
+    "following": "يتابع",
+    "close": "إغلاق",
+    "loading": "جاري التحميل...",
+    "error": "حدث خطأ أثناء تحميل القائمة",
+    "noFollowers": "لا يوجد متابعون بعد",
+    "noFollowing": "لا يتابع أحداً بعد"
+  },
+  "stats": {
+    "followers": "متابع",
+    "following": "يتابع",
+    "listens": "استماع",
+    "song": "أغنية",
+    "albums": "ألبومات",
+    "stations": "إذاعات",
+    "episodes": "حلقات",
+    "tournaments": "مسابقات",
+    "awards": "جوائز"
+  }
+}

@@ -1,1 +1,85 @@
-﻿{}
+{
+  "tabs": {
+    "general": "General",
+    "listening": "Listening",
+    "playlists": "Playlists",
+    "plus": "Plus",
+    "music": "Music",
+    "radio": "Radio",
+    "tournaments": "Tournaments"
+  },
+  "states": {
+    "loading": "Loading profile...",
+    "errorTitle": "An error occurred",
+    "notReadyTitle": "Your profile is not ready yet",
+    "notReadyDesc": "Your public profile will be created automatically",
+    "accountUnavailable": "This account is unavailable",
+    "accountUnavailableDesc": "Unable to view this profile.",
+    "notFoundTitle": "Profile unavailable",
+    "notFoundDesc": "This profile was not found or is private",
+    "privateTitle": "This profile is private",
+    "privateDesc": "The content of this profile cannot be viewed right now",
+    "defaultName": "Sound User"
+  },
+  "actions": {
+    "share": "Share",
+    "notifications": "Notifications",
+    "inbox": "Inbox",
+    "settings": "Settings",
+    "follow": "Follow",
+    "unfollow": "Unfollow",
+    "message": "Message",
+    "editProfile": "Edit Profile"
+  },
+  "badges": {
+    "verified": "Verified",
+    "listeningNow": "Listening Now",
+    "socialHint": "Add your social links in Edit Profile",
+    "privateSectionHint": "This section is private"
+  },
+  "emptyStates": {
+    "noBio": "No bio yet",
+    "noListening": "No listening activity right now",
+    "listeningTitle": "Listening Activity",
+    "listeningDesc": "Your recent songs and shows will appear here",
+    "noPlaylists": "No playlists yet",
+    "playlistsTitle": "Playlists",
+    "createPlaylist": "Create Playlist",
+    "soon": "Soon",
+    "noPlus": "No Plus content yet",
+    "plusTitle": "Plus Content",
+    "publishPlus": "Publish Plus content",
+    "requiresPlus": "Requires Plus access — Coming soon",
+    "noMusic": "No music content yet",
+    "musicTitle": "Music Content",
+    "publishMusic": "Publish Music",
+    "requiresMusic": "Requires music creator access — Coming soon",
+    "noRadio": "No stations yet",
+    "radioTitle": "Radio",
+    "createRadio": "Create Station",
+    "requiresRadio": "Requires radio access — Coming soon",
+    "noTournaments": "No tournaments yet",
+    "tournamentsTitle": "Tournaments",
+    "browseTournaments": "Browse Tournaments"
+  },
+  "drawer": {
+    "followers": "Followers",
+    "following": "Following",
+    "close": "Close",
+    "loading": "Loading...",
+    "error": "An error occurred loading the list",
+    "noFollowers": "No followers yet",
+    "noFollowing": "Not following anyone yet"
+  },
+  "stats": {
+    "followers": "Followers",
+    "following": "Following",
+    "listens": "Listens",
+    "song": "Songs",
+    "albums": "Albums",
+    "stations": "Stations",
+    "episodes": "Episodes",
+    "tournaments": "Tournaments",
+    "awards": "Awards"
+  }
+}

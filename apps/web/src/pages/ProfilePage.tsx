@@ -1,8 +1,7 @@
 /**
  * Sound Platform — Profile Page
  * ================================
- * Phase:   7.2 (Profile Privacy QA Fixes)
- * Updated: 2026-05-27
+ * Phase:   7.2 (Profile Privacy QA Fixes) + i18n
  *
  * Source material:
  *   - New Screens: music_me_profile_sound_authority/code.html (only usable export)
@@ -30,6 +29,8 @@
 
 import React, { useState, useMemo, useCallback, useRef, useEffect } from 'react';
 import { useParams } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { TFunction } from 'i18next';
 import { collection, getDocs, doc, getDoc, query, limit as firestoreLimit } from 'firebase/firestore';
 import { db } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
@@ -57,8 +58,8 @@ type ProfileTab =
 
 interface TabDef {
   id: ProfileTab;
-  /** Arabic label — must match DESIGN.md locked tokens where applicable */
-  label: string;
+  /** translation key for label */
+  labelKey: string;
   /** The section key(s) this tab maps to in publicProfiles / hiddenSections */
   sectionKeys: string[];
   /**
@@ -72,14 +73,14 @@ interface TabDef {
 const TAB_DEFS: TabDef[] = [
   {
     id: 'general',
-    label: 'عام',
+    labelKey: 'tabs.general',
     sectionKeys: ['generalProfile'],
     // Always show: every profile has at minimum a displayName.
     visible: (p) => Boolean(p.generalProfile),
   },
   {
     id: 'listening',
-    label: 'استماع',
+    labelKey: 'tabs.listening',
     sectionKeys: ['listeningActivity'],
     // Viewer: show only if listeningActivity is projected (privacy-allowed + has data).
     // Owner: show with management CTA if section exists.
@@ -87,19 +88,19 @@ const TAB_DEFS: TabDef[] = [
   },
   {
     id: 'playlists',
-    label: 'قوائم',
+    labelKey: 'tabs.playlists',
     sectionKeys: ['musicPlaylists'],
     visible: (p, isSelf) => isSelf ? true : Boolean(p.musicPlaylists),
   },
   {
     id: 'plus',
-    label: 'Plus',
+    labelKey: 'tabs.plus',
     sectionKeys: ['plusCreatorContent'],
     visible: (p, isSelf) => isSelf ? Boolean(p.plusCreatorContent) : Boolean(p.plusCreatorContent),
   },
   {
     id: 'music',
-    label: 'موسيقى',
+    labelKey: 'tabs.music',
     sectionKeys: ['musicCreatorContent'],
     // Owner: show with empty-state CTA if they have music capability (plusCreatorContent or musicCreatorContent projected).
     // Viewer: only if musicCreatorContent is projected.
@@ -109,7 +110,7 @@ const TAB_DEFS: TabDef[] = [
   },
   {
     id: 'radio',
-    label: 'راديو',
+    labelKey: 'tabs.radio',
     sectionKeys: ['radioCreatorContent'],
     visible: (p, isSelf) => isSelf
       ? Boolean(p.radioCreatorContent)
@@ -117,9 +118,7 @@ const TAB_DEFS: TabDef[] = [
   },
   {
     id: 'tournaments',
-    // ✅ مسابقات — the correct locked label for tournaments
-    // ❌ FORBIDDEN: بطولات
-    label: 'مسابقات',
+    labelKey: 'tabs.tournaments',
     sectionKeys: ['tournamentsOrganizerContent', 'joinedTournaments', 'awardsAndMedals'],
     visible: (p, isSelf) => isSelf
       ? Boolean(p.tournamentsOrganizerContent || p.joinedTournaments || p.awardsAndMedals)
@@ -172,15 +171,16 @@ function ProfilePageSelf({
   selfUid: string | null;
   currentUser: { uid: string } | null;
 }) {
+  const { t } = useTranslation('profile');
   const profileState = usePublicProfile(selfUid);
 
   if (profileState.status === 'loading') {
-    return <LoadingScreen message="جاري تحميل الملف الشخصي..." />;
+    return <LoadingScreen message={t('states.loading')} />;
   }
   if (profileState.status === 'error') {
     return (
       <div className="page">
-        <EmptyState icon="⚠️" title="حدث خطأ" description={profileState.message} />
+        <EmptyState icon="⚠️" title={t('states.errorTitle')} description={profileState.message} />
       </div>
     );
   }
@@ -189,8 +189,8 @@ function ProfilePageSelf({
       <div className="page">
         <EmptyState
           icon="👤"
-          title="ملفك الشخصي ليس جاهزاً بعد"
-          description="سيتم إنشاء ملفك الشخصي العام تلقائياً"
+          title={t('states.notReadyTitle')}
+          description={t('states.notReadyDesc')}
         />
       </div>
     );
@@ -214,10 +214,11 @@ function ProfilePageOther({
   targetKey: string | null;
   currentUid: string | null;
 }) {
+  const { t } = useTranslation('profile');
   const { status, refetch, ...rest } = useViewerProfile(targetKey);
 
   if (status === 'loading') {
-    return <LoadingScreen message="جاري تحميل الملف الشخصي..." />;
+    return <LoadingScreen message={t('states.loading')} />;
   }
 
   // ── Blocked state ────────────────────────────────────────────────────────────
@@ -227,8 +228,8 @@ function ProfilePageOther({
       <div className="page">
         <EmptyState
           icon="🚫"
-          title="هذا الحساب غير متاح"
-          description="تعذر عرض هذا الملف الشخصي."
+          title={t('states.accountUnavailable')}
+          description={t('states.accountUnavailableDesc')}
         />
       </div>
     );
@@ -238,7 +239,7 @@ function ProfilePageOther({
     const errorState = rest as { message: string };
     return (
       <div className="page">
-        <EmptyState icon="⚠️" title="حدث خطأ" description={errorState.message} />
+        <EmptyState icon="⚠️" title={t('states.errorTitle')} description={errorState.message} />
       </div>
     );
   }
@@ -248,8 +249,8 @@ function ProfilePageOther({
       <div className="page">
         <EmptyState
           icon="👤"
-          title="الملف الشخصي غير متاح"
-          description="لم يتم العثور على هذا الملف الشخصي أو أنه خاص"
+          title={t('states.notFoundTitle')}
+          description={t('states.notFoundDesc')}
         />
       </div>
     );
@@ -298,6 +299,8 @@ function ProfileLoaded({
   /** Called after follow/unfollow to refresh viewer-filtered data */
   onFollowToggled?: () => void;
 }) {
+  const { t, i18n } = useTranslation('profile');
+  
   // ── Follow state — real Firestore onSnapshot via useFollowState ─────────
   // Hook is always called (Rules of Hooks) but returns no-op when isSelf.
   // Phase 7.2: use resolvedTargetUid (real UID) instead of profile.uid
@@ -398,15 +401,15 @@ function ProfileLoaded({
   // ── Privacy-aware tab computation (Phase 7.2 — Bug 2) ───────────────────
   // For other-user views, hide tabs whose section keys are ALL in hiddenSections.
   const visibleTabs = useMemo(() => {
-    return TAB_DEFS.filter((t) => {
+    return TAB_DEFS.filter((t_def) => {
       // First check: data-based visibility
-      if (!t.visible(profile, isSelf)) return false;
+      if (!t_def.visible(profile, isSelf)) return false;
 
       // For self-view or when no hidden sections: show tab
       if (isSelf || hiddenSections.length === 0) return true;
 
       // For other-view: hide tab if ALL its section keys are hidden
-      const allHidden = t.sectionKeys.every((key) => hiddenSections.includes(key));
+      const allHidden = t_def.sectionKeys.every((key) => hiddenSections.includes(key));
       return !allHidden;
     });
   }, [profile, isSelf, hiddenSections]);
@@ -418,10 +421,10 @@ function ProfileLoaded({
 
   // If the active tab becomes invisible after a data change, fall back.
   const currentTab =
-    visibleTabs.find((t) => t.id === activeTab)?.id ?? visibleTabs[0]?.id ?? 'general';
+    visibleTabs.find((t_def) => t_def.id === activeTab)?.id ?? visibleTabs[0]?.id ?? 'general';
 
   const general = profile.generalProfile;
-  const displayName = general?.displayName ?? 'مستخدم Sound';
+  const displayName = general?.displayName ?? t('states.defaultName');
   const username    = general?.username ?? null;
   const bio         = general?.bio ?? null;
   const avatarUrl   = general?.avatarUrl ?? null;
@@ -444,7 +447,7 @@ function ProfileLoaded({
           <div className="profile-page__avatar-wrap">
             <div className="profile-page__avatar active-ring">
               {avatarUrl ? (
-                <img src={avatarUrl} alt={displayName} />
+               <img src={avatarUrl} alt={displayName} />
               ) : (
                 <span className="profile-page__avatar-initial" aria-hidden="true">
                   {displayName.charAt(0).toUpperCase()}
@@ -463,9 +466,9 @@ function ProfileLoaded({
         {/* ── Full-profile private state ──────────────────────────────────── */}
         <div className="profile-page__private-profile">
           <span className="profile-page__private-icon" aria-hidden="true">🔒</span>
-          <h2 className="profile-page__private-title">هذا الملف الشخصي خاص</h2>
+          <h2 className="profile-page__private-title">{t('states.privateTitle')}</h2>
           <p className="profile-page__private-desc">
-            لا يمكن عرض محتوى هذا الملف الشخصي حالياً
+            {t('states.privateDesc')}
           </p>
         </div>
       </div>
@@ -488,7 +491,7 @@ function ProfileLoaded({
           {general?.isVerified && (
             <span className="profile-page__badge profile-page__badge--verified">
               <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
-              موثق
+              {t('badges.verified')}
             </span>
           )}
         </div>
@@ -496,7 +499,7 @@ function ProfileLoaded({
         {/* Cover-level actions (top-left in RTL = visual end) */}
         <div className="profile-page__cover-actions">
           {/* Always visible: share */}
-          <button className="profile-page__cover-btn" aria-label="مشاركة" type="button">
+          <button className="profile-page__cover-btn" aria-label={t('actions.share')} type="button">
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
           </button>
           {/* Owner-only: notifications, inbox, settings */}
@@ -505,7 +508,7 @@ function ProfileLoaded({
               <button
                 id="profile-notifications-btn"
                 className="profile-page__cover-btn"
-                aria-label="الإشعارات"
+                aria-label={t('actions.notifications')}
                 type="button"
               >
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">notifications</span>
@@ -513,7 +516,7 @@ function ProfileLoaded({
               <button
                 id="profile-inbox-btn"
                 className="profile-page__cover-btn"
-                aria-label="صندوق الرسائل"
+                aria-label={t('actions.inbox')}
                 type="button"
               >
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">mail</span>
@@ -521,7 +524,7 @@ function ProfileLoaded({
               <button
                 id="profile-settings-btn"
                 className="profile-page__cover-btn"
-                aria-label="الإعدادات"
+                aria-label={t('actions.settings')}
                 type="button"
               >
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">settings</span>
@@ -563,6 +566,7 @@ function ProfileLoaded({
         profile={profile}
         displayFollowersCount={displayFollowersCount}
         onStatClick={openFollowDrawer}
+        t={t}
       />
 
       {/* ── Viewer Actions: follow + message — NEVER shown to owner ─── */}
@@ -577,7 +581,7 @@ function ProfileLoaded({
             type="button"
             onClick={handleFollowToggle}
             disabled={followState.isLoading || followState.isSaving}
-            aria-label={followState.isFollowing ? 'إلغاء المتابعة' : 'متابعة'}
+            aria-label={followState.isFollowing ? t('actions.unfollow') : t('actions.follow')}
             aria-pressed={followState.isFollowing}
           >
             {followState.isLoading
@@ -585,8 +589,8 @@ function ProfileLoaded({
               : followState.isSaving
               ? '...'
               : followState.isFollowing
-              ? 'إلغاء المتابعة'
-              : 'متابعة'}
+              ? t('actions.unfollow')
+              : t('actions.follow')}
           </button>
           {/* Error toast — minimal, non-blocking */}
           {followState.error && (
@@ -599,7 +603,7 @@ function ProfileLoaded({
             className="profile-page__action-btn profile-page__action-btn--secondary"
             type="button"
           >
-            رسالة
+            {t('actions.message')}
           </button>
         </div>
       )}
@@ -613,29 +617,29 @@ function ProfileLoaded({
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>
-            تعديل الملف الشخصي
+            {t('actions.editProfile')}
           </button>
         </div>
       )}
 
       {/* ── Listening Now status (owner only — ready for audio context) ─ */}
       {isSelf && (
-        <div className="profile-page__listening-now" aria-label="أستمع الآن">
+        <div className="profile-page__listening-now" aria-label={t('badges.listeningNow')}>
           <span className="profile-page__listening-dot" aria-hidden="true" />
-          <span className="profile-page__listening-label">أستمع الآن</span>
+          <span className="profile-page__listening-label">{t('badges.listeningNow')}</span>
           <span className="profile-page__listening-track">—</span>
         </div>
       )}
 
       {/* ── Social Links (owner: always if links exist; viewer: only if projected) */}
-      <ProfileSocialLinks profile={profile} isSelf={isSelf} />
+      <ProfileSocialLinks profile={profile} isSelf={isSelf} t={t} />
 
       {/* ── Tabs (computed from data) ──────────────────────────────────── */}
       {visibleTabs.length > 0 && (
         <nav
           className="profile-page__tabs"
           role="tablist"
-          aria-label="أقسام الملف الشخصي"
+          aria-label={t('actions.settings')} // Reused as general navigation label fallback
         >
           {visibleTabs.map((tab) => (
             <button
@@ -647,7 +651,7 @@ function ProfileLoaded({
               className={`profile-page__tab${currentTab === tab.id ? ' profile-page__tab--active' : ''}`}
               onClick={() => setActiveTab(tab.id)}
             >
-              {tab.label}
+              {t(tab.labelKey)}
             </button>
           ))}
         </nav>
@@ -660,7 +664,7 @@ function ProfileLoaded({
         aria-labelledby={`profile-tab-${currentTab}`}
         className="profile-page__panel"
       >
-        <ProfileTabContent tab={currentTab} profile={profile} isSelf={isSelf} />
+        <ProfileTabContent tab={currentTab} profile={profile} isSelf={isSelf} t={t} />
       </div>
 
       {/* ── Follow List Drawer (Phase 7.2 — Bug 3) ────────────────────── */}
@@ -691,10 +695,12 @@ function ProfileStats({
   profile,
   displayFollowersCount,
   onStatClick,
+  t,
 }: {
   profile: PublicProfileDoc;
   displayFollowersCount: number;
   onStatClick: (mode: 'followers' | 'following') => void;
+  t: TFunction;
 }) {
   const general      = profile.generalProfile;
   const music        = profile.musicCreatorContent;
@@ -707,39 +713,39 @@ function ProfileStats({
 
   // ── Universal: followers + following + listens (always on generalProfile) ──
   stats.push({
-    label: 'متابع',
+    label: t('stats.followers'),
     value: formatCount(displayFollowersCount),
     clickMode: 'followers',
   });
   stats.push({
-    label: 'يتابع',
+    label: t('stats.following'),
     value: formatCount(general?.followingCount ?? 0),
     clickMode: 'following',
   });
-  stats.push({ label: 'استماع', value: formatCount(general?.listensCount ?? 0) });
+  stats.push({ label: t('stats.listens'), value: formatCount(general?.listensCount ?? 0) });
 
   // ── Music world: songs + albums ─────────────────────────────────────────────
   if (music) {
-    stats.push({ label: 'أغنية',   value: formatCount(music.uploadedSongs.length) });
-    stats.push({ label: 'ألبومات', value: formatCount(music.albums.length) });
+    stats.push({ label: t('stats.song'),   value: formatCount(music.uploadedSongs.length) });
+    stats.push({ label: t('stats.albums'), value: formatCount(music.albums.length) });
     return <StatsRow stats={stats} onStatClick={onStatClick} />;
   }
 
   // ── Radio world: stations + episodes ────────────────────────────────────────
   if (radio) {
-    stats.push({ label: 'إذاعات', value: formatCount(radio.ownedRadioStations.length) });
-    stats.push({ label: 'حلقات',  value: formatCount(radio.radioEpisodes.length) });
+    stats.push({ label: t('stats.stations'), value: formatCount(radio.ownedRadioStations.length) });
+    stats.push({ label: t('stats.episodes'),  value: formatCount(radio.radioEpisodes.length) });
     return <StatsRow stats={stats} onStatClick={onStatClick} />;
   }
 
   // ── Tournaments world: organized + awards ───────────────────────────────────
   if (tournaments || awards) {
     stats.push({
-      label: 'مسابقات',
+      label: t('stats.tournaments'),
       value: formatCount(tournaments?.organizedTournamentIds.length ?? 0),
     });
     stats.push({
-      label: 'جوائز',
+      label: t('stats.awards'),
       value: formatCount(awards?.awardIds.length ?? 0),
     });
     return <StatsRow stats={stats} onStatClick={onStatClick} />;
@@ -803,9 +809,11 @@ const SOCIAL_ICON_MAP: Record<string, string> = {
 function ProfileSocialLinks({
   profile,
   isSelf,
+  t,
 }: {
   profile: PublicProfileDoc;
   isSelf: boolean;
+  t: TFunction;
 }) {
   const links = profile.generalProfile?.socialLinks ?? null;
   const hasLinks = links && Object.keys(links).length > 0;
@@ -818,7 +826,7 @@ function ProfileSocialLinks({
     if (!isSelf) return null;
     return (
       <div className="profile-page__social-links profile-page__social-links--empty">
-        <span className="profile-page__social-hint">أضف روابطك الاجتماعية في تعديل الملف الشخصي</span>
+        <span className="profile-page__social-hint">{t('badges.socialHint')}</span>
       </div>
     );
   }
@@ -850,100 +858,101 @@ function ProfileTabContent({
   tab,
   profile,
   isSelf,
+  t,
 }: {
   tab: ProfileTab;
   profile: PublicProfileDoc;
   isSelf: boolean;
+  t: TFunction;
 }) {
   switch (tab) {
     case 'general':
       return profile.generalProfile ? (
         <div className="profile-page__section">
           <p className="text-secondary">
-            {profile.generalProfile.bio ?? 'لا توجد سيرة ذاتية'}
+            {profile.generalProfile.bio ?? t('emptyStates.noBio')}
           </p>
         </div>
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     case 'listening':
       return profile.listeningActivity ? (
-        <EmptyState icon="🎧" title="لا يوجد نشاط استماع حالياً" />
+        <EmptyState icon="🎧" title={t('emptyStates.noListening')} />
       ) : isSelf ? (
-        <EmptyState icon="🎧" title="نشاط الاستماع" description="ستظهر هنا أغانيك وبرامجك الأخيرة" />
+        <EmptyState icon="🎧" title={t('emptyStates.listeningTitle')} description={t('emptyStates.listeningDesc')} />
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     case 'playlists':
       return profile.musicPlaylists ? (
-        <EmptyState icon="🎵" title="لا توجد قوائم تشغيل بعد" />
+        <EmptyState icon="🎵" title={t('emptyStates.noPlaylists')} />
       ) : isSelf ? (
         <EmptyState
           icon="🎵"
-          title="قوائم التشغيل"
-          action={{ label: 'إنشاء قائمة', disabled: true, disabledReason: 'قريباً' }}
+          title={t('emptyStates.playlistsTitle')}
+          action={{ label: t('emptyStates.createPlaylist'), disabled: true, disabledReason: t('emptyStates.soon') }}
         />
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     case 'plus':
       return profile.plusCreatorContent ? (
-        <EmptyState icon="⭐" title="لا يوجد محتوى Plus بعد" />
+        <EmptyState icon="⭐" title={t('emptyStates.noPlus')} />
       ) : isSelf ? (
         <EmptyState
           icon="⭐"
-          title="محتوى Plus"
-          action={{ label: 'نشر محتوى Plus', disabled: true, disabledReason: 'يتطلب صلاحية Plus — قريباً' }}
+          title={t('emptyStates.plusTitle')}
+          action={{ label: t('emptyStates.publishPlus'), disabled: true, disabledReason: t('emptyStates.requiresPlus') }}
         />
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     case 'music':
       return profile.musicCreatorContent ? (
-        <EmptyState icon="🎸" title="لا يوجد محتوى موسيقي بعد" />
+        <EmptyState icon="🎸" title={t('emptyStates.noMusic')} />
       ) : isSelf ? (
         <EmptyState
           icon="🎸"
-          title="المحتوى الموسيقي"
-          action={{ label: 'نشر موسيقى', disabled: true, disabledReason: 'يتطلب صلاحية إنشاء موسيقى — قريباً' }}
+          title={t('emptyStates.musicTitle')}
+          action={{ label: t('emptyStates.publishMusic'), disabled: true, disabledReason: t('emptyStates.requiresMusic') }}
         />
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     case 'radio':
       return profile.radioCreatorContent ? (
-        <EmptyState icon="📻" title="لا توجد إذاعات بعد" />
+        <EmptyState icon="📻" title={t('emptyStates.noRadio')} />
       ) : isSelf ? (
         <EmptyState
           icon="📻"
-          title="الإذاعة"
-          action={{ label: 'إنشاء إذاعة', disabled: true, disabledReason: 'يتطلب صلاحية راديو — قريباً' }}
+          title={t('emptyStates.radioTitle')}
+          action={{ label: t('emptyStates.createRadio'), disabled: true, disabledReason: t('emptyStates.requiresRadio') }}
         />
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     case 'tournaments':
-      // ✅ مسابقات — correct label. ❌ بطولات — forbidden.
       return (
         profile.tournamentsOrganizerContent ||
         profile.joinedTournaments ||
         profile.awardsAndMedals
       ) ? (
-        <EmptyState icon="🏆" title="لا توجد مسابقات بعد" />
+        <EmptyState icon="🏆" title={t('emptyStates.noTournaments')} />
       ) : isSelf ? (
         <EmptyState
           icon="🏆"
-          title="المسابقات"
-          action={{ label: 'استعراض المسابقات', disabled: true, disabledReason: 'قريباً' }}
+          title={t('emptyStates.tournamentsTitle')}
+          action={{ label: t('emptyStates.browseTournaments'), disabled: true, disabledReason: t('emptyStates.soon') }}
         />
       ) : (
-        <PrivacyHidden />
+        <PrivacyHidden t={t} />
       );
 
     default:
@@ -955,11 +964,11 @@ function ProfileTabContent({
 // A section absent from publicProfiles is privacy-hidden, NOT missing/not-found.
 // Do NOT show "not found" — that would leak existence information.
 
-function PrivacyHidden() {
+function PrivacyHidden({ t }: { t: TFunction }) {
   return (
     <div className="profile-page__section profile-page__section--hidden">
       <span className="profile-page__privacy-icon" aria-hidden="true">🔒</span>
-      <p className="text-muted">هذا القسم خاص</p>
+      <p className="text-muted">{t('badges.privateSectionHint')}</p>
     </div>
   );
 }
@@ -987,6 +996,7 @@ function FollowListDrawer({
   mode: 'followers' | 'following';
   onClose: () => void;
 }) {
+  const { t } = useTranslation('profile');
   const [entries, setEntries] = useState<FollowListEntry[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError]     = useState<string | null>(null);
@@ -1040,7 +1050,7 @@ function FollowListDrawer({
               const p = profileSnap.data();
               return {
                 uid,
-                displayName: p.generalProfile?.displayName ?? 'مستخدم Sound',
+                displayName: p.generalProfile?.displayName ?? t('states.defaultName'),
                 username: p.generalProfile?.username ?? '',
                 avatarUrl: p.generalProfile?.avatarUrl ?? undefined,
               };
@@ -1048,14 +1058,14 @@ function FollowListDrawer({
             // Profile not found — show minimal entry
             return {
               uid,
-              displayName: 'مستخدم Sound',
+              displayName: t('states.defaultName'),
               username: '',
               avatarUrl: undefined,
             };
           } catch {
             return {
               uid,
-              displayName: 'مستخدم Sound',
+              displayName: t('states.defaultName'),
               username: '',
               avatarUrl: undefined,
             };
@@ -1070,7 +1080,7 @@ function FollowListDrawer({
       } catch (err) {
         if (!cancelled) {
           console.error('[FollowListDrawer] load error:', err);
-          setError('حدث خطأ أثناء تحميل القائمة');
+          setError(t('drawer.error'));
           setLoading(false);
         }
       }
@@ -1078,9 +1088,9 @@ function FollowListDrawer({
 
     load();
     return () => { cancelled = true; };
-  }, [targetUid, mode]);
+  }, [targetUid, mode, t]);
 
-  const title = mode === 'followers' ? 'المتابعون' : 'يتابع';
+  const title = mode === 'followers' ? t('drawer.followers') : t('drawer.following');
 
   return (
     <>
@@ -1104,7 +1114,7 @@ function FollowListDrawer({
           <button
             className="follow-drawer__close"
             onClick={onClose}
-            aria-label="إغلاق"
+            aria-label={t('drawer.close')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">close</span>
@@ -1116,13 +1126,13 @@ function FollowListDrawer({
           {loading && (
             <div className="follow-drawer__loading">
               <span className="follow-drawer__spinner" />
-              <span>جاري التحميل...</span>
+              <span>{t('drawer.loading')}</span>
             </div>
           )}
 
           {error && (
             <div className="follow-drawer__error">
-              <EmptyState icon="⚠️" title="حدث خطأ" description={error} />
+              <EmptyState icon="⚠️" title={t('states.errorTitle')} description={error} />
             </div>
           )}
 
@@ -1130,7 +1140,7 @@ function FollowListDrawer({
             <div className="follow-drawer__empty">
               <EmptyState
                 icon={mode === 'followers' ? '👥' : '👤'}
-                title={mode === 'followers' ? 'لا يوجد متابعون بعد' : 'لا يتابع أحداً بعد'}
+                title={mode === 'followers' ? t('drawer.noFollowers') : t('drawer.noFollowing')}
               />
             </div>
           )}
