@@ -1,19 +1,21 @@
 /**
  * Sound Platform — 404 Not Found Page
- * Phase: 5-A
+ * Phase: 5-A + i18n
  */
 
 import React from 'react';
 import { Link } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import './Page.css';
 import './AuthPage.css';
 
 export function NotFoundPage() {
+  const { t } = useTranslation('common');
   return (
     <div className="auth-page">
       <div className="auth-card">
         <h1 className="auth-card__title" style={{ fontSize: 'var(--font-size-3xl)' }}>404</h1>
-        <p className="auth-card__subtitle">الصفحة غير موجودة</p>
+        <p className="auth-card__subtitle">{t('notFound.title')}</p>
         <Link
           to="/"
           style={{
@@ -27,7 +29,7 @@ export function NotFoundPage() {
             fontSize: 'var(--font-size-sm)',
           }}
         >
-          العودة للرئيسية
+          {t('notFound.backHome')}
         </Link>
       </div>
     </div>

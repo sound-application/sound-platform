@@ -102,6 +102,11 @@
   },
   "connectivity": {
     "offline": "You are offline",
+    "offlineDetail": "No internet connection — some content may not be available right now",
     "restored": "Connection restored"
+  },
+  "notFound": {
+    "title": "Page not found",
+    "backHome": "Back to Home"
   }
 }
