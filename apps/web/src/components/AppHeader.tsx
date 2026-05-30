@@ -1,5 +1,5 @@
 /**
- * Sound Platform — App Header
+ * Sound Platform — App Header (i18n)
  * Phase: 5-F (+ AccountControlHub)
  *
  * Two-element fixed header:
@@ -8,32 +8,16 @@
  *   │ [avatar]     S O U N D     [🔍]          │
  *   └─────────────────────────────────────────┘
  *   ┌─────────────────────────────────────────┐  ← world strip (48px)
- *   │  عام  بلس  موسيقى  راديو  مسابقات       │
+ *   │  General  Plus  Music  Radio  Tournaments │
  *   └─────────────────────────────────────────┘
- *
- * Avatar behavior (Phase 5-F):
- *   - Tapping the avatar opens AccountControlHub — a full-screen glass sheet.
- *   - It does NOT navigate to /:world/me directly any more.
- *   - عرض ملفي inside the hub navigates to /:world/me.
- *   - Opening / closing the hub does NOT change the current URL.
- *
- * World tab rules:
- *   - Locked order: general | plus | music | radio | tournaments
- *   - Locked Arabic labels — do not use Plus (Latin), مداح, or عطولان
- *   - World tabs are NEVER hidden by capability
- *   - Clicking a world tab calls switchWorld(id), which navigates to
- *     /:newWorld/:currentTab — preserving the active bottom tab.
- *
- * Active state:
- *   - Active world comes from useWorldNav().world (derived from URL).
- *   - The active indicator uses CSS var(--world-color) for the accent line.
  */
 
 import React, { useState } from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorldNav } from '../contexts/WorldNavContext';
-import { LOCKED_WORLDS, WORLD_ORDER } from '../constants/lockedLabels';
+import { WORLD_ORDER } from '../constants/lockedLabels';
 import { AccountControlHub } from './account/AccountControlHub';
 import './AppHeader.css';
 
@@ -46,47 +30,43 @@ const WORLD_COLOR: Record<string, string> = {
   tournaments: 'var(--color-world-tournaments)',
 };
 
-const WORLDS = WORLD_ORDER.map((id) => ({
-  id,
-  label: LOCKED_WORLDS[id],
-  color: WORLD_COLOR[id],
-}));
-
 // ═══ Component ════════════════════════════════════════════════════════════════
 
 export function AppHeader() {
+  const { t } = useTranslation('common');
   const { currentUser } = useAuth();
   const navigate = useNavigate();
-
-  // useWorldNav() reads (world, tab) from URL and exposes navigation helpers.
-  // switchWorld(id) navigates to /:newWorld/:currentTab — tab is preserved.
   const { world: activeWorld, switchWorld } = useWorldNav();
-
-  // AccountControlHub open state — lives here so it doesn't affect routing.
   const [hubOpen, setHubOpen] = useState(false);
   const openHub  = () => setHubOpen(true);
   const closeHub = () => setHubOpen(false);
+
+  const WORLDS = WORLD_ORDER.map((id) => ({
+    id,
+    label: t(`worlds.${id}`),
+    color: WORLD_COLOR[id],
+  }));
 
   return (
     <>
       {/* ── Top Bar: avatar | SOUND | search ──────────────────────────────── */}
       <header className="app-header" role="banner">
-        {/* Avatar / profile — screen-left (RTL: physical left = logical start) */}
+        {/* Avatar / profile */}
         <div className="app-header__user">
           {currentUser ? (
             <button
               className="app-header__avatar"
-              aria-label="فتح قائمة الحساب"
+              aria-label={t('header.openAccountMenu')}
               aria-expanded={hubOpen}
               aria-controls="account-control-hub"
               type="button"
               onClick={openHub}
             >
               {currentUser.photoURL ? (
-                <img src={currentUser.photoURL} alt={currentUser.displayName ?? 'صورة'} />
+                <img src={currentUser.photoURL} alt={currentUser.displayName ?? t('header.photo')} />
               ) : (
                 <span className="app-header__avatar-initial">
-                  {(currentUser.displayName ?? currentUser.email ?? 'م').charAt(0).toUpperCase()}
+                  {(currentUser.displayName ?? currentUser.email ?? t('header.defaultInitial')).charAt(0).toUpperCase()}
                 </span>
               )}
             </button>
@@ -96,7 +76,7 @@ export function AppHeader() {
               type="button"
               onClick={() => navigate('/login')}
             >
-              دخول
+              {t('header.signIn')}
             </button>
           )}
         </div>
@@ -104,17 +84,17 @@ export function AppHeader() {
         {/* Wordmark — centered */}
         <button
           className="app-header__wordmark"
-          aria-label="Sound — الرئيسية"
+          aria-label={t('header.soundHome')}
           type="button"
           onClick={() => navigate(`/${activeWorld}/home`)}
         >
           SOUND
         </button>
 
-        {/* Search — screen-right */}
+        {/* Search */}
         <button
           className="app-header__search-btn"
-          aria-label="بحث"
+          aria-label={t('header.search')}
           type="button"
           onClick={() => navigate(`/${activeWorld}/discover`)}
         >
@@ -132,10 +112,9 @@ export function AppHeader() {
       {/* ── World Strip ────────────────────────────────────────────────────── */}
       <nav
         className="app-header__world-strip"
-        aria-label="عوالم Sound"
+        aria-label={t('worlds.soundWorlds')}
         role="navigation"
       >
-        {/* Glass pill — visually matches the Discover subnav pill exactly */}
         <div className="app-header__world-pill">
           {WORLDS.map((w) => (
             <button
@@ -144,7 +123,7 @@ export function AppHeader() {
               className={`app-header__world-tab${activeWorld === w.id ? ' app-header__world-tab--active' : ''}`}
               style={{ '--world-color': w.color } as React.CSSProperties}
               aria-pressed={activeWorld === w.id}
-              aria-label={`عالم ${w.label}`}
+              aria-label={t('worlds.worldLabel', { name: w.label })}
               onClick={() => switchWorld(w.id)}
             >
               {w.label}

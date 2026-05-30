@@ -1,17 +1,15 @@
 /**
- * Sound Platform — Bottom Navigation
+ * Sound Platform — Bottom Navigation (i18n)
  * Phase: 5-H (Simple Glass Pills)
  *
  * 5 separate rounded glass pills.
  * Active pill is taller / elevated.
  * Inactive pills are shorter, sitting lower.
- *
- * Locked tab order (RTL): الرئيسية | اكتشف | إنشاء | لايف | أنا
  */
 
 import React from 'react';
+import { useTranslation } from 'react-i18next';
 import { useWorldNav, type WorldTab } from '../contexts/WorldNavContext';
-import { LOCKED_NAV } from '../constants/lockedLabels';
 import './BottomNav.css';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -51,24 +49,26 @@ const IconMe = () => (
 
 // ─── Nav items ────────────────────────────────────────────────────────────────
 
-const NAV_ITEMS: { tab: WorldTab; label: string; Icon: React.FC }[] = [
-  { tab: 'home',     label: LOCKED_NAV.home,    Icon: IconHome },
-  { tab: 'discover', label: LOCKED_NAV.discover, Icon: IconDiscover },
-  { tab: 'create',   label: LOCKED_NAV.create,   Icon: IconCreate },
-  { tab: 'live',     label: LOCKED_NAV.live,     Icon: IconLive },
-  { tab: 'me',       label: LOCKED_NAV.profile,  Icon: IconMe },
+const NAV_ITEM_DEFS: { tab: WorldTab; tKey: string; Icon: React.FC }[] = [
+  { tab: 'home',     tKey: 'nav.home',     Icon: IconHome },
+  { tab: 'discover', tKey: 'nav.discover',  Icon: IconDiscover },
+  { tab: 'create',   tKey: 'nav.create',    Icon: IconCreate },
+  { tab: 'live',     tKey: 'nav.live',      Icon: IconLive },
+  { tab: 'me',       tKey: 'nav.profile',   Icon: IconMe },
 ];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function BottomNav() {
+  const { t } = useTranslation('common');
   const { tab: activeTab, switchTab } = useWorldNav();
 
   return (
-    <nav className="bottom-nav" aria-label="التنقل الرئيسي">
+    <nav className="bottom-nav" aria-label={t('nav.mainNav')}>
       <div className="bottom-nav__bar">
-        {NAV_ITEMS.map(({ tab, label, Icon }) => {
+        {NAV_ITEM_DEFS.map(({ tab, tKey, Icon }) => {
           const isActive = activeTab === tab;
+          const label = t(tKey);
           return (
             <button
               key={tab}

@@ -127,6 +127,52 @@
   border: 1px solid var(--color-border-subtle);
 }
 
+/* ─── Language Section ────────────────────────────────────────────────────── */
+
+.settings-page__section {
+  display: flex;
+  flex-direction: column;
+  gap: var(--space-3);
+}
+
+.settings-page__section-title {
+  font-size: var(--font-size-lg);
+  font-weight: 600;
+  color: var(--color-text-primary);
+}
+
+.settings-page__language-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--space-2);
+}
+
+.settings-page__lang-btn {
+  padding: var(--space-2) var(--space-4);
+  border-radius: var(--radius-full);
+  background: var(--color-bg-card);
+  border: 1px solid var(--color-border);
+  color: var(--color-text-secondary);
+  font-size: var(--font-size-sm);
+  font-weight: 500;
+  font-family: var(--font-sans);
+  cursor: pointer;
+  transition: all var(--transition-fast);
+}
+
+.settings-page__lang-btn:hover {
+  background: var(--color-surface);
+  border-color: var(--color-brand-dim);
+  color: var(--color-text-primary);
+}
+
+.settings-page__lang-btn--active {
+  background: var(--color-brand-dim);
+  border-color: var(--color-brand);
+  color: var(--color-brand-light);
+  font-weight: 600;
+}
+
 /* ─── Responsive ─────────────────────────────────────────────────────────────── */
 
 @media (max-width: 480px) {

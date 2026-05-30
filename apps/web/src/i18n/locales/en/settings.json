@@ -1,0 +1,29 @@
+{
+  "title": "Settings",
+  "menuLabel": "Settings Menu",
+  "comingSoon": "Coming Soon",
+  "language": {
+    "label": "Language",
+    "description": "Choose app language"
+  },
+  "editProfile": {
+    "label": "Edit Profile",
+    "desc": "Name, bio, mood status"
+  },
+  "privacy": {
+    "label": "Privacy Settings",
+    "desc": "Control who sees each section of your profile"
+  },
+  "account": {
+    "label": "Account & Security",
+    "desc": "Email and password"
+  },
+  "notifications": {
+    "label": "Notifications",
+    "desc": "Manage notification preferences"
+  },
+  "plusSubscription": {
+    "label": "Plus Subscription",
+    "desc": "Manage subscription and publishing capabilities"
+  }
+}

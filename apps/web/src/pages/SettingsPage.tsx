@@ -1,79 +1,80 @@
 /**
- * Sound Platform — Settings Page
+ * Sound Platform — Settings Page (i18n)
  * ================================
- * Phase: 5-C-2 (Dedicated Privacy Settings UI)
- *
- * Settings hub that links to sub-pages.
- * The actual profile edit reads/writes users/{uid} (owner-allowed).
- * Public profile rendering always uses publicProfiles/{uid}.
+ * Phase: 5-C-2 + i18n (Language Switcher)
  */
 
 import React from 'react';
 import { useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
+import { SUPPORTED_LANGUAGES } from '../i18n';
 import './SettingsPage.css';
 import './Page.css';
-
-// ─── Settings menu items ──────────────────────────────────────────────────────
-
-const SETTINGS_ITEMS = [
-  {
-    id: 'edit-profile',
-    icon: '✏️',
-    label: 'تعديل الملف الشخصي',
-    desc: 'الاسم، النبذة، الحالة المزاجية',
-    route: '/settings/edit-profile',
-    enabled: true,
-  },
-  {
-    id: 'privacy',
-    icon: '🔐',
-    label: 'إعدادات الخصوصية',
-    desc: 'تحكَّم في من يرى كل قسم من ملفك',
-    route: '/settings/privacy',
-    enabled: true,
-  },
-  {
-    id: 'account',
-    icon: '🔑',
-    label: 'الحساب والأمان',
-    desc: 'البريد الإلكتروني وكلمة المرور',
-    route: '/settings/account',
-    enabled: false,
-    badge: 'قريباً',
-  },
-  {
-    id: 'notifications',
-    icon: '🔔',
-    label: 'الإشعارات',
-    desc: 'إدارة تفضيلات الإشعارات',
-    route: '/settings/notifications',
-    enabled: false,
-    badge: 'قريباً',
-  },
-  {
-    id: 'plus',
-    icon: '⭐',
-    label: 'اشتراك Plus',
-    desc: 'إدارة الاشتراك وإمكانيات النشر',
-    route: '/settings/plus',
-    enabled: false,
-    badge: 'قريباً',
-  },
-];
 
 // ─── Component ────────────────────────────────────────────────────────────────
 
 export function SettingsPage() {
+  const { t, i18n } = useTranslation('settings');
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+
+  const SETTINGS_ITEMS = [
+    {
+      id: 'edit-profile',
+      icon: '✏️',
+      label: t('editProfile.label'),
+      desc: t('editProfile.desc'),
+      route: '/settings/edit-profile',
+      enabled: true,
+    },
+    {
+      id: 'privacy',
+      icon: '🔐',
+      label: t('privacy.label'),
+      desc: t('privacy.desc'),
+      route: '/settings/privacy',
+      enabled: true,
+    },
+    {
+      id: 'account',
+      icon: '🔑',
+      label: t('account.label'),
+      desc: t('account.desc'),
+      route: '/settings/account',
+      enabled: false,
+      badge: t('comingSoon'),
+    },
+    {
+      id: 'notifications',
+      icon: '🔔',
+      label: t('notifications.label'),
+      desc: t('notifications.desc'),
+      route: '/settings/notifications',
+      enabled: false,
+      badge: t('comingSoon'),
+    },
+    {
+      id: 'plus',
+      icon: '⭐',
+      label: t('plusSubscription.label'),
+      desc: t('plusSubscription.desc'),
+      route: '/settings/plus',
+      enabled: false,
+      badge: t('comingSoon'),
+    },
+  ];
+
+  const handleLanguageChange = (langCode: string) => {
+    i18n.changeLanguage(langCode);
+  };
 
   return (
     <div className="page settings-page">
 
       {/* ── Header ──────────────────────────────────────────────────────── */}
       <div className="settings-page__header">
-        <h1 className="settings-page__title">الإعدادات</h1>
+        <h1 className="settings-page__title">{t('title')}</h1>
         {currentUser?.email && (
           <p className="settings-page__account" dir="ltr">
             {currentUser.email}
@@ -81,8 +82,27 @@ export function SettingsPage() {
         )}
       </div>
 
+      {/* ── Language Switcher ──────────────────────────────────────────── */}
+      <section className="settings-page__section" aria-label={t('language.label')}>
+        <h2 className="settings-page__section-title">{t('language.label')}</h2>
+        <div className="settings-page__language-grid">
+          {SUPPORTED_LANGUAGES.map((lang) => (
+            <button
+              key={lang.code}
+              type="button"
+              className={`settings-page__lang-btn${i18n.language === lang.code ? ' settings-page__lang-btn--active' : ''}`}
+              onClick={() => handleLanguageChange(lang.code)}
+              aria-pressed={i18n.language === lang.code}
+              dir={lang.dir}
+            >
+              {lang.label}
+            </button>
+          ))}
+        </div>
+      </section>
+
       {/* ── Menu list ────────────────────────────────────────────────────── */}
-      <nav className="settings-page__menu" aria-label="قائمة الإعدادات">
+      <nav className="settings-page__menu" aria-label={t('menuLabel')}>
         {SETTINGS_ITEMS.map(item => (
           <button
             key={item.id}

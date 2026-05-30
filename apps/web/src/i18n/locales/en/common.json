@@ -1,0 +1,107 @@
+{
+  "nav": {
+    "home": "Home",
+    "discover": "Discover",
+    "create": "Create",
+    "live": "Live",
+    "profile": "Me",
+    "mainNav": "Main Navigation"
+  },
+  "worlds": {
+    "general": "General",
+    "plus": "Plus",
+    "music": "Music",
+    "radio": "Radio",
+    "tournaments": "Tournaments",
+    "soundWorlds": "Sound Worlds",
+    "worldLabel": "{{name}} World"
+  },
+  "header": {
+    "openAccountMenu": "Open account menu",
+    "photo": "Photo",
+    "defaultInitial": "U",
+    "signIn": "Sign In",
+    "soundHome": "Sound — Home",
+    "search": "Search"
+  },
+  "actions": {
+    "save": "Save",
+    "cancel": "Cancel",
+    "delete": "Delete",
+    "edit": "Edit",
+    "confirm": "Confirm",
+    "back": "Back",
+    "next": "Next",
+    "previous": "Previous",
+    "skip": "Skip",
+    "close": "Close",
+    "done": "Done",
+    "retry": "Retry",
+    "submit": "Submit",
+    "upload": "Upload",
+    "download": "Download",
+    "share": "Share",
+    "copy": "Copy",
+    "loading": "Loading...",
+    "processing": "Processing...",
+    "search": "Search",
+    "filter": "Filter",
+    "sort": "Sort",
+    "more": "More",
+    "less": "Less",
+    "viewAll": "View All",
+    "refresh": "Refresh",
+    "enable": "Enable",
+    "disable": "Disable",
+    "reset": "Reset",
+    "apply": "Apply",
+    "preview": "Preview",
+    "publish": "Publish"
+  },
+  "status": {
+    "active": "Active",
+    "inactive": "Inactive",
+    "pending": "Pending",
+    "success": "Success",
+    "failed": "Failed",
+    "error": "Error",
+    "ready": "Ready",
+    "draft": "Draft",
+    "published": "Published",
+    "processing": "Processing",
+    "uploading": "Uploading...",
+    "offline": "Offline"
+  },
+  "errors": {
+    "generic": "Something went wrong. Please try again.",
+    "network": "Connection error. Check your internet.",
+    "notFound": "Not found",
+    "unauthorized": "Unauthorized",
+    "forbidden": "Access denied",
+    "timeout": "Request timed out",
+    "fileTooLarge": "File is too large",
+    "invalidFormat": "Invalid format",
+    "required": "Required",
+    "tooShort": "Too short",
+    "tooLong": "Too long"
+  },
+  "time": {
+    "now": "Just now",
+    "minutesAgo": "{{count}} minutes ago",
+    "hoursAgo": "{{count}} hours ago",
+    "daysAgo": "{{count}} days ago",
+    "seconds": "seconds",
+    "minutes": "minutes",
+    "hours": "hours",
+    "days": "days"
+  },
+  "empty": {
+    "noContent": "No content",
+    "noResults": "No results",
+    "noItems": "No items"
+  },
+  "connectivity": {
+    "offline": "You are offline",
+    "restored": "Connection restored"
+  }
+}

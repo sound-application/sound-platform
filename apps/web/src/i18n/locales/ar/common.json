@@ -1,0 +1,107 @@
+{
+  "nav": {
+    "home": "الرئيسية",
+    "discover": "اكتشف",
+    "create": "إنشاء",
+    "live": "لايف",
+    "profile": "أنا",
+    "mainNav": "التنقل الرئيسي"
+  },
+  "worlds": {
+    "general": "عام",
+    "plus": "بلس",
+    "music": "موسيقى",
+    "radio": "راديو",
+    "tournaments": "مسابقات",
+    "soundWorlds": "عوالم Sound",
+    "worldLabel": "عالم {{name}}"
+  },
+  "header": {
+    "openAccountMenu": "فتح قائمة الحساب",
+    "photo": "صورة",
+    "defaultInitial": "م",
+    "signIn": "دخول",
+    "soundHome": "Sound — الرئيسية",
+    "search": "بحث"
+  },
+  "actions": {
+    "save": "حفظ",
+    "cancel": "إلغاء",
+    "delete": "حذف",
+    "edit": "تعديل",
+    "confirm": "تأكيد",
+    "back": "رجوع",
+    "next": "التالي",
+    "previous": "السابق",
+    "skip": "تخطي",
+    "close": "إغلاق",
+    "done": "تم",
+    "retry": "إعادة المحاولة",
+    "submit": "إرسال",
+    "upload": "رفع",
+    "download": "تحميل",
+    "share": "مشاركة",
+    "copy": "نسخ",
+    "loading": "جاري التحميل...",
+    "processing": "جاري المعالجة...",
+    "search": "بحث",
+    "filter": "تصفية",
+    "sort": "ترتيب",
+    "more": "المزيد",
+    "less": "أقل",
+    "viewAll": "عرض الكل",
+    "refresh": "تحديث",
+    "enable": "تفعيل",
+    "disable": "تعطيل",
+    "reset": "إعادة ضبط",
+    "apply": "تطبيق",
+    "preview": "معاينة",
+    "publish": "نشر"
+  },
+  "status": {
+    "active": "نشط",
+    "inactive": "غير نشط",
+    "pending": "قيد الانتظار",
+    "success": "تم بنجاح",
+    "failed": "فشل",
+    "error": "خطأ",
+    "ready": "جاهز",
+    "draft": "مسودة",
+    "published": "منشور",
+    "processing": "قيد المعالجة",
+    "uploading": "جاري الرفع...",
+    "offline": "غير متصل"
+  },
+  "errors": {
+    "generic": "حدث خطأ. حاول مرة أخرى.",
+    "network": "خطأ في الاتصال. تحقق من الإنترنت.",
+    "notFound": "غير موجود",
+    "unauthorized": "غير مصرح",
+    "forbidden": "الوصول مرفوض",
+    "timeout": "انتهت المهلة",
+    "fileTooLarge": "الملف كبير جداً",
+    "invalidFormat": "صيغة غير صالحة",
+    "required": "مطلوب",
+    "tooShort": "قصير جداً",
+    "tooLong": "طويل جداً"
+  },
+  "time": {
+    "now": "الآن",
+    "minutesAgo": "منذ {{count}} دقيقة",
+    "hoursAgo": "منذ {{count}} ساعة",
+    "daysAgo": "منذ {{count}} يوم",
+    "seconds": "ثانية",
+    "minutes": "دقيقة",
+    "hours": "ساعة",
+    "days": "يوم"
+  },
+  "empty": {
+    "noContent": "لا يوجد محتوى",
+    "noResults": "لا توجد نتائج",
+    "noItems": "لا توجد عناصر"
+  },
+  "connectivity": {
+    "offline": "أنت غير متصل بالإنترنت",
+    "restored": "تم استعادة الاتصال"
+  }
+}

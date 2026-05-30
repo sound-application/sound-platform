@@ -19,8 +19,12 @@ a { text-decoration: none; color: inherit; }
 /* ─── Design Tokens ────────────────────────────────────────────────────────── */
 :root {
   /* Typography */
-  /* DESIGN.md authority: preferred = Alexandria, fallback = Cairo */
-  --font-sans: 'Alexandria', 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+  /* DESIGN.md authority: preferred = Alexandria, fallback = Cairo (Arabic) */
+  --font-arabic: 'Alexandria', 'Cairo', 'Segoe UI', Tahoma, Arial, sans-serif;
+  /* Latin script font for non-Arabic languages */
+  --font-latin: 'Inter', 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+  /* Active font — switched by [lang] attribute */
+  --font-sans: var(--font-arabic);
   --font-size-xs:   0.75rem;
   --font-size-sm:   0.875rem;
   --font-size-base: 1rem;
@@ -113,11 +117,23 @@ html {
   font-size: var(--font-size-base);
   background-color: var(--color-bg);
   color: var(--color-text-primary);
-  direction: rtl;
+  /* direction is set dynamically by i18n/index.ts based on language */
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scroll-behavior: smooth;
 }
+
+/* ─── Language-based font switching ───────────────────────────────────────── */
+/* Arabic: use Alexandria/Cairo */
+html[lang="ar"] { --font-sans: var(--font-arabic); }
+/* All Latin-script languages: use Inter */
+html[lang="en"] { --font-sans: var(--font-latin); }
+html[lang="fr"] { --font-sans: var(--font-latin); }
+html[lang="de"] { --font-sans: var(--font-latin); }
+html[lang="es"] { --font-sans: var(--font-latin); }
+html[lang="pt"] { --font-sans: var(--font-latin); }
+html[lang="it"] { --font-sans: var(--font-latin); }
+html[lang="tr"] { --font-sans: var(--font-latin); }
 
 body {
   min-height: 100dvh;
