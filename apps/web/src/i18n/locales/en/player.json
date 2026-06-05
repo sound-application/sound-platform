@@ -34,5 +34,6 @@
   "prev_track": "Previous track",
   "rewind_5s": "Rewind 5 seconds",
   "forward_5s": "Forward 5 seconds",
-  "next_track": "Next track"
+  "next_track": "Next track",
+  "processing_audio": "Audio is being processed to apply modifications... Please wait"
 }

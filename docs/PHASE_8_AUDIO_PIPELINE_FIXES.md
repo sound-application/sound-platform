@@ -78,3 +78,25 @@ Users progressing through Steps 8 (Effects) and 9 (Mixing) lost context on what 
    - Used FFmpeg's `-stream_loop -1` to infinitely loop background music.
    - Truncated the looped music at exactly the voice duration using `atrim`.
    - Applied a hardcoded 3-second `afade=t=out` to gracefully fade the background music out right as the voice ends.
+
+---
+
+## 7. RTL/LTR Directional UI & Translation Sync
+
+### The Problem
+During localization to English, it was discovered that specific directional icons (`arrow_back`, `skip_previous`) were hardcoded for the Arabic Right-to-Left (RTL) layout. When switching to English (LTR), the "Continue" arrow was pointing backwards, and the "Previous" arrow was pointing forwards. Additionally, some UI elements in the English layout were falling back to Arabic text.
+
+### The Real Fix
+1. **Dynamic Directional Icons**: Replaced the hardcoded Material Icons with a dynamic `iconNext` / `iconPrev` system derived from `i18n.dir()`. For example, `iconNext` renders `arrow_back` in RTL (Arabic) and `arrow_forward` in LTR (English).
+2. **Translation Key Sync**: Fixed the Arabic text bleeding into the English UI by adding missing keys (e.g., `processing_audio`) to both `ar/player.json` and `en/player.json`. If a key is missing from the JSON files, `i18next` defaults to the inline fallback string—which was written in Arabic.
+
+---
+
+## 8. "Change File" Upload State Locking
+
+### The Problem
+If a user uploaded an audio file in Step 6, clicked "Change File", and uploaded a *second* file, the frontend completely ignored the second file and forcefully attached the first one. The parent `AudioCreatePage` component still held the original file's metadata (`audioAsset`) in state.
+
+### The Real Fix
+1. Passed `setAudioAsset` explicitly to `Step6RecordUpload` so the local child component can forcefully wipe the parent's memory of the first file when the user clicks "Change File" or "Re-Record".
+2. Updated the `useEffect` upload observer to process new files natively by ensuring the new `uploader.storagePath` doesn't strictly match the old `audioAsset.storagePath`.

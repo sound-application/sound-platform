@@ -1,0 +1,103 @@
+﻿
+> apps\web\src\pages\create\AudioCreatePage-copy.tsx:103:const ALL_STEPS: WizardStep[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 
+10, 11, 12];
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:104:type Step6Tab = 'record' | 'upload';
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:105:
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:106:const useAudioOptions = (t: any) => {
+> apps\web\src\pages\create\AudioCreatePage-copy.tsx:107:  const WORLDS: { key: string; label: string }[] = [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:108:    { key: 'general', label: t('world_general', 'عام') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:109:    { key: 'plus', label: t('world_plus', 'بلس') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:110:    { key: 'music', label: t('world_music', 'موسيقى') }
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:111:  ];
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:112:
+> apps\web\src\pages\create\AudioCreatePage-copy.tsx:113:  const KINDS_BY_WORLD: Record<string, { key: any; label: 
+string }[]> = {
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:114:    general: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:115:      { key: 'shortAudio', label: t('kind_shortAudio', 'مقطع 
+قصير') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:116:      { key: 'longAudio', label: t('kind_longAudio', 'صوت 
+طويل') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:117:      { key: 'podcast', label: t('kind_podcast', 'بودكاست') }
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:118:    ],
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:119:    plus: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:120:      { key: 'shortAudio', label: t('kind_shortAudio', 'مقطع 
+قصير') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:121:      { key: 'longAudio', label: t('kind_longAudio', 'صوت 
+طويل') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:122:      { key: 'podcast', label: t('kind_podcast', 'بودكاست') }
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:123:    ],
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:124:    music: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:125:      { key: 'song', label: t('kind_song', 'أغنية') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:126:      { key: 'albumTrack', label: t('kind_album_track', 'مقطع 
+ألبوم') }
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:127:    ]
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:128:  };
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:129:
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:130:  const CATEGORIES = [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:131:    { id: 'culture', label: t('cat_culture', 'ثقافة') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:132:    { id: 'entertainment', label: t('cat_entertainment', 
+'ترفيه') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:133:    { id: 'education', label: t('cat_education', 'تعليم') },
+> apps\web\src\pages\create\AudioCreatePage-copy.tsx:141:  const SUBCATEGORIES_BY_CATEGORY: Record<string, { id: 
+string; label: string }[]> = {
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:142:    culture: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:143:      { id: 'creativity', label: t('subcat_creativity', 
+'إبداع وهدوء') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:144:      { id: 'visual_arts', label: t('subcat_visual_arts', 
+'فنون بصرية') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:145:      { id: 'literature', label: t('subcat_literature', 'أدب 
+وشعر') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:146:    ],
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:147:    entertainment: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:148:      { id: 'comedy', label: t('subcat_comedy', 'كوميديا') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:149:      { id: 'drama', label: t('subcat_drama', 'دراما') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:150:      { id: 'talk_shows', label: t('subcat_talk_shows', 
+'برامج حوارية') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:151:    ],
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:152:    education: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:153:      { id: 'science', label: t('subcat_science', 'علوم') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:154:      { id: 'technology', label: t('subcat_technology_edu', 
+'تقنية') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:155:      { id: 'languages', label: t('subcat_languages', 'لغات') 
+},
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:156:    ],
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:157:    religion: [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:158:      { id: 'quran', label: t('subcat_quran', 'قرآن') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:159:      { id: 'lectures', label: t('subcat_lectures', 'دروس 
+ومحاضرات') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:160:      { id: 'stories', label: t('subcat_stories', 'قصص 
+دينية') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:161:    ],
+> apps\web\src\pages\create\AudioCreatePage-copy.tsx:179:  const AUDIENCE_OPTIONS: { key: AudienceType; label: string; 
+icon: string }[] = [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:180:    { key: 'public', label: t('audience_public', 'عام — 
+الجميع'), icon: 'visibility' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:181:    { key: 'followers', label: t('audience_followers', 
+'المتابعون فقط'), icon: 'group' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:182:    { key: 'following', label: t('audience_following', 'من 
+أتابعهم فقط'), icon: 'person_add' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:183:    { key: 'friends', label: t('audience_friends', 'الأصدقاء 
+فقط'), icon: 'handshake' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:184:    { key: 'specificList', label: t('audience_specificList', 
+'قائمة محددة'), icon: 'list' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:185:    { key: 'listExcept', label: t('audience_listExcept', 
+'الجميع عدا قائمة'), icon: 'block' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:186:    { key: 'selectedPeople', label: 
+t('audience_selectedPeople', 'أشخاص مختارون'), icon: 'person_search' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:187:    { key: 'onlyMe', label: t('audience_onlyMe', 'أنا فقط'), 
+icon: 'person' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:188:  ];
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:189:
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:190:  const LANGUAGES = [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:191:    { code: 'ar', label: t('lang_ar', 'العربية') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:192:    { code: 'en', label: 'English' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:193:    { code: 'fr', label: 'Français' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:194:    { code: 'es', label: 'Español' },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:195:    { code: 'other', label: t('lang_other', 'أخرى') },
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:196:  ];
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:197:
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:198:  const MUSIC_SOURCE_OPTIONS = [
+  apps\web\src\pages\create\AudioCreatePage-copy.tsx:199:    { id: 'none', label: t('music_none', 'بدون موسيقى'), 
+icon: 'music_off', available: true },
+
+

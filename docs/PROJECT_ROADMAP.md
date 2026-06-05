@@ -45,4 +45,5 @@ Do not build feed/discovery/monetization around audio until audio item creation,
 
 - **Audio Editing Flow & Preview Engine Fixed**: Draft updates (cuts/trims) correctly synchronize to Firestore before previewing, and React rendering is now stable via `crypto.randomUUID()`.
 - **RTL UI Polished**: Audio Editing toggles natively support standard Arabic right-to-left UI.
-- **Translation Extraction Pipeline Complete**: AST-based translation scripts (e.g., `fix_all_locales.py`) stabilize cross-module Arabic string management.
+- **Translation & Layout Polish**: Replaced hardcoded directional icons with direction-aware (`iconNext`) logic for full RTL/LTR compatibility. Missing i18next translation keys were manually added to prevent Arabic fallbacks in the English interface.
+- **Upload State Resilience**: Fixed a critical memory bug where uploading a second audio file would be ignored by the component because the first file's asset data wasn't being cleared properly from parent state.

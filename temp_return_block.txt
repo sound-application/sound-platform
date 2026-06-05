@@ -1,263 +1,4 @@
-// @ts-nocheck
-/**
- * Sound Platform — Audio Create Page (Canonical 12-Step Wizard)
- * ==============================================================
- * Phase:   8-D.2 (Enhanced Audio Creation Flow)
- * Updated: 2026-05-28
- *
- * Canonical flow (13 states, 12 in-wizard + exit to detail player):
- *   1.  Info — title, description, world, kind
- *   2.  Publish Details — category, subcategory, tags, language, country, age,
- *       child content, audience, placement, playlist, toggles
- *   3.  Cover (optional) — upload / camera / AI / skip
- *   4.  Captions setup (optional) — enable, language, style
- *   5.  AutoCue (optional) — script, speed, font, mode, delay, highlight
- *   6.  Record / Upload — normal or AutoCue mode
- *   7.  Review — playback, replace, confirm
- *   8.  Effects (optional, gated placeholder)
- *   9.  Mixing (optional, gated placeholder)
- *   10. Final Preview — listener-style + edit-back links
- *   11. Review Details — checklist
- *   12. Publish Result — success/pending/fail + open item
- *
- * Route: /create/audio
- * Query: ?source=record|upload → pre-selects tab in step 6
- */
-
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useSearchParams, useNavigate } from 'react-router-dom';
-import { useTranslation } from 'react-i18next';
-import { useCategories } from '../../hooks/useCategories';
-import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../lib/firebase';
-import { useAuth } from '../../contexts/AuthContext';
-import { useAudioRecorder } from '../../hooks/useAudioRecorder';
-import { useAudioUpload } from '../../hooks/useAudioUpload';
-import {
-  callCreateAudioDraft,
-  callUpdateAudioDraft,
-  callPublishAudioContent,
-  callGetUserPlaylists,
-  callRenderDraftPreview,
-  callCreatePlaylist,
-} from '../../lib/callables';
-import {
-  extractAudioDuration,
-  formatDuration,
-  formatFileSize,
-} from '../../lib/audioDuration';
-import type {
-  AudioAssetMeta,
-  AudioContentKind,
-  AudienceType,
-  CountryMode,
-  AgeSuitability,
-  CoverAsset,
-  CaptionsSetup,
-  CaptionsData,
-  CaptionSegment,
-  CaptionSource,
-  AutoCueConfig,
-  PublishToggles,
-  PlacementFeed,
-  PlaylistIntent,
-  AudioEffectsConfig,
-  AudioEffectFilterSetting,
-  AudioEffectFilterId,
-  AudioEffectPresetId,
-  AudioMixingConfig,
-  AudioMixTrack,
-  AudioMixPresetId,
-  AudioEditConfig,
-  AudioCutSegment,
-  AudioSfxItem,
-  PreviewStage,
-  PreviewStatus,
-  AudioDraftPreviewAssets,
-} from '@sound/shared';
-import { AUDIO_PRESETS, AUDIO_FILTERS, MIXING_PRESETS as MIXING_PRESET_DEFS, createDefaultTracks, dbToPercent, percentToDb } from '@sound/shared';
-import type { PlaylistDoc } from '@sound/shared';
-import { parseSRT, parseVTT, splitTextToSegments } from '../../utils/captionsParsers';
-import type { WorldId } from '@sound/shared';
-import '../Page.css';
-import './AudioCreatePage.css';
-import { Step1Info } from './steps/Step1Info';
-import { Step2Destination } from './steps/Step2Destination';
-import { Step3Cover } from './steps/Step3Cover';
-import { Step4Captions } from './steps/Step4Captions';
-import { Step5AutoCue } from './steps/Step5AutoCue';
-import { Step6RecordUpload } from './steps/Step6RecordUpload';
-import { Step7Edit } from './steps/Step7Edit';
-import { Step8Effects } from './steps/Step8Effects';
-import { Step9Mixing } from './steps/Step9Mixing';
-import { Step10Preview } from './steps/Step10Preview';
-import { Step11Review } from './steps/Step11Review';
-import { Step12Publish } from './steps/Step12Publish';
-
-// ── Step enum ─────────────────────────────────────────────────────────────────
-
-type WizardStep = 1 | 2 | 3 | 4 | 5 | 6 | 7 | 8 | 9 | 10 | 11 | 12;
-
-const STEP_LABELS: Record<WizardStep, string> = {
-  1: 'المعلومات',
-  2: 'تفاصيل النشر',
-  3: 'الغلاف',
-  4: 'الترجمة',
-  5: 'الملقن',
-  6: 'التسجيل',
-  7: 'المراجعة',
-  8: 'المؤثرات',
-  9: 'المكساج',
-  10: 'المعاينة',
-  11: 'التأكيد',
-  12: 'النتيجة',
-};
-
-const ALL_STEPS: WizardStep[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
-type Step6Tab = 'record' | 'upload';
-
-const useAudioOptions = (t: any) => {
-  const WORLDS: { key: string; label: string }[] = [
-    { key: 'general', label: t('world_general', 'عام') },
-    { key: 'plus', label: t('world_plus', 'بلس') },
-    { key: 'music', label: t('world_music', 'موسيقى') }
-  ];
-
-  const KINDS_BY_WORLD: Record<string, { key: any; label: string }[]> = {
-    general: [
-      { key: 'shortAudio', label: t('kind_shortAudio', 'مقطع قصير') },
-      { key: 'longAudio', label: t('kind_longAudio', 'صوت طويل') },
-      { key: 'podcast', label: t('kind_podcast', 'بودكاست') }
-    ],
-    plus: [
-      { key: 'shortAudio', label: t('kind_shortAudio', 'مقطع قصير') },
-      { key: 'longAudio', label: t('kind_longAudio', 'صوت طويل') },
-      { key: 'podcast', label: t('kind_podcast', 'بودكاست') }
-    ],
-    music: [
-      { key: 'song', label: t('kind_song', 'أغنية') },
-      { key: 'albumTrack', label: t('kind_album_track', 'مقطع ألبوم') }
-    ]
-  };
-
-  const CATEGORIES = [
-    { id: 'culture', label: t('cat_culture', 'ثقافة') },
-    { id: 'entertainment', label: t('cat_entertainment', 'ترفيه') },
-    { id: 'education', label: t('cat_education', 'تعليم') },
-    { id: 'religion', label: t('cat_religion', 'ديني') },
-    { id: 'sports', label: t('cat_sports', 'رياضة') },
-    { id: 'news', label: t('cat_news', 'أخبار') },
-    { id: 'technology', label: t('cat_technology', 'تقنية') },
-    { id: 'other', label: t('cat_other', 'أخرى') },
-  ];
-
-  const SUBCATEGORIES_BY_CATEGORY: Record<string, { id: string; label: string }[]> = {
-    culture: [
-      { id: 'creativity', label: t('subcat_creativity', 'إبداع وهدوء') },
-      { id: 'visual_arts', label: t('subcat_visual_arts', 'فنون بصرية') },
-      { id: 'literature', label: t('subcat_literature', 'أدب وشعر') },
-    ],
-    entertainment: [
-      { id: 'comedy', label: t('subcat_comedy', 'كوميديا') },
-      { id: 'drama', label: t('subcat_drama', 'دراما') },
-      { id: 'talk_shows', label: t('subcat_talk_shows', 'برامج حوارية') },
-    ],
-    education: [
-      { id: 'science', label: t('subcat_science', 'علوم') },
-      { id: 'technology', label: t('subcat_technology_edu', 'تقنية') },
-      { id: 'languages', label: t('subcat_languages', 'لغات') },
-    ],
-    religion: [
-      { id: 'quran', label: t('subcat_quran', 'قرآن') },
-      { id: 'lectures', label: t('subcat_lectures', 'دروس ومحاضرات') },
-      { id: 'stories', label: t('subcat_stories', 'قصص دينية') },
-    ],
-    sports: [
-      { id: 'football', label: t('subcat_football', 'كرة قدم') },
-      { id: 'fitness', label: t('subcat_fitness', 'لياقة وصحة') },
-      { id: 'analysis', label: t('subcat_analysis', 'تحليل رياضي') },
-    ],
-    news: [
-      { id: 'local', label: t('subcat_local', 'محلي') },
-      { id: 'international', label: t('subcat_international', 'دولي') },
-      { id: 'economy', label: t('subcat_economy', 'اقتصاد') },
-    ],
-    technology: [
-      { id: 'ai', label: t('subcat_ai', 'ذكاء اصطناعي') },
-      { id: 'programming', label: t('subcat_programming', 'برمجة') },
-      { id: 'reviews', label: t('subcat_reviews', 'مراجعات') },
-    ],
-  };
-
-  const AUDIENCE_OPTIONS: { key: AudienceType; label: string; icon: string }[] = [
-    { key: 'public', label: t('audience_public', 'عام — الجميع'), icon: 'visibility' },
-    { key: 'followers', label: t('audience_followers', 'المتابعون فقط'), icon: 'group' },
-    { key: 'following', label: t('audience_following', 'من أتابعهم فقط'), icon: 'person_add' },
-    { key: 'friends', label: t('audience_friends', 'الأصدقاء فقط'), icon: 'handshake' },
-    { key: 'specificList', label: t('audience_specificList', 'قائمة محددة'), icon: 'list' },
-    { key: 'listExcept', label: t('audience_listExcept', 'الجميع عدا قائمة'), icon: 'block' },
-    { key: 'selectedPeople', label: t('audience_selectedPeople', 'أشخاص مختارون'), icon: 'person_search' },
-    { key: 'onlyMe', label: t('audience_onlyMe', 'أنا فقط'), icon: 'person' },
-  ];
-
-  const LANGUAGES = [
-    { code: 'ar', label: t('lang_ar', 'العربية') },
-    { code: 'en', label: 'English' },
-    { code: 'fr', label: 'Français' },
-    { code: 'es', label: 'Español' },
-    { code: 'other', label: t('lang_other', 'أخرى') },
-  ];
-
-  const MUSIC_SOURCE_OPTIONS = [
-    { id: 'none', label: t('music_none', 'بدون موسيقى'), icon: 'music_off', available: true },
-    { id: 'uploaded', label: t('music_uploaded', 'رفع من الجهاز'), icon: 'upload_file', available: true },
-    { id: 'library', label: t('music_library', 'مكتبة Sound'), icon: 'library_music', available: false },
-  ];
-
-  const SFX_SOURCE_OPTIONS = [
-    { id: 'none', label: t('sfx_none', 'بدون مؤثرات'), icon: 'music_off', available: true },
-    { id: 'uploaded', label: t('sfx_uploaded', 'رفع من الجهاز'), icon: 'upload_file', available: true },
-    { id: 'library', label: t('sfx_library', 'مكتبة ساوند — قريباً'), icon: 'library_music', available: false },
-  ];
-
-  return { WORLDS, KINDS_BY_WORLD, CATEGORIES, SUBCATEGORIES_BY_CATEGORY, AUDIENCE_OPTIONS, LANGUAGES, MUSIC_SOURCE_OPTIONS, SFX_SOURCE_OPTIONS };
-};
-
-/** Max SFX items — configurable, generous default */
-const MAX_SFX_ITEMS = 50;
-
-/** Format ms to mm:ss.mmm for SFX and Trim timing display */
-const formatMsToTimeInput = (ms: number): string => {
-  const totalMs = Math.max(0, Math.round(ms));
-  const min = Math.floor(totalMs / 60000);
-  const sec = Math.floor((totalMs % 60000) / 1000);
-  const millis = totalMs % 1000;
-  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-};
-
-/** Parse mm:ss.mmm to ms */
-const parseTimeInputToMs = (val: string): number => {
-  const parts = val.split(':');
-  if (parts.length === 2) {
-    const min = parseInt(parts[0] ?? '0') || 0;
-    const secParts = (parts[1] ?? '0').split('.');
-    const sec = parseInt(secParts[0] ?? '0') || 0;
-    const msStr = (secParts[1] ?? '0').padEnd(3, '0').slice(0, 3);
-    const millis = parseInt(msStr) || 0;
-    return Math.max(0, min * 60000 + Math.min(sec, 59) * 1000 + Math.min(millis, 999));
-  }
-  const sec = parseFloat(val) || 0;
-  return Math.max(0, Math.round(sec * 1000));
-};
-
-const TimeInputControl = ({ valueMs, onChange }: { valueMs: number; onChange: (ms: number) => void }) => {
-  const [localStr, setLocalStr] = useState<string | null>(null);
-  
-  useEffect(() => {
-    setLocalStr(formatMsToTimeInput(valueMs));
-  }, [valueMs]);
-
-  return (
+﻿return (
     <input
       type="text"
       dir="ltr"
@@ -279,7 +20,7 @@ const TimeInputControl = ({ valueMs, onChange }: { valueMs: number; onChange: (m
   );
 };
 
-// ── Page Component ──────────────────────────────────────────────────────────
+// Ã¢â€â‚¬Ã¢â€â‚¬ Page Component Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
 export function AudioCreatePage() {
   const { t, i18n } = useTranslation('audiocreate');
@@ -293,29 +34,29 @@ export function AudioCreatePage() {
   const iconPrev = i18n.dir() === 'rtl' ? 'arrow_forward' : 'arrow_back';
 
   const STEP_LABELS: Record<number, string> = {
-    1: t('step1_info', 'المعلومات'),
-    2: t('step2_publish', 'تفاصيل النشر'),
-    3: t('step3_cover', 'الغلاف'),
-    4: t('step4_captions', 'الترجمة'),
-    5: t('step5_prompter', 'الملقن'),
-    6: t('step6_recording', 'التسجيل'),
-    7: t('step7_review', 'المراجعة'),
-    8: t('step8_effects', 'المؤثرات'),
-    9: t('step9_mixing', 'المكساج'),
-    10: t('step10_preview', 'المعاينة'),
-    11: t('step11_confirm', 'التأكيد'),
-    12: t('step12_result', 'النتيجة'),
+    1: t('step1_info', 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¹Ã™â€žÃ™Ë†Ã™â€¦Ã˜Â§Ã˜Âª'),
+    2: t('step2_publish', 'Ã˜ÂªÃ™ÂÃ˜Â§Ã˜ÂµÃ™Å Ã™â€ž Ã˜Â§Ã™â€žÃ™â€ Ã˜Â´Ã˜Â±'),
+    3: t('step3_cover', 'Ã˜Â§Ã™â€žÃ˜ÂºÃ™â€žÃ˜Â§Ã™Â'),
+    4: t('step4_captions', 'Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â±Ã˜Â¬Ã™â€¦Ã˜Â©'),
+    5: t('step5_prompter', 'Ã˜Â§Ã™â€žÃ™â€¦Ã™â€žÃ™â€šÃ™â€ '),
+    6: t('step6_recording', 'Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â³Ã˜Â¬Ã™Å Ã™â€ž'),
+    7: t('step7_review', 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â±Ã˜Â§Ã˜Â¬Ã˜Â¹Ã˜Â©'),
+    8: t('step8_effects', 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¤Ã˜Â«Ã˜Â±Ã˜Â§Ã˜Âª'),
+    9: t('step9_mixing', 'Ã˜Â§Ã™â€žÃ™â€¦Ã™Æ’Ã˜Â³Ã˜Â§Ã˜Â¬'),
+    10: t('step10_preview', 'Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â¹Ã˜Â§Ã™Å Ã™â€ Ã˜Â©'),
+    11: t('step11_confirm', 'Ã˜Â§Ã™â€žÃ˜ÂªÃ˜Â£Ã™Æ’Ã™Å Ã˜Â¯'),
+    12: t('step12_result', 'Ã˜Â§Ã™â€žÃ™â€ Ã˜ÂªÃ™Å Ã˜Â¬Ã˜Â©'),
   };
 
 
 
-  // ── Wizard state ──────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Wizard state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [step, setStep] = useState<WizardStep>(1);
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
 
-  // ── Step 1: Info ──────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 1: Info Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [title, setTitle] = useState('');
   const [caption, setCaption] = useState('');
   const [world, setWorld] = useState<WorldId>('general');
@@ -323,7 +64,7 @@ export function AudioCreatePage() {
 
   const { categoryOptions, getSubcategoryOptions } = useCategories(world);
 
-  // ── Step 2: Publish Details ──────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 2: Publish Details Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [categoryId, setCategoryId] = useState('');
   const [categoryOpen, setCategoryOpen] = useState(false);
   const [subcategoryId, setSubcategoryId] = useState('');
@@ -370,7 +111,7 @@ export function AudioCreatePage() {
   const [giftsEnabled, setGiftsEnabled] = useState(true);
   const [sharingEnabled, setSharingEnabled] = useState(true);
 
-  // ── Step 3: Cover ────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 3: Cover Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [coverAsset, setCoverAsset] = useState<CoverAsset | null>(null);
   const [coverPreviewUrl, setCoverPreviewUrl] = useState<string | null>(null);
   const [coverUploading, setCoverUploading] = useState(false);
@@ -378,7 +119,7 @@ export function AudioCreatePage() {
   const [coverError, setCoverError] = useState<string | null>(null);
   const coverInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Step 4: Captions ──────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 4: Captions Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [captionsEnabled, setCaptionsEnabled] = useState(false);
   const [captionLang, setCaptionLang] = useState('ar');
   const [captionLangOpen, setCaptionLangOpen] = useState(false);
@@ -390,7 +131,7 @@ export function AudioCreatePage() {
   const [captionUploadedFile, setCaptionUploadedFile] = useState('');
   const captionFileRef = useRef<HTMLInputElement>(null);
 
-  // ── Step 5: AutoCue ──────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 5: AutoCue Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [autoCueEnabled, setAutoCueEnabled] = useState(false);
   const [scriptText, setScriptText] = useState('');
   const [scrollSpeed, setScrollSpeed] = useState<'slow' | 'medium' | 'fast'>('medium');
@@ -399,7 +140,7 @@ export function AudioCreatePage() {
   const [startDelay, setStartDelay] = useState(3);
   const [highlightLine, setHighlightLine] = useState(true);
 
-  // ── Step 6: Record / Upload ──────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 6: Record / Upload Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const sourceParam = searchParams.get('source');
   const [tab, setTab] = useState<Step6Tab>(sourceParam === 'upload' ? 'upload' : 'record');
   const recorder = useAudioRecorder();
@@ -412,7 +153,7 @@ export function AudioCreatePage() {
   const [fileError, setFileError] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // ── Step 8: Effects ────────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 8: Effects Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [effectsEnabled, setEffectsEnabled] = useState(false);
   const [effectsMode, setEffectsMode] = useState<'preset' | 'manual'>('preset');
   const [selectedPresetId, setSelectedPresetId] = useState<AudioEffectPresetId | null>(null);
@@ -449,7 +190,7 @@ export function AudioCreatePage() {
     };
   };
 
-  // ── Step 9: Mixing ──────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 9: Mixing Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [mixingEnabled, setMixingEnabled] = useState(false);
   const [mixingMode, setMixingMode] = useState<'preset' | 'manual'>('preset');
   const [selectedMixPresetId, setSelectedMixPresetId] = useState<AudioMixPresetId | null>(null);
@@ -511,7 +252,7 @@ export function AudioCreatePage() {
     };
   };
 
-  // ── Step 7: Trim/Cut editing (Phase 8-L) ────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 7: Trim/Cut editing (Phase 8-L) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [editEnabled, setEditEnabled] = useState(false);
   const [trimStartMs, setTrimStartMs] = useState(0);
   const [trimEndMs, setTrimEndMs] = useState(0); // 0 = use original end
@@ -533,7 +274,7 @@ export function AudioCreatePage() {
 
   const originalDurationMs = audioAsset?.durationMs || 0;
 
-  // ── Phase 8-L.1: Draft Render Pipeline Preview ──────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Phase 8-L.1: Draft Render Pipeline Preview Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [previewAssets, setPreviewAssets] = useState<Partial<AudioDraftPreviewAssets>>({});
   const [renderingStage, setRenderingStage] = useState<PreviewStage | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
@@ -600,7 +341,7 @@ export function AudioCreatePage() {
     if (editEnabled && previewUrls.edit) return previewUrls.edit;
     // If any stage is enabled but no preview URL exists, return null (render required)
     if (anyStageEnabled) return null;
-    // No stages enabled — original audio is the preview
+    // No stages enabled Ã¢â‚¬â€ original audio is the preview
     return recorder.audioUrl || (selectedFile ? URL.createObjectURL(selectedFile) : null);
   };
 
@@ -700,7 +441,7 @@ export function AudioCreatePage() {
     };
   };
 
-  // ── Phase 8-L.1: Client-side waveform generation ──────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Phase 8-L.1: Client-side waveform generation Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     const audioUrl = getWorkingAudioUrl();
     if (!audioUrl) { setWaveformPeaks([]); return; }
@@ -734,7 +475,7 @@ export function AudioCreatePage() {
     return () => { cancelled = true; if (needsRevoke) URL.revokeObjectURL(audioUrl); };
   }, [step, previewUrls.edit, previewUrls.effects, recorder.audioUrl, selectedFile]);
 
-  // ── Trim/cut-aware playback (client-side preview) ──────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Trim/cut-aware playback (client-side preview) Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const effectiveStart = (step === 7 && editEnabled && trimStartMs > 0) ? trimStartMs : 0;
   const effectiveEnd = (step === 7 && editEnabled && trimEndMs > 0 && trimEndMs < originalDurationMs) ? trimEndMs : (waveformDurationMs || workingDurationMs);
 
@@ -747,7 +488,7 @@ export function AudioCreatePage() {
     return null;
   }, [step, editEnabled, editCuts]);
 
-  /** Waveform playback tick — handles trim bounds + cut skipping */
+  /** Waveform playback tick Ã¢â‚¬â€ handles trim bounds + cut skipping */
   const wfTick = useCallback(() => {
     const audio = waveformAudioRef.current;
     if (!audio || audio.paused) return;
@@ -794,12 +535,12 @@ export function AudioCreatePage() {
   // Cleanup animation frame on unmount
   useEffect(() => () => cancelAnimationFrame(wfAnimRef.current), []);
 
-  // ── Phase 8-L.1: SFX items state ──────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Phase 8-L.1: SFX items state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [sfxItems, setSfxItems] = useState<AudioSfxItem[]>([]);
   const sfxFileRef = useRef<HTMLInputElement>(null);
   const [sfxUploading, setSfxUploading] = useState(false);
 
-  // ── Phase 8-L.1: Music bed upload state ──────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Phase 8-L.1: Music bed upload state Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const musicFileRef = useRef<HTMLInputElement>(null);
   const [musicUploading, setMusicUploading] = useState(false);
   const [musicUploadProgress, setMusicUploadProgress] = useState(0);
@@ -909,7 +650,7 @@ export function AudioCreatePage() {
   };
 
 
-  // ── Step 10: Preview playback ──────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 10: Preview playback Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const previewAudioRef = useRef<HTMLAudioElement>(null);
   const [previewPlaying, setPreviewPlaying] = useState(false);
 
@@ -965,12 +706,12 @@ export function AudioCreatePage() {
     return () => audio.removeEventListener('timeupdate', handler);
   }, [step, editEnabled, effectiveEnd, isInsideCut]);
 
-  // ── Step 12: Publish ──────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 12: Publish Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const [publishing, setPublishing] = useState(false);
   const [publishResult, setPublishResult] = useState<{ contentId: string; status: string } | null>(null);
   const [publishError, setPublishError] = useState<string | null>(null);
 
-  // ── Update kind when world changes ────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Update kind when world changes Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     const kinds = KINDS_BY_WORLD[world];
     if (kinds && kinds.length > 0 && !kinds.some((k) => k.key === kind)) {
@@ -978,12 +719,12 @@ export function AudioCreatePage() {
     }
   }, [world, kind]);
 
-  // ── Reset subcategory when category changes ──────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Reset subcategory when category changes Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
     setSubcategoryId('');
   }, [categoryId]);
 
-  // ── Save draft helper ────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Save draft helper Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const saveDraft = async (nextStep: WizardStep) => {
     setSaving(true);
     setSaveError(null);
@@ -1062,14 +803,14 @@ export function AudioCreatePage() {
         setStep(nextStep);
       }
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t('draftSaveFailed', 'فشل حفظ المسودة.');
+      const msg = err instanceof Error ? err.message : t('draftSaveFailed', 'Ã™ÂÃ˜Â´Ã™â€ž Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã™Ë†Ã˜Â¯Ã˜Â©.');
       setSaveError(msg);
     } finally {
       setSaving(false);
     }
   };
 
-  // ── Step 6: Handle recording upload ────────────────────────────────────â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 6: Handle recording upload Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handleUploadRecording = () => {
     if (!recorder.audioBlob || !draftId || !uid) return;
     const ext = recorder.mimeType?.includes('webm') ? 'webm'
@@ -1080,14 +821,14 @@ export function AudioCreatePage() {
     uploader.uploadAudio(recorder.audioBlob, uid, draftId, fileName, mime);
   };
 
-  // ── Step 6: Handle file selection ──────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 6: Handle file selection Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
     setFileError(null);
     setFileDurationMs(null);
     if (!file.type.startsWith('audio/')) {
-      setFileError(t('fileMustBeAudio', 'يجب أن يكون الملف من نوع صوتي (audio/*).'));
+      setFileError(t('fileMustBeAudio', 'Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â£Ã™â€  Ã™Å Ã™Æ’Ã™Ë†Ã™â€  Ã˜Â§Ã™â€žÃ™â€¦Ã™â€žÃ™Â Ã™â€¦Ã™â€  Ã™â€ Ã™Ë†Ã˜Â¹ Ã˜ÂµÃ™Ë†Ã˜ÂªÃ™Å  (audio/*).'));
       setSelectedFile(null);
       return;
     }
@@ -1105,10 +846,9 @@ export function AudioCreatePage() {
     uploader.uploadAudio(selectedFile, uid, draftId, selectedFile.name, selectedFile.type);
   };
 
-  // ── Step 6: Attach uploaded asset ──────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Step 6: Attach uploaded asset Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   useEffect(() => {
-    if (uploader.state !== 'done' || !uploader.storagePath || !draftId) return;
-    if (audioAsset && audioAsset.storagePath === uploader.storagePath) return;
+    if (uploader.state !== 'done' || !uploader.storagePath || !draftId || audioAsset) return;
     const attach = async () => {
       setAttaching(true);
       setAttachError(null);
@@ -1145,7 +885,7 @@ export function AudioCreatePage() {
         setEditEnabled(false);
         setIsCutsSaved(false);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : t('attachFailed', 'فشل ربط الملف الصوتي بالمسودة.');
+        const msg = err instanceof Error ? err.message : t('attachFailed', 'Ã™ÂÃ˜Â´Ã™â€ž Ã˜Â±Ã˜Â¨Ã˜Â· Ã˜Â§Ã™â€žÃ™â€¦Ã™â€žÃ™Â Ã˜Â§Ã™â€žÃ˜ÂµÃ™Ë†Ã˜ÂªÃ™Å  Ã˜Â¨Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã™Ë†Ã˜Â¯Ã˜Â©.');
         setAttachError(msg);
       } finally {
         setAttaching(false);
@@ -1155,7 +895,7 @@ export function AudioCreatePage() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [uploader.state, uploader.storagePath, draftId]);
 
-  // ── Cover file select → upload to Storage ────────────────────────────────â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Cover file select Ã¢â€ â€™ upload to Storage Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file || !file.type.startsWith('image/')) return;
@@ -1167,7 +907,7 @@ export function AudioCreatePage() {
 
     // Must have a draft to upload
     if (!draftId || !uid) {
-      setCoverError(t('saveDraftFirstForCover', 'يجب حفظ المسودة أولاً لرفع الغلاف.'));
+      setCoverError(t('saveDraftFirstForCover', 'Ã™Å Ã˜Â¬Ã˜Â¨ Ã˜Â­Ã™ÂÃ˜Â¸ Ã˜Â§Ã™â€žÃ™â€¦Ã˜Â³Ã™Ë†Ã˜Â¯Ã˜Â© Ã˜Â£Ã™Ë†Ã™â€žÃ˜Â§Ã™â€¹ Ã™â€žÃ˜Â±Ã™ÂÃ˜Â¹ Ã˜Â§Ã™â€žÃ˜ÂºÃ™â€žÃ˜Â§Ã™Â.'));
       return;
     }
 
@@ -1187,10 +927,10 @@ export function AudioCreatePage() {
       (snap) => setCoverProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
       (err) => {
         setCoverUploading(false);
-        setCoverError(err.message || t('coverUploadFailed', 'فشل رفع الغلاف.'));
+        setCoverError(err.message || t('coverUploadFailed', 'Ã™ÂÃ˜Â´Ã™â€ž Ã˜Â±Ã™ÂÃ˜Â¹ Ã˜Â§Ã™â€žÃ˜ÂºÃ™â€žÃ˜Â§Ã™Â.'));
       },
       async () => {
-        // Upload done → build coverAsset with storagePath
+        // Upload done Ã¢â€ â€™ build coverAsset with storagePath
         const asset: CoverAsset = {
           sourceType: 'uploaded',
           storagePath: coverPath,
@@ -1204,13 +944,13 @@ export function AudioCreatePage() {
         try {
           await callUpdateAudioDraft({ draftId, coverAsset: asset, currentStep: '3' });
         } catch {
-          // Non-fatal — cover is uploaded, will be saved on next step transition
+          // Non-fatal Ã¢â‚¬â€ cover is uploaded, will be saved on next step transition
         }
       },
     );
   };
 
-  // ── Publish handler ────────────────────────────────────────────────────
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Publish handler Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const handlePublish = async () => {
     if (!draftId || !audioAsset) return;
     // Guard: if already published, just navigate to result
@@ -1267,20 +1007,20 @@ export function AudioCreatePage() {
       setPublishResult({ contentId: result.data.contentId, status: result.data.status });
       setStep(12);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : t('publishFailed', 'فشل النشر.');
+      const msg = err instanceof Error ? err.message : t('publishFailed', 'Ã™ÂÃ˜Â´Ã™â€ž Ã˜Â§Ã™â€žÃ™â€ Ã˜Â´Ã˜Â±.');
       setPublishError(msg);
     } finally {
       setPublishing(false);
     }
   };
 
-  // ── Helper: generate decorative waveform bars ────────────────────────────â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Helper: generate decorative waveform bars Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
   const waveformBars = Array.from({ length: 40 }, (_, i) => {
     const h = 20 + Math.sin(i * 0.5) * 30 + Math.random() * 50;
     return Math.round(h);
   });
 
-  // ── Render ────────────────────────────────────────────────────────────â”€
+  // Ã¢â€â‚¬Ã¢â€â‚¬ Render Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬Ã¢â€â‚¬
 
   return (
     <main className="page acp-page" dir={i18n.dir()}>
@@ -1318,7 +1058,7 @@ export function AudioCreatePage() {
         <Step5AutoCue t={t} autoCueEnabled={autoCueEnabled} setAutoCueEnabled={setAutoCueEnabled} scriptText={scriptText} setScriptText={setScriptText} caption={caption} scrollSpeed={scrollSpeed} setScrollSpeed={setScrollSpeed} fontSize={fontSize} setFontSize={setFontSize} readingMode={readingMode} setReadingMode={setReadingMode} startDelay={startDelay} setStartDelay={setStartDelay} highlightLine={highlightLine} setHighlightLine={setHighlightLine} setStep={setStep as any} iconPrev={iconPrev} saveDraft={saveDraft} saving={saving} />
       )}
       {step === 6 && (
-        <Step6RecordUpload t={t} autoCueEnabled={autoCueEnabled} scriptText={scriptText} fontSize={fontSize} tab={tab} setTab={setTab} recorder={recorder} uploader={uploader} handleUploadRecording={handleUploadRecording} selectedFile={selectedFile} setSelectedFile={setSelectedFile} fileInputRef={fileInputRef} handleFileSelect={handleFileSelect} fileError={fileError} fileDurationMs={fileDurationMs} setFileDurationMs={setFileDurationMs} handleUploadFile={handleUploadFile} attaching={attaching} attachError={attachError} audioAsset={audioAsset} setAudioAsset={setAudioAsset} setStep={setStep as any} iconPrev={iconPrev} iconNext={iconNext} />
+        <Step6RecordUpload t={t} autoCueEnabled={autoCueEnabled} scriptText={scriptText} fontSize={fontSize} tab={tab} setTab={setTab} recorder={recorder} uploader={uploader} handleUploadRecording={handleUploadRecording} selectedFile={selectedFile} setSelectedFile={setSelectedFile} fileInputRef={fileInputRef} handleFileSelect={handleFileSelect} fileError={fileError} fileDurationMs={fileDurationMs} setFileDurationMs={setFileDurationMs} handleUploadFile={handleUploadFile} attaching={attaching} attachError={attachError} audioAsset={audioAsset} setStep={setStep as any} iconPrev={iconPrev} />
       )}
       {step === 7 && (
         <Step7Edit t={t} step={step} audioAsset={audioAsset} previewAudioUrl={previewAudioUrl} waveformAudioRef={waveformAudioRef} waveformLoading={waveformLoading} waveformPeaks={waveformPeaks} waveformTimelineRef={waveformTimelineRef} waveformDurationMs={waveformDurationMs} workingDurationMs={workingDurationMs} wfHoverMs={wfHoverMs} setWfHoverMs={setWfHoverMs} wfHoverX={wfHoverX} setWfHoverX={setWfHoverX} wfDragging={wfDragging} setWfDragging={setWfDragging} wfCurrentMs={wfCurrentMs} setWfCurrentMs={setWfCurrentMs} wfPlaying={wfPlaying} setWfPlaying={setWfPlaying} wfAnimRef={wfAnimRef} editEnabled={editEnabled} setEditEnabled={setEditEnabled} trimStartMs={trimStartMs as any} setTrimStartMs={setTrimStartMs} trimEndMs={trimEndMs} setTrimEndMs={setTrimEndMs} originalDurationMs={originalDurationMs} effectiveStart={effectiveStart} effectiveEnd={effectiveEnd} editCuts={editCuts} formatMsToTimeInput={formatMsToTimeInput} toggleWfPlayback={toggleWfPlayback} renderPreview={renderPreview} renderingStage={renderingStage} getStagePreviewStatus={getStagePreviewStatus as any} previewUrls={previewUrls} previewAssets={previewAssets} TimeInputControl={TimeInputControl} setIsCutsSaved={setIsCutsSaved} updateCut={updateCut} removeCut={removeCut} addCut={addCut} editedDurationMs={editedDurationMs} resetEdits={resetEdits} setAudioAsset={setAudioAsset} uploader={uploader} recorder={recorder} setStep={setStep as any} saveDraft={saveDraft} iconNext={iconNext} />
@@ -1327,7 +1067,7 @@ export function AudioCreatePage() {
         <Step8Effects t={t} previewUrls={previewUrls} audioAsset={audioAsset} workingDurationMs={workingDurationMs} editEnabled={editEnabled} effectsEnabled={effectsEnabled} setEffectsEnabled={setEffectsEnabled} effectsMode={effectsMode} setEffectsMode={setEffectsMode} selectedPresetId={selectedPresetId} setSelectedPresetId={setSelectedPresetId as any} manualFilters={manualFilters} updateFilter={updateFilter} renderPreview={renderPreview} renderingStage={renderingStage} getStagePreviewStatus={getStagePreviewStatus as any} previewAssets={previewAssets} resetEffects={resetEffects} setStep={setStep as any} saveDraft={saveDraft} iconPrev={iconPrev} iconNext={iconNext} saving={saving} />
       )}
       {step === 9 && (
-        <Step9Mixing t={t} previewUrls={previewUrls} audioAsset={audioAsset} workingDurationMs={workingDurationMs} editEnabled={editEnabled} effectsEnabled={effectsEnabled} mixingEnabled={mixingEnabled} setMixingEnabled={setMixingEnabled} mixTracks={mixTracks} updateMixTrack={updateMixTrack} musicSourceOptions={MUSIC_SOURCE_OPTIONS} sfxSourceOptions={SFX_SOURCE_OPTIONS} musicFileRef={musicFileRef} handleMusicUpload={handleMusicUpload} removeMusicUpload={removeMusicUpload} musicUploading={musicUploading} musicUploadProgress={musicUploadProgress} sfxItems={sfxItems} MAX_SFX_ITEMS={MAX_SFX_ITEMS} sfxFileRef={sfxFileRef} handleSfxUpload={handleSfxUpload} removeSfxItem={removeSfxItem} updateSfxItem={updateSfxItem} sfxUploading={sfxUploading} TimeInputControl={TimeInputControl} autoDuckEnabled={autoDuckEnabled} setAutoDuckEnabled={setAutoDuckEnabled} masterFadeInMs={masterFadeInMs} setMasterFadeInMs={setMasterFadeInMs} masterFadeOutMs={masterFadeOutMs} setMasterFadeOutMs={setMasterFadeOutMs} masterGainDb={masterGainDb} setMasterGainDb={setMasterGainDb} selectedMixPresetId={selectedMixPresetId} applyMixPreset={applyMixPreset} resetMixing={resetMixing} renderPreview={renderPreview} renderingStage={renderingStage} getStagePreviewStatus={getStagePreviewStatus as any} previewAssets={previewAssets} setStep={setStep as any} saveDraft={saveDraft} iconPrev={iconPrev} iconNext={iconNext} saving={saving} />
+        <Step9Mixing t={t} previewUrls={previewUrls} audioAsset={audioAsset} workingDurationMs={workingDurationMs} editEnabled={editEnabled} effectsEnabled={effectsEnabled} mixingEnabled={mixingEnabled} setMixingEnabled={setMixingEnabled} mixTracks={mixTracks} updateMixTrack={updateMixTrack} musicSourceOptions={MUSIC_SOURCE_OPTIONS} sfxSourceOptions={SFX_SOURCE_OPTIONS} musicFileRef={musicFileRef} handleMusicUpload={handleMusicUpload} removeMusicUpload={removeMusicUpload} musicUploading={musicUploading} musicUploadProgress={musicUploadProgress} sfxItems={sfxItems} MAX_SFX_ITEMS={MAX_SFX_ITEMS} sfxFileRef={sfxFileRef} handleSfxUpload={handleSfxUpload} removeSfxItem={removeSfxItem} updateSfxItem={updateSfxItem} sfxUploading={sfxUploading} TimeInputControl={TimeInputControl} autoDuckEnabled={autoDuckEnabled} setAutoDuckEnabled={setAutoDuckEnabled} masterFadeInMs={masterFadeInMs} setMasterFadeInMs={setMasterFadeInMs} masterFadeOutMs={masterFadeOutMs} setMasterFadeOutMs={setMasterFadeOutMs} masterGainDb={masterGainDb} setMasterGainDb={setMasterGainDb} selectedMixPresetId={selectedMixPresetId} applyMixPreset={applyMixPreset} resetMixing={resetMixing} renderPreview={renderPreview} renderingStage={renderingStage} getStagePreviewStatus={getStagePreviewStatus as any} previewAssets={previewAssets} setStep={setStep as any} saveDraft={saveDraft} iconPrev={iconPrev} saving={saving} />
       )}
       {step === 10 && (
         <Step10Preview t={t} coverPreviewUrl={coverPreviewUrl} previewAudioUrl={previewAudioUrl} previewAudioRef={previewAudioRef} previewPlaying={previewPlaying} setPreviewPlaying={setPreviewPlaying} togglePreviewPlayback={togglePreviewPlayback} audioAsset={audioAsset} editEnabled={editEnabled} editedDurationMs={editedDurationMs} title={title} currentUser={currentUser} world={world} kind={kind} categoryId={categoryId} subcategoryId={subcategoryId} ageSuitability={ageSuitability} countryMode={countryMode} countryCodes={countryCodes} WORLDS={WORLDS} KINDS_BY_WORLD={KINDS_BY_WORLD} CATEGORIES={CATEGORIES} SUBCATEGORIES_BY_CATEGORY={SUBCATEGORIES_BY_CATEGORY} AUDIENCE_OPTIONS={AUDIENCE_OPTIONS} audience={audience} waveformPeaks={waveformPeaks} getPreviewPlaybackUrl={getPreviewPlaybackUrl as any} getStagePreviewStatus={getStagePreviewStatus as any} effectsEnabled={effectsEnabled} mixingEnabled={mixingEnabled} placementFeed={placementFeed} captionsEnabled={captionsEnabled} coverAsset={coverAsset} effectsMode={effectsMode} selectedPresetId={selectedPresetId} manualFilters={manualFilters} selectedMixPresetId={selectedMixPresetId} setStep={setStep as any} setAudioAsset={setAudioAsset} uploader={uploader} recorder={recorder} saveDraft={saveDraft} iconPrev={iconPrev} saving={saving} />
