@@ -62,3 +62,19 @@ This error propagated to `AudioDetailPage`, causing the entire Audio Player comp
 1. **Graceful Fallback:** `getAudioPlaybackUrl` was updated to catch the "not ready" state and return a safe `{ source: 'none', processingStatus: 'processing' }` payload instead of throwing an error.
 2. **Processing Banner Injection:** `AudioDetailPage` was updated to successfully render the full player UI (including the cover image, user stats, and waveform outline). 
 3. **User Feedback:** A prominent yellow warning banner (`.acp-processing-banner`) was injected directly underneath the waveform that explicitly tells the user: **"جاري معالجة الصوت لتطبيق التعديلات... يرجى الانتظار"** (Processing audio... please wait). Playback controls are safely disabled until the status automatically resolves to `ready`.
+
+---
+
+## 6. Phase 8 Polishing: Working Previews & Mixing UI
+
+### The Problem
+Users progressing through Steps 8 (Effects) and 9 (Mixing) lost context on what audio they were actually modifying because the player was hidden or generic. Additionally, background music in the mixing step didn't loop if shorter than the voice, or abruptly ended if longer.
+
+### The Real Fix
+1. **Working Audio Previews:** Injected an `acp-working-audio-card` in Steps 8 and 9. This explicitly surfaces the `previewUrls.edit` or `previewUrls.effects` audio output so users can hear the *exact* cut/effected audio they are working on.
+2. **Toggle Consistency:** Replaced default `<input type="checkbox">` elements in the mixing section with custom `acp-toggle-switch` pills to match the rest of the flow.
+3. **Music Bed Looping & Fading:** Completely rewrote `mixMultiTrack` in the audio processor:
+   - Extracted voice duration upfront using `probeAudio`.
+   - Used FFmpeg's `-stream_loop -1` to infinitely loop background music.
+   - Truncated the looped music at exactly the voice duration using `atrim`.
+   - Applied a hardcoded 3-second `afade=t=out` to gracefully fade the background music out right as the voice ends.
