@@ -351,7 +351,7 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
               </span>
             )}
           </div>
-          {username && <p className="tme-username" dir="ltr">@{username}</p>}
+          {username && <p className="tme-username"><span dir="ltr">@{username}</span></p>}
           {bio && <p className="tme-bio">{bio}</p>}
           <button id="tme-status-btn" className="tme-status-pill" type="button" aria-label={t('tournamentsme:statusUpdate')}>
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit_note</span>
@@ -384,7 +384,22 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       <div className="tme-actions">
         <button id="tme-edit-profile-btn" className="tme-btn tme-btn--edit" type="button" onClick={() => navigate('/settings/edit-profile')}>
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>{t('tournamentsme:editProfile')}</button>
-        <button id="tme-share-btn" className="tme-btn tme-btn--ghost" type="button" aria-label={t('tournamentsme:shareFile')}>
+        <button
+          id="tme-share-btn"
+          className="tme-btn tme-btn--ghost"
+          type="button"
+          aria-label={t('tournamentsme:shareFile')}
+          onClick={async () => {
+            if (!username) return;
+            const url = `${window.location.origin}/tournaments/user/${username}`;
+            if (navigator.share) {
+              try { await navigator.share({ title: t('tournamentsme:shareFile'), url }); } catch (e) {}
+            } else {
+              await navigator.clipboard.writeText(url);
+              alert('تم نسخ الرابط بنجاح!');
+            }
+          }}
+        >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
       </div>
@@ -462,3 +477,6 @@ function TournamentsTabPanel({ tab, navigate }: { tab: TournamentTab; navigate: 
   };
   return <>{PANELS[tab] ?? null}</>;
 }
+
+
+

@@ -103,5 +103,10 @@
   "registration": "تسجيل",
   "interview": "مقابلة",
   "audioEssay": "مقال صوتي",
-  "content": "المحتوى"
+  "content": "المحتوى",
+  "draftsTab": "المسودات",
+  "emptyDraftsTitle": "لا توجد مسودات بعد",
+  "emptyDraftsDesc": "المحتوى الذي تبدأ بإنشائه سيظهر هنا كمسودات",
+  "resumeDraft": "إكمال المسودة",
+  "untitledDraft": "مسودة بدون عنوان"
 }

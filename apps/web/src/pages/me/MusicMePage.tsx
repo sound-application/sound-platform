@@ -347,7 +347,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
           {/* Username — LTR-isolated */}
           {username && (
-            <p className="mme-username" dir="ltr">@{username}</p>
+            <p className="mme-username"><span dir="ltr">@{username}</span></p>
           )}
 
           {/* Bio */}
@@ -404,6 +404,16 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           className="mme-btn mme-btn--ghost"
           type="button"
           aria-label={t('musicme:shareFile')}
+          onClick={async () => {
+            if (!username) return;
+            const url = `${window.location.origin}/music/user/${username}`;
+            if (navigator.share) {
+              try { await navigator.share({ title: t('musicme:shareFile'), url }); } catch (e) {}
+            } else {
+              await navigator.clipboard.writeText(url);
+              alert('تم نسخ الرابط بنجاح!');
+            }
+          }}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
@@ -502,3 +512,6 @@ function MusicTabPanel({ tab, navigate }: { tab: MusicTab; navigate: ReturnType<
   };
   return <>{PANELS[tab] ?? null}</>;
 }
+
+
+

@@ -75,6 +75,7 @@ interface EditableFields {
   username: string;
   bio: string;
   mood: string;
+  socialLinks: Record<string, string>;
   // Privacy section levels
   privacyMood: PrivacyLevel;
   privacyActivityStatus: PrivacyLevel;
@@ -110,6 +111,7 @@ export function EditProfilePage() {
     username: '',
     bio: '',
     mood: '',
+    socialLinks: {},
     privacyMood: 'public',
     privacyActivityStatus: 'public',
     privacyListeningActivity: 'public',
@@ -130,6 +132,7 @@ export function EditProfilePage() {
         username:                  d.username ?? '',
         bio:                       d.bio ?? '',
         mood:                      d.mood ?? '',
+        socialLinks:               d.socialLinks ?? {},
         privacyMood:               normalizePrivacyLevel(d.privacy.mood),
         privacyActivityStatus:     normalizePrivacyLevel(d.privacy.activityStatus),
         privacyListeningActivity:  normalizePrivacyLevel(d.privacy.listeningActivity),
@@ -177,6 +180,7 @@ export function EditProfilePage() {
         username:    trimmedUsername,
         bio:         fields.bio.trim() || null,
         mood:        fields.mood.trim() || null,
+        socialLinks: fields.socialLinks,
 
         // Privacy settings — only the sections in scope for this phase
         // Other privacy sections are left unchanged (they're not in the diff)
@@ -366,6 +370,39 @@ export function EditProfilePage() {
                 {t('sections.mood.hiddenNotice')}
               </p>
             )}
+          </div>
+        </section>
+
+        {/* ── Section: Social Links ─────────────────────────────────────────────────────────── */}
+        <section className="edit-profile__section">
+          <h2 className="edit-profile__section-title">
+            <span className="edit-profile__section-icon">🔗</span>
+            {t('editprofile:socialLinks') || 'Social Links'}
+          </h2>
+          <p className="edit-profile__section-desc">
+            {t('editprofile:socialLinksDesc') || 'Add your other platforms to your public profile.'}
+          </p>
+
+          <div className="edit-profile__social-grid">
+            {['Instagram', 'Twitter', 'X', 'YouTube', 'TikTok', 'Facebook', 'LinkedIn', 'Website'].map(platform => {
+              const key = platform.toLowerCase();
+              return (
+                <div className="edit-profile__field" key={key}>
+                  <label className="edit-profile__label" htmlFor={`edit-social-${key}`}>
+                    {platform}
+                  </label>
+                  <input
+                    id={`edit-social-${key}`}
+                    className="edit-profile__input"
+                    type="url"
+                    value={fields.socialLinks[key] || ''}
+                    onChange={e => setField('socialLinks', { ...fields.socialLinks, [key]: e.target.value })}
+                    placeholder={`https://${key}.com/username`}
+                    dir="ltr"
+                  />
+                </div>
+              );
+            })}
           </div>
         </section>
 

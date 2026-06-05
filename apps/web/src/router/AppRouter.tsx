@@ -144,6 +144,7 @@ export function AppRouter() {
             <Route path="live"     element={<LivePage />} />
             <Route path="create"   element={<GlobalCreateHubPage />} />
             <Route path="me"       element={<GeneralMePage />} />
+            <Route path="user/:uid" element={<ProfilePage />} />
           </Route>
 
           {/* ── بلس (Plus) world — scoped home ─────────────────────────────── */}
@@ -154,6 +155,7 @@ export function AppRouter() {
             <Route path="live"     element={<LivePage />} />
             <Route path="create"   element={<GlobalCreateHubPage />} />
             <Route path="me"       element={<PlusMePage />} />
+            <Route path="user/:uid" element={<ProfilePage />} />
           </Route>
 
           {/* ── موسيقى (Music) world — scoped home ─────────────────────────── */}
@@ -164,6 +166,7 @@ export function AppRouter() {
             <Route path="live"     element={<LivePage />} />
             <Route path="create"   element={<GlobalCreateHubPage />} />
             <Route path="me"       element={<MusicMePage />} />
+            <Route path="user/:uid" element={<ProfilePage />} />
           </Route>
 
           {/* ── راديو (Radio) world — scoped home ──────────────────────────── */}
@@ -174,6 +177,7 @@ export function AppRouter() {
             <Route path="live"     element={<LivePage />} />
             <Route path="create"   element={<GlobalCreateHubPage />} />
             <Route path="me"       element={<RadioMePage />} />
+            <Route path="user/:uid" element={<ProfilePage />} />
           </Route>
 
           {/* ── مسابقات (Tournaments) world — scoped home ───────────────────── */}
@@ -184,7 +188,12 @@ export function AppRouter() {
             <Route path="live"     element={<LivePage />} />
             <Route path="create"   element={<GlobalCreateHubPage />} />
             <Route path="me"       element={<TournamentsMePage />} />
+            <Route path="user/:uid" element={<ProfilePage />} />
           </Route>
+
+          {/* ── World-agnostic: public profile ───────────────────────── */}
+          <Route path="profile/:uid" element={<ProfilePage />} />
+          <Route path="user/:uid" element={<ProfilePage />} />
 
           {/* ── All other worlds — generic home fallback ────────────────────── */}
           <Route path=":worldId">
@@ -193,15 +202,12 @@ export function AppRouter() {
             <Route path="discover" element={<DiscoverPage />} />
             <Route path="live"     element={<LivePage />} />
             <Route path="create"   element={<GlobalCreateHubPage />} />
-            {/* /me shortcut — redirects to /:worldId/me */}
             <Route path="me"       element={<ProfilePage isSelf />} />
+            <Route path="user/:uid" element={<ProfilePage />} />
           </Route>
 
           {/* ── /me shortcut without world → /general/me ─────────────── */}
           <Route path="me" element={<Navigate to="/general/me" replace />} />
-
-          {/* ── World-agnostic: public profile ───────────────────────── */}
-          <Route path="profile/:uid" element={<ProfilePage />} />
 
           {/* ── World-agnostic: settings subtree ─────────────────────── */}
           <Route path="settings"                 element={<SettingsPage />} />

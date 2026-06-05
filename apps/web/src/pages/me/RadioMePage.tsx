@@ -258,7 +258,7 @@ function RadioMeLoaded({ profile }: { profile: PublicProfileDoc }) {
               </span>
             )}
           </div>
-          {username && <p className="rme-username" dir="ltr">@{username}</p>}
+          {username && <p className="rme-username"><span dir="ltr">@{username}</span></p>}
           {bio && <p className="rme-bio">{bio}</p>}
           <button id="rme-status-btn" className="rme-status-pill" type="button" aria-label={t('radiome:statusUpdate')}>
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit_note</span>
@@ -291,7 +291,22 @@ function RadioMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       <div className="rme-actions">
         <button id="rme-edit-profile-btn" className="rme-btn rme-btn--edit" type="button" onClick={() => navigate('/settings/edit-profile')}>
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>{t('radiome:editProfile')}</button>
-        <button id="rme-share-btn" className="rme-btn rme-btn--ghost" type="button" aria-label={t('radiome:shareFile')}>
+        <button
+          id="rme-share-btn"
+          className="rme-btn rme-btn--ghost"
+          type="button"
+          aria-label={t('radiome:shareFile')}
+          onClick={async () => {
+            if (!username) return;
+            const url = `${window.location.origin}/radio/user/${username}`;
+            if (navigator.share) {
+              try { await navigator.share({ title: t('radiome:shareFile'), url }); } catch (e) {}
+            } else {
+              await navigator.clipboard.writeText(url);
+              alert('تم نسخ الرابط بنجاح!');
+            }
+          }}
+        >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
       </div>
@@ -413,3 +428,6 @@ function RadioTabPanel({
   };
   return <>{PANELS[tab] ?? null}</>;
 }
+
+
+

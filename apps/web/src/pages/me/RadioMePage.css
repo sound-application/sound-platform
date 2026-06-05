@@ -133,7 +133,7 @@
 .rme-display-name { font-size: 22px; font-weight: 700; color: #ffffff; margin: 0; line-height: 1.3; }
 .rme-verified-icon .material-symbols-outlined { font-size: 18px; color: var(--rme-accent); vertical-align: middle; font-variation-settings: 'FILL' 1, 'wght' 500; }
 
-.rme-username { font-size: 13px; color: var(--rme-accent-light); margin: 0 0 8px; direction: ltr; text-align: end; }
+.rme-username { font-size: 13px; color: var(--rme-accent-light); margin: 0 0 8px; }
 .rme-bio { font-size: 14px; color: #a1a1aa; line-height: 1.55; margin: 0 0 10px; max-width: 320px; }
 
 /* ── Status pill ─────────────────────────────────────────────────────────── */

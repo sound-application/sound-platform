@@ -27,9 +27,11 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
+import * as mm from 'music-metadata-browser';
 import { useCategories } from '../../hooks/useCategories';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
-import { storage } from '../../lib/firebase';
+import { doc, getDoc } from 'firebase/firestore';
+import { storage, db } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
 import { useAudioRecorder } from '../../hooks/useAudioRecorder';
 import { useAudioUpload } from '../../hooks/useAudioUpload';
@@ -314,6 +316,57 @@ export function AudioCreatePage() {
   const [saving, setSaving] = useState(false);
   const [saveError, setSaveError] = useState<string | null>(null);
   const [draftId, setDraftId] = useState<string | null>(null);
+
+  // Phase 8-F: Hydrate Draft from URL
+  useEffect(() => {
+    const urlDraftId = searchParams.get('draftId');
+    if (urlDraftId && urlDraftId !== draftId && uid) {
+      getDoc(doc(db, 'contentItems', urlDraftId)).then((snap) => {
+        if (snap.exists()) {
+          const data = snap.data();
+          if (data.ownerUid === uid) {
+            setDraftId(urlDraftId);
+            if (data.title) setTitle(data.title);
+            if (data.description) setCaption(data.description);
+            if (data.world) setWorld(data.world as WorldId);
+            if (data.kind) setKind(data.kind);
+            if (data.categoryId) setCategoryId(data.categoryId);
+            if (data.subcategoryId) setSubcategoryId(data.subcategoryId);
+            if (data.tags && data.tags.length > 0) setTags(data.tags.join(', '));
+            if (data.language) setLanguage(data.language);
+            if (data.countryMode) setCountryMode(data.countryMode);
+            if (data.ageSuitability) setAgeSuitability(data.ageSuitability);
+            if (data.isExplicit !== undefined) setIsExplicit(data.isExplicit);
+            if (data.isChildContent !== undefined) setIsChildContent(data.isChildContent);
+            if (data.audience) setAudience(data.audience);
+            if (data.coverAsset) setCoverAsset(data.coverAsset);
+            if (data.audioAsset) {
+              setAudioAsset(data.audioAsset);
+              setTab('upload');
+            }
+            if (data.captionsSetup) {
+              setCaptionsEnabled(data.captionsSetup.enabled);
+              if (data.captionsSetup.language) setCaptionLang(data.captionsSetup.language);
+              if (data.captionsSetup.style) setCaptionStyle(data.captionsSetup.style);
+            }
+            if (data.autoCueConfig) {
+              setAutoCueEnabled(data.autoCueConfig.enabled);
+              if (data.autoCueConfig.scriptText) setScriptText(data.autoCueConfig.scriptText);
+            }
+            if (data.effectsConfig) {
+              setEffectsEnabled(data.effectsConfig.enabled);
+              if (data.effectsConfig.mode) setEffectsMode(data.effectsConfig.mode);
+              if (data.effectsConfig.selectedPresetId) setSelectedPresetId(data.effectsConfig.selectedPresetId);
+            }
+            if (data.mixingConfig) {
+              setMixingEnabled(data.mixingConfig.enabled);
+              if (data.mixingConfig.mode) setMixingMode(data.mixingConfig.mode);
+            }
+          }
+        }
+      }).catch(console.error);
+    }
+  }, [searchParams, uid, draftId]);
 
   // ── Step 1: Info ──────────────────────────────────────────────────────────
   const [title, setTitle] = useState('');
@@ -1156,14 +1209,53 @@ export function AudioCreatePage() {
   }, [uploader.state, uploader.storagePath, draftId]);
 
   // ── Cover file select → upload to Storage ────────────────────────────────â”€
-  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !file.type.startsWith('image/')) return;
-
-    // Show local preview immediately
+  const uploadCoverImage = (file: File) => {
     const url = URL.createObjectURL(file);
     setCoverPreviewUrl(url);
     setCoverError(null);
+
+    if (!draftId || !uid) {
+      setCoverError(t('saveDraftFirstForCover', 'يجب حفظ المسودة أولاً لرفع الغلاف.'));
+      return;
+    }
+
+    const coverPath = `audioUploads/${uid}/${draftId}/original/cover_${file.name}`;
+    const fileRef = storageRef(storage, coverPath);
+    setCoverUploading(true);
+    setCoverProgress(0);
+
+    const task = uploadBytesResumable(fileRef, file, {
+      contentType: file.type,
+      customMetadata: { uploadedBy: uid, draftId, purpose: 'cover' },
+    });
+
+    task.on(
+      'state_changed',
+      (snap) => setCoverProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
+      (err) => {
+        setCoverUploading(false);
+        setCoverError(err.message || t('coverUploadFailed', 'فشل رفع الغلاف.'));
+      },
+      async () => {
+        const asset: CoverAsset = {
+          sourceType: 'uploaded',
+          storagePath: coverPath,
+          uploadedAt: new Date().toISOString(),
+        };
+        setCoverAsset(asset);
+        setCoverUploading(false);
+        setCoverProgress(100);
+        try {
+          await callUpdateAudioDraft({ draftId, coverAsset: asset, currentStep: '3' });
+        } catch {}
+      },
+    );
+  };
+
+  const handleCoverSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !file.type.startsWith('image/')) return;
+    uploadCoverImage(file);
 
     // Must have a draft to upload
     if (!draftId || !uid) {

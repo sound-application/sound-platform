@@ -19,7 +19,7 @@
 
 5. **Phase 9 — Content Surfaces & Stories**
    - Me tabs real content, Home audio sections, Discover feed, subscriptions/following content.
-   - **Stories**: Ephemeral 24h content integration (Audio, Video, Image, Text, Polls, etc.) linked to social identity.
+   - **Stories**: Ephemeral content with flexible durations (24h / 48h / 1 week) linked to social identity, plus a permanent **Stories Archive**. Supports Audio, Video, Image, Text, Polls, etc.
 
 6. **Phase 9-B — Super Admin Dashboard**
    - God-mode Web Admin panel (`apps/admin`): manage users, configure dynamic categories/worlds, content moderation, app theme/colors, and localization.
@@ -47,3 +47,5 @@ Do not build feed/discovery/monetization around audio until audio item creation,
 - **RTL UI Polished**: Audio Editing toggles natively support standard Arabic right-to-left UI.
 - **Translation & Layout Polish**: Replaced hardcoded directional icons with direction-aware (`iconNext`) logic for full RTL/LTR compatibility. Missing i18next translation keys were manually added to prevent Arabic fallbacks in the English interface.
 - **Upload State Resilience**: Fixed a critical memory bug where uploading a second audio file would be ignored by the component because the first file's asset data wasn't being cleared properly from parent state.
+- **Phase 8-F Drafts and Resume Completed**: Implemented robust draft saving, Firestore fetching, and wizard resumption logic, allowing users to safely exit the Audio Creation flow and later resume edits from the new 'Drafts' tab on their Profile page.
+- **Multi-World 'Me' Pages Localization & UI Polish**: Fixed Arabic to English layout drift (LTR isolation on `@username`), and replaced confusing auto-translations with precise English terminology across General, Plus, Music, Radio, and Tournaments 'Me' pages.

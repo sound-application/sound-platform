@@ -328,7 +328,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
           {/* Username — LTR-isolated */}
           {username && (
-            <p className="pme-username" dir="ltr">@{username}</p>
+            <p className="pme-username"><span dir="ltr">@{username}</span></p>
           )}
 
           {/* Bio */}
@@ -385,6 +385,16 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           className="pme-btn pme-btn--ghost"
           type="button"
           aria-label={t('plusme:shareFile')}
+          onClick={async () => {
+            if (!username) return;
+            const url = `${window.location.origin}/plus/user/${username}`;
+            if (navigator.share) {
+              try { await navigator.share({ title: t('plusme:shareFile'), url }); } catch (e) {}
+            } else {
+              await navigator.clipboard.writeText(url);
+              alert('تم نسخ الرابط بنجاح!');
+            }
+          }}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
@@ -560,3 +570,6 @@ function PlusTabPanel({
       return null;
   }
 }
+
+
+

@@ -267,13 +267,11 @@
   font-variation-settings: 'FILL' 1, 'wght' 500;
 }
 
-/* Username: always LTR-isolated */
+/* Username: wrapper is native direction, inner span will isolate LTR */
 .gme-username {
   font-size: 13px;
   color: var(--gme-accent-light);
   margin: 0 0 8px;
-  direction: ltr;
-  text-align: end;
 }
 
 .gme-bio {
