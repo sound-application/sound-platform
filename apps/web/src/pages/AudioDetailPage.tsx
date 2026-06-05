@@ -1,918 +1,309 @@
-/**
- * Sound Platform — Audio Detail Player Page
- * ===========================================
- * Phase:   8-E (Audio Processing Pipeline Foundation)
- * Updated: 2026-05-28
- *
- * Route: /audio/:contentId
- *
- * Features:
- *   - Full-width hero with cover, waveform overlay, badge, play overlay
- *   - Content info with title + metadata row (icons)
- *   - Creator row with avatar, name, handle, follow button
- *   - Premium 5-button player controls
- *   - 6-item action row
- *   - Description section
- *   - Captions preview
- *   - Queue + Comments placeholders
- *
- * State 13 of the canonical audio flow.
- */
-
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useEffect, useState, useCallback, useRef } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getFirestore, doc, onSnapshot } from 'firebase/firestore';
-import { getStorage, ref, getDownloadURL } from 'firebase/storage';
+import { useTranslation } from 'react-i18next';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { ref, getDownloadURL } from 'firebase/storage';
+import { db, storage } from '../lib/firebase';
 import { useAuth } from '../contexts/AuthContext';
-import { formatDuration, formatFileSize } from '../lib/audioDuration';
 import { callGetAudioPlaybackUrl } from '../lib/callables';
-import type { AudioContentDoc, WaveformData, ContentProcessingStatus } from '@sound/shared';
-import app from '../lib/firebase';
+import type { AudioContentDoc } from '@sound/shared';
+import { usePlayer } from '../contexts/PlayerContext';
+import { useCategories } from '../hooks/useCategories';
 import './Page.css';
 import './AudioDetailPage.css';
 
-const db = getFirestore(app);
-const storage = getStorage(app);
-
-// ── Time formatter for player ─────────────────────────────────────────────────
-function fmtTime(ms: number): string {
-  const totalSec = Math.floor(ms / 1000);
-  const m = Math.floor(totalSec / 60);
-  const s = totalSec % 60;
-  return `${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
+function formatTime(ms: number) {
+  if (isNaN(ms) || ms < 0) return '00:00';
+  const totalSeconds = Math.floor(ms / 1000);
+  const minutes = Math.floor(totalSeconds / 60);
+  const seconds = totalSeconds % 60;
+  return `${minutes.toString().padStart(2, '0')}:${seconds.toString().padStart(2, '0')}`;
 }
-
-// ── Relative time ago ─────────────────────────────────────────────────────────
-function timeAgo(isoDate: string): string {
-  const diff = Date.now() - new Date(isoDate).getTime();
-  const mins = Math.floor(diff / 60000);
-  if (mins < 1) return 'الآن';
-  if (mins < 60) return `منذ ${mins} دقيقة`;
-  const hrs = Math.floor(mins / 60);
-  if (hrs < 24) return `منذ ${hrs} ساعة`;
-  const days = Math.floor(hrs / 24);
-  if (days < 30) return `منذ ${days} يوم`;
-  const months = Math.floor(days / 30);
-  return `منذ ${months} شهر`;
-}
-
-// ── Player state enum ─────────────────────────────────────────────────────────
-type PlayerState = 'loading' | 'ready' | 'playing' | 'paused' | 'buffering' | 'ended' | 'error';
 
 export function AudioDetailPage() {
   const { contentId } = useParams<{ contentId: string }>();
   const { currentUser } = useAuth();
   const navigate = useNavigate();
+  const { t, i18n } = useTranslation('player');
 
-  // Content state
   const [loading, setLoading] = useState(true);
   const [item, setItem] = useState<AudioContentDoc | null>(null);
   const [error, setError] = useState<string | null>(null);
-
-  // Cover URL state
   const [coverUrl, setCoverUrl] = useState<string | null>(null);
-
-  // Playback state
   const [playbackUrl, setPlaybackUrl] = useState<string | null>(null);
-  const [playbackError, setPlaybackError] = useState<string | null>(null);
-  const [playbackExpiry, setPlaybackExpiry] = useState<string | null>(null);
   const [playbackLoading, setPlaybackLoading] = useState(false);
+  
+  const [isSaved, setIsSaved] = useState(false);
+  const [isFavorite, setIsFavorite] = useState(false);
+  const [showCaptions, setShowCaptions] = useState(true);
 
-  // Phase 8-E: Processing pipeline state
-  const [audioSource, setAudioSource] = useState<'processed' | 'original' | 'none'>('none');
-  const [processingStatus, setProcessingStatus] = useState<ContentProcessingStatus | undefined>();
-  const [waveformData, setWaveformData] = useState<WaveformData | undefined>();
-  const [captionsStatus, setCaptionsStatus] = useState<string | undefined>();
-
-  // Player state
-  const [playerState, setPlayerState] = useState<PlayerState>('loading');
-  const [currentTime, setCurrentTime] = useState(0);
-  const [duration, setDuration] = useState(0);
-
-  const audioRef = useRef<HTMLAudioElement>(null);
+  const { currentTrack, playerState, currentTime, duration, playTrack, togglePlay, seek, nextTrack, prevTrack } = usePlayer();
   const progressRef = useRef<HTMLDivElement>(null);
 
-  // ── Load content item (real-time listener for processing updates) ──────
+  const { categoryOptions, getSubcategoryOptions } = useCategories(item?.world || 'general');
+
+  // 1. Fetch document
   useEffect(() => {
     if (!contentId) return;
     setLoading(true);
-    setError(null);
-
-    const unsubscribe = onSnapshot(
-      doc(db, 'contentItems', contentId),
-      (snap) => {
-        if (!snap.exists()) {
-          setError('المحتوى غير موجود.');
-          setItem(null);
-        } else {
-          const data = snap.data() as AudioContentDoc;
-          setItem({ ...data, id: snap.id });
-        }
-        setLoading(false);
-      },
-      (err) => {
-        const msg = err instanceof Error ? err.message : 'فشل تحميل المحتوى.';
-        setError(msg);
-        setLoading(false);
-      },
-    );
-
+    const unsubscribe = onSnapshot(doc(db, 'contentItems', contentId), (snap) => {
+      if (snap.exists()) setItem({ ...(snap.data() as AudioContentDoc), id: snap.id });
+      else setError(t('not_found', 'المحتوى غير موجود'));
+      setLoading(false);
+    }, (err) => {
+      setError(err.message);
+      setLoading(false);
+    });
     return () => unsubscribe();
   }, [contentId]);
 
-  // ── Load cover image (public read) ─────────────────────────────────────
+  // 2. Fetch cover image
   useEffect(() => {
-    if (!item?.coverAsset?.storagePath) { setCoverUrl(null); return; }
-    const loadCover = async () => {
-      try {
-        const coverRef = ref(storage, item.coverAsset!.storagePath!);
-        const url = await getDownloadURL(coverRef);
-        setCoverUrl(url);
-      } catch {
-        setCoverUrl(null);
-      }
-    };
-    loadCover();
+    if (!item?.coverAsset?.storagePath) return;
+    getDownloadURL(ref(storage, item.coverAsset.storagePath)).then(setCoverUrl).catch(console.error);
   }, [item?.coverAsset?.storagePath]);
 
-  // ── Request signed playback URL ────────────────────────────────────────
+  // 3. Fetch signed URL
   useEffect(() => {
-    if (!item || !contentId || !currentUser) return;
-    if (!item.audioAsset?.storagePath) return;
-
-    const fetchPlaybackUrl = async () => {
-      setPlaybackLoading(true);
-      setPlaybackError(null);
-      setPlayerState('loading');
-      try {
-        const result = await callGetAudioPlaybackUrl({ contentId });
-        const resp = result.data;
-        if (resp.playbackUrl) {
-          setPlaybackUrl(resp.playbackUrl);
-        }
-        if (resp.expiresAt) {
-          setPlaybackExpiry(resp.expiresAt);
-        }
-        // Phase 8-E enrichments
-        setAudioSource(resp.source || 'original');
-        setProcessingStatus(resp.processingStatus);
-        setWaveformData(resp.waveform);
-        setCaptionsStatus(resp.captionsStatus);
-      } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'فشل تحميل رابط التشغيل.';
-        setPlaybackError(msg);
-        setPlayerState('error');
-      } finally {
-        setPlaybackLoading(false);
+    if (!item || !contentId || !currentUser || !item.audioAsset?.storagePath) return;
+    setPlaybackLoading(true);
+    callGetAudioPlaybackUrl({ contentId }).then(res => {
+      if (res.data.playbackUrl) {
+        setPlaybackUrl(res.data.playbackUrl);
+        setError(null);
       }
-    };
-    fetchPlaybackUrl();
+    }).catch(err => {
+      console.error(err);
+      setError(err.message || t('error_loading_audio', 'حدث خطأ أثناء تحميل الصوت'));
+    }).finally(() => setPlaybackLoading(false));
   }, [item, contentId, currentUser]);
 
-  // ── Audio event handlers ───────────────────────────────────────────────
-  useEffect(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-
-    const onLoadedMetadata = () => {
-      setDuration(audio.duration * 1000);
-      setPlayerState('ready');
-    };
-    const onTimeUpdate = () => setCurrentTime(audio.currentTime * 1000);
-    const onPlaying = () => setPlayerState('playing');
-    const onPause = () => {
-      if (!audio.ended) setPlayerState('paused');
-    };
-    const onWaiting = () => setPlayerState('buffering');
-    const onEnded = () => { setPlayerState('ended'); setCurrentTime(audio.duration * 1000); };
-    const onError = () => setPlayerState('error');
-
-    audio.addEventListener('loadedmetadata', onLoadedMetadata);
-    audio.addEventListener('timeupdate', onTimeUpdate);
-    audio.addEventListener('playing', onPlaying);
-    audio.addEventListener('pause', onPause);
-    audio.addEventListener('waiting', onWaiting);
-    audio.addEventListener('ended', onEnded);
-    audio.addEventListener('error', onError);
-
-    return () => {
-      audio.removeEventListener('loadedmetadata', onLoadedMetadata);
-      audio.removeEventListener('timeupdate', onTimeUpdate);
-      audio.removeEventListener('playing', onPlaying);
-      audio.removeEventListener('pause', onPause);
-      audio.removeEventListener('waiting', onWaiting);
-      audio.removeEventListener('ended', onEnded);
-      audio.removeEventListener('error', onError);
-    };
-  }, [playbackUrl]);
-
-  // ── Play/pause toggle ─────────────────────────────────────────────────
-  const togglePlay = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    if (playerState === 'ended') {
-      audio.currentTime = 0;
-      audio.play();
-    } else if (audio.paused) {
-      audio.play();
-    } else {
-      audio.pause();
+  const handlePlayClick = () => {
+    if (currentTrack?.id === item?.id) {
+      togglePlay();
+    } else if (item && playbackUrl) {
+      playTrack({
+        id: item.id,
+        title: item.title,
+        coverUrl: coverUrl || undefined,
+        authorName: item.owner?.ownerDisplayName || t('default_user', 'مستخدم'),
+        playbackUrl
+      });
     }
-  }, [playerState]);
+  };
 
-  // ── Seek on progress bar click ─────────────────────────────────────────
-  const handleSeek = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    const audio = audioRef.current;
-    const bar = progressRef.current;
-    if (!audio || !bar || !duration) return;
-    const rect = bar.getBoundingClientRect();
-    // RTL: right edge = 0, left edge = 1
-    const clickRatio = (rect.right - e.clientX) / rect.width;
-    const clampedRatio = Math.max(0, Math.min(1, clickRatio));
-    audio.currentTime = clampedRatio * (duration / 1000);
-  }, [duration]);
+  const handleSeek = (e: React.MouseEvent<HTMLDivElement> | React.PointerEvent<HTMLDivElement>) => {
+    if (!progressRef.current || !duration) return;
+    const rect = progressRef.current.getBoundingClientRect();
+    const ratio = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    seek(ratio * duration);
+  };
 
-  // ── Skip forward/back ─────────────────────────────────────────────────
-  const skipForward = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.min(audio.duration, audio.currentTime + 5);
-  }, []);
+  const handleSkipForward = () => seek(Math.min(duration, currentTime + 5000));
+  const handleSkipBack = () => seek(Math.max(0, currentTime - 5000));
 
-  const skipBack = useCallback(() => {
-    const audio = audioRef.current;
-    if (!audio) return;
-    audio.currentTime = Math.max(0, audio.currentTime - 5);
-  }, []);
+  if (loading) return <div style={{padding: 40, textAlign: 'center'}}>{t('loading')}</div>;
+  if (!item) return <div style={{padding: 40, textAlign: 'center'}}>{error || t('not_found')}</div>;
+  // If there's an error but we have the item, we still render the item so the player isn't hidden.
 
-  // ── Retry playback URL ─────────────────────────────────────────────────
-  const retryPlayback = useCallback(async () => {
-    if (!contentId) return;
-    setPlaybackError(null);
-    setPlayerState('loading');
-    setPlaybackLoading(true);
-    try {
-      const result = await callGetAudioPlaybackUrl({ contentId });
-      const resp = result.data;
-      if (resp.playbackUrl) setPlaybackUrl(resp.playbackUrl);
-      if (resp.expiresAt) setPlaybackExpiry(resp.expiresAt);
-      setAudioSource(resp.source || 'original');
-      setProcessingStatus(resp.processingStatus);
-      setWaveformData(resp.waveform);
-      setCaptionsStatus(resp.captionsStatus);
-    } catch (err: unknown) {
-      setPlaybackError(err instanceof Error ? err.message : 'فشل.');
-      setPlayerState('error');
-    } finally {
-      setPlaybackLoading(false);
-    }
-  }, [contentId]);
-
-  // ── Computed values ────────────────────────────────────────────────────
+  const isCurrent = currentTrack?.id === item.id;
+  const isPlaying = isCurrent && playerState === 'playing';
   const progressPct = duration > 0 ? (currentTime / duration) * 100 : 0;
-  const audioAsset = item?.audioAsset;
-  const hasAudio = !!audioAsset?.storagePath;
+  // Check if captions/lyrics exist
+  const hasCaptions = Boolean(item.captionsData || item.captionsAsset);
+  const isMusic = item.kind === 'song' || item.kind === 'albumTrack';
 
-  // ── Loading state ──────────────────────────────────────────────────────
-  if (loading) {
-    return (
-      <main className="page adp-page" dir="rtl">
-        <div className="adp-loading">
-          <div className="adp-spinner" />
-          <p>جاري التحميل...</p>
-        </div>
-      </main>
-    );
-  }
-
-  // ── Error / not found ──────────────────────────────────────────────────
-  if (error || !item) {
-    return (
-      <main className="page adp-page" dir="rtl">
-        <div className="adp-error">
-          <span className="material-symbols-outlined adp-error__icon">error</span>
-          <h2>{error || 'المحتوى غير موجود'}</h2>
-          <button className="adp-btn adp-btn--ghost" onClick={() => navigate(-1)}>
-            <span className="material-symbols-outlined">arrow_forward</span> رجوع
-          </button>
-        </div>
-      </main>
-    );
-  }
-
-  // Audience label
-  const audienceLabels: Record<string, string> = {
-    public: 'عام', followers: 'المتابعين', following: 'المتابَعين',
-    friends: 'الأصدقاء', onlyMe: 'أنا فقط',
+  // Map audio kind to Arabic labels
+  const kindLabels: Record<string, string> = {
+    song: t('kind_song'),
+    albumTrack: t('kind_album_track'),
+    podcast: t('kind_podcast'),
+    longAudio: t('kind_long_audio'),
+    shortAudio: t('kind_short_audio')
   };
-  const audienceLabel = audienceLabels[item.audience] || item.audience;
+  const kindLabel = kindLabels[item.kind] || t('kind_audio');
 
-  // Country label
-  const countryDisplay = item.countryMode === 'all'
-    ? 'جميع الدول'
-    : item.countryCodes?.join(', ') || item.countryLabel || '—';
-
-  // Player icon helper
-  const getPlayerIcon = () => {
-    switch (playerState) {
-      case 'loading': case 'buffering': return null;
-      case 'playing': return 'pause';
-      case 'ended': return 'replay';
-      default: return 'play_arrow';
-    }
-  };
-
-  const isPlayerLoading = playerState === 'loading' || playerState === 'buffering';
+  const resolvedCategoryLabel = categoryOptions.find(c => c.id === item.categoryId)?.label || item.categoryLabel;
+  const resolvedSubcategoryLabel = getSubcategoryOptions(item.categoryId || '').find(s => s.id === item.subcategoryId)?.label || item.subcategoryLabel;
 
   return (
-    <main className="page adp-page" dir="rtl">
-      {/* Hidden audio element */}
-      {playbackUrl && (
-        <audio ref={audioRef} src={playbackUrl} preload="metadata" style={{ display: 'none' }} />
-      )}
+    <div className="adp-page" dir={i18n.dir()}>
+      {/* Immersive Full-Bleed Background (Fixed to go behind World Navigator) */}
+      <div className="adp-bg">
+        <img src={coverUrl || '/default-cover.png'} alt="Cover Background" className="adp-bg-image" />
+      </div>
 
-      {/* ── 1. Hero Section ─────────────────────────────────────── */}
-      <div className="adp-hero">
-        {coverUrl ? (
-          <img src={coverUrl} alt="غلاف" className="adp-hero__cover" />
-        ) : (
-          <div className="adp-hero__cover adp-hero__cover--default">
-            <span className="material-symbols-outlined">music_note</span>
+      <div className="adp-content">
+        {/* Header (No title) */}
+        <header className="adp-header">
+          <button className="adp-header-btn" onClick={() => navigate(-1)} title={t('back')}>
+            <span className="material-symbols-outlined">{i18n.dir() === 'rtl' ? 'arrow_forward' : 'arrow_back'}</span>
+          </button>
+          <button className="adp-header-btn" title={t('report')}>
+            <span className="material-symbols-outlined">flag</span>
+          </button>
+        </header>
+
+        {/* Captions Preview Area */}
+        {showCaptions && (
+          <div className={`adp-captions-preview caption-style-${item.captionsSetup?.style || item.captionsData?.style || 'standard'}`}>
+            <div className="adp-captions-text">
+              {!hasCaptions
+                ? (isMusic ? t('no_lyrics') : t('no_captions'))
+                : (item.captionsData?.segments?.[0]?.text || (isMusic ? t('lyrics_preview') : t('captions_preview')))
+              }
+            </div>
           </div>
         )}
 
-        {/* Gradient overlay */}
-        <div className="adp-hero__gradient" />
+        {/* Player Area (pushed to bottom) */}
+        <div className="adp-player-area">
+          {/* Metadata */}
+          <div className="adp-meta">
+            <div className="adp-meta-category">
+              {kindLabel} 
+              {resolvedCategoryLabel && ` • ${resolvedCategoryLabel}`} 
+              {resolvedSubcategoryLabel && ` • ${resolvedSubcategoryLabel}`}
+            </div>
 
-        {/* Waveform bars — dynamic from peaks data or static fallback */}
-        <div className="adp-hero__waveform">
-          {waveformData?.peaks && waveformData.peaks.length > 0 ? (
-            <>
-              {waveformData.peaks.filter((_, i) => i % Math.max(1, Math.floor(waveformData.peaks!.length / 40)) === 0).map((peak, i) => (
-                <div
-                  key={i}
-                  className="adp-hero__waveform-bar adp-hero__waveform-bar--dynamic"
-                  style={{ height: `${Math.max(8, peak * 100)}%` }}
-                />
-              ))}
-              {waveformData.synthetic && (
-                <span className="adp-waveform-label">تقريبي</span>
+            <h2 className="adp-title">{item.title}</h2>
+            
+            <div className="adp-author-row">
+              <span className="adp-artist">{item.owner?.ownerDisplayName || t('default_user', 'مستخدم')}</span>
+              {(item.owner as any)?.isVerified && (
+                <span className="material-symbols-outlined verified-badge">verified</span>
               )}
-            </>
-          ) : (
-            Array.from({ length: 9 }).map((_, i) => (
-              <div key={i} className="adp-hero__waveform-bar" />
-            ))
-          )}
-        </div>
+              <span className="adp-username" dir="ltr">@{item.owner?.ownerUsername || 'user'}</span>
+            </div>
 
-        {/* Badge */}
-        <div className="adp-hero__badge">
-          <span className="material-symbols-outlined">graphic_eq</span>
-          صوت كامل
-        </div>
+            <div className="adp-stats-row">
+              <span>{item.listensCount || 0} {t('stat_listens')}</span>
+              <span>•</span>
+              <span>{item.likesCount || 0} {t('stat_likes')}</span>
+              <span>•</span>
+              <span>{item.commentsCount || 0} {t('stat_comments')}</span>
+              <span>•</span>
+              <span>{formatTime(item.processedAudio?.durationMs || item.editConfig?.editedDurationMs || item.audioAsset?.durationMs || duration)}</span>
+            </div>
 
-        {/* Play overlay button */}
-        {playbackUrl ? (
-          <button
-            className={`adp-hero__play${isPlayerLoading ? ' adp-hero__play--loading' : ''}`}
-            onClick={togglePlay}
-            disabled={playerState === 'loading'}
-            aria-label={playerState === 'playing' ? 'إيقاف' : 'تشغيل'}
-          >
-            {isPlayerLoading ? (
-              <div className="adp-hero__play-spinner" />
-            ) : (
-              <span className="material-symbols-outlined">{getPlayerIcon()}</span>
+            {(item.caption || item.description) && (
+              <p className="adp-description">{item.caption || item.description}</p>
             )}
-          </button>
-        ) : (
-          <button className="adp-hero__play adp-hero__play--loading" disabled aria-label="جاري التحميل">
-            <div className="adp-hero__play-spinner" />
-          </button>
-        )}
-      </div>
-
-      {/* ── 2. Content Info Section ─────────────────────────────── */}
-      <div className="adp-info">
-        <h1 className="adp-info__title">{item.title}</h1>
-        <div className="adp-info__meta">
-          {item.categoryLabel && (
-            <span className="adp-info__meta-item">
-              <span className="material-symbols-outlined">category</span>
-              {item.categoryLabel}
-              {item.subcategoryLabel && ` / ${item.subcategoryLabel}`}
-            </span>
-          )}
-          <span className="adp-info__meta-item">
-            <span className="material-symbols-outlined">public</span>
-            {audienceLabel}
-          </span>
-          {(audioAsset?.durationMs || duration > 0) && (
-            <span className="adp-info__meta-item">
-              <span className="material-symbols-outlined">schedule</span>
-              {formatDuration(audioAsset?.durationMs || duration)}
-            </span>
-          )}
-          {(item.countryMode || item.countryLabel) && (
-            <span className="adp-info__meta-item">
-              <span className="material-symbols-outlined">location_on</span>
-              {countryDisplay}
-            </span>
-          )}
-          <span className="adp-info__meta-item">
-            <span className="material-symbols-outlined">headphones</span>
-            {item.listensCount}
-          </span>
-          {item.publishedAt && (
-            <span className="adp-info__meta-item">
-              <span className="material-symbols-outlined">history</span>
-              {timeAgo(item.publishedAt)}
-            </span>
-          )}
-          {audioAsset?.sourceType && (
-            <span className="adp-info__meta-item">
-              <span className="material-symbols-outlined">
-                {audioAsset.sourceType === 'recorded' ? 'mic' : 'upload_file'}
-              </span>
-              {audioAsset.sourceType === 'recorded' ? 'مسجّل' : 'مرفوع'}
-            </span>
-          )}
-        </div>
-      </div>
-
-      {/* ── 3. Creator Row ──────────────────────────────────────── */}
-      <div className="adp-creator">
-        {item.owner?.ownerAvatarUrl ? (
-          <img
-            src={item.owner.ownerAvatarUrl}
-            alt="صورة المنشئ"
-            className="adp-creator__avatar"
-          />
-        ) : (
-          <div className="adp-creator__avatar--default">
-            <span className="material-symbols-outlined">person</span>
+            {!item.caption && !item.description && (
+              <p className="adp-description" style={{ opacity: 0.5, fontStyle: 'italic' }}>{t('no_description')}</p>
+            )}
           </div>
-        )}
-        <div className="adp-creator__info">
-          <p className="adp-creator__name">
-            {item.owner?.ownerDisplayName || 'مستخدم'}
-          </p>
-          {item.owner?.ownerUsername && (
-            <p className="adp-creator__handle">@{item.owner.ownerUsername}</p>
-          )}
-        </div>
-        <button className="adp-creator__follow" disabled>
-          متابعة
-        </button>
-      </div>
 
-      {/* ── 4. Player Controls ──────────────────────────────────── */}
-      <div className="adp-player">
-        {/* Player ready — controls visible */}
-        {playbackUrl && (
-          <>
-            {/* Progress bar */}
-            <div className="adp-player__progress" ref={progressRef} onClick={handleSeek}>
-              <div className="adp-player__bar" style={{ width: `${progressPct}%` }} />
-              <div className="adp-player__thumb" style={{ right: `${progressPct}%` }} />
+          {/* Progress */}
+          <div className="adp-progress">
+            <div className="adp-progress-bar-bg" onPointerDown={handleSeek} ref={progressRef} dir="ltr">
+              <div className="adp-progress-fill" style={{ width: `${isCurrent ? progressPct : 0}%` }} />
             </div>
-
-            {/* Times */}
-            <div className="adp-player__times">
-              <span className="adp-player__time">{fmtTime(currentTime)}</span>
-              <span className="adp-player__time">
-                {duration > 0 ? fmtTime(duration) : (audioAsset?.durationMs ? fmtTime(audioAsset.durationMs) : '--:--')}
-              </span>
+            <div className="adp-progress-times" dir="ltr">
+              <span>{isCurrent ? formatTime(currentTime) : '00:00'}</span>
+              <span>{isCurrent ? formatTime(duration) : '00:00'}</span>
             </div>
-
-            {/* Control buttons */}
-            <div className="adp-player__controls">
-              <button className="adp-player__btn" aria-label="التالي">
-                <span className="material-symbols-outlined">skip_next</span>
-              </button>
-              <button className="adp-player__btn" onClick={skipForward} aria-label="تقديم ٥ ثواني">
-                <span className="material-symbols-outlined">forward_5</span>
-              </button>
-              <button
-                className={`adp-player__btn adp-player__btn--main${isPlayerLoading ? ' adp-player__btn--main-loading' : ''}`}
-                onClick={togglePlay}
-                disabled={playerState === 'loading'}
-                aria-label={playerState === 'playing' ? 'إيقاف' : 'تشغيل'}
-              >
-                {isPlayerLoading ? (
-                  <div className="adp-player__btn-spinner" />
-                ) : (
-                  <span className="material-symbols-outlined">{getPlayerIcon()}</span>
-                )}
-              </button>
-              <button className="adp-player__btn" onClick={skipBack} aria-label="ترجيع ٥ ثواني">
-                <span className="material-symbols-outlined">replay_5</span>
-              </button>
-              <button className="adp-player__btn" aria-label="السابق">
-                <span className="material-symbols-outlined">skip_previous</span>
-              </button>
-            </div>
-
-            {/* Expiry note */}
-            {playbackExpiry && (
-              <p className="adp-expiry-note">
-                <span className="material-symbols-outlined">timer</span>
-                رابط تشغيل مؤقت — صالح حتى {new Date(playbackExpiry).toLocaleTimeString('ar')}
-              </p>
-            )}
-
-            {/* Phase 8-E: Source indicator chip */}
-            {audioSource === 'original' && (
-              <div className="adp-source-chip">
-                <span className="material-symbols-outlined">info</span>
-                المصدر الأصلي — المعالجة لم تكتمل بعد
-              </div>
-            )}
-            {audioSource === 'processed' && (
-              <div className="adp-source-chip adp-source-chip--ready">
-                <span className="material-symbols-outlined">verified</span>
-                معالَج
-              </div>
-            )}
-          </>
-        )}
-
-        {/* Loading signed URL */}
-        {!playbackUrl && playbackLoading && (
-          <div className="adp-player__loading">
-            <div className="adp-spinner" />
-            <p>جاري تحميل رابط التشغيل...</p>
           </div>
-        )}
 
-        {/* Playback error */}
-        {!playbackUrl && !playbackLoading && playbackError && (
-          <div className="adp-player__error">
-            <span className="material-symbols-outlined">error_outline</span>
-            <h3>فشل تحميل التشغيل</h3>
-            <p>{playbackError}</p>
-            <button className="adp-btn adp-btn--ghost" onClick={retryPlayback}>
-              <span className="material-symbols-outlined">refresh</span> إعادة المحاولة
+          {/* Controls - Left side is Prev, Right side is Next. LTR forced. */}
+          <div className="adp-controls">
+            <button className="adp-ctrl-btn" onClick={prevTrack} title={t('prev_track', 'المقطع السابق')}>
+              <span className="material-symbols-outlined">skip_previous</span>
+            </button>
+            <button className="adp-ctrl-btn" onClick={handleSkipBack} title={t('rewind_5s', 'إرجاع 5 ثوان')}>
+              <span className="material-symbols-outlined">replay_5</span>
+            </button>
+            
+            <button className="adp-play-btn" onClick={handlePlayClick} disabled={playbackLoading}>
+              <span className="material-symbols-outlined">{isPlaying ? 'pause' : 'play_arrow'}</span>
+            </button>
+
+            <button className="adp-ctrl-btn" onClick={handleSkipForward} title={t('forward_5s', 'تقديم 5 ثوان')}>
+              <span className="material-symbols-outlined">forward_5</span>
+            </button>
+            <button className="adp-ctrl-btn" onClick={nextTrack} title={t('next_track', 'المقطع التالي')}>
+              <span className="material-symbols-outlined">skip_next</span>
             </button>
           </div>
-        )}
 
-        {/* No audio asset — processing */}
-        {!playbackUrl && !playbackLoading && !playbackError && !hasAudio && (
-          <div className="adp-pending">
-            <span className="material-symbols-outlined adp-pending__icon">hourglass_top</span>
-            <h3>جاري معالجة الصوت...</h3>
-            <p>الصوت غير متوفر للتشغيل حالياً.<br />خط المعالجة لم يكتمل بعد.</p>
+          {/* Waveform below controls (dynamic world colors) */}
+          <div className="adp-waveform">
+            {Array.from({length: 40}).map((_, i) => (
+              <div 
+                key={i} 
+                className="adp-wave-bar" 
+                style={{ 
+                  height: `${isPlaying ? Math.random() * 30 + 10 : 4}px`,
+                  transition: 'height 0.2s ease'
+                }} 
+              />
+            ))}
           </div>
-        )}
 
-        {/* Phase 8-E: Processing states when audio exists but source is 'none' */}
-        {audioSource === 'none' && !playbackLoading && !playbackError && hasAudio && currentUser && (
-          <div className="adp-pending">
-            <span className="material-symbols-outlined adp-pending__icon">
-              {processingStatus === 'failed' ? 'error' : 'hourglass_top'}
-            </span>
-            <h3>
-              {processingStatus === 'queued' && 'في الانتظار...'}
-              {processingStatus === 'processing' && 'جاري المعالجة...'}
-              {processingStatus === 'failed' && 'فشلت المعالجة'}
-              {(!processingStatus || processingStatus === 'uploaded') && 'جاري التجهيز...'}
-            </h3>
-            {processingStatus === 'failed' && (
-              <button className="adp-btn adp-btn--ghost" onClick={retryPlayback}>
-                <span className="material-symbols-outlined">refresh</span> إعادة المحاولة
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Has audio but not logged in */}
-        {!playbackUrl && !playbackLoading && !playbackError && hasAudio && !currentUser && (
-          <div className="adp-pending">
-            <span className="material-symbols-outlined adp-pending__icon">lock</span>
-            <h3>يجب تسجيل الدخول</h3>
-            <p>سجّل دخولك للاستماع إلى هذا المحتوى.</p>
-          </div>
-        )}
-      </div>
-
-      {/* ── 5. Action Row ───────────────────────────────────────── */}
-      <div className="adp-actions">
-        <button className="adp-action">
-          <span className="material-symbols-outlined">favorite</span>
-          <span>أعجبني</span>
-        </button>
-        <button className="adp-action">
-          <span className="material-symbols-outlined">chat_bubble</span>
-          <span>تعليق</span>
-        </button>
-        <button className="adp-action">
-          <span className="material-symbols-outlined">ios_share</span>
-          <span>مشاركة</span>
-        </button>
-        <button className="adp-action">
-          <span className="material-symbols-outlined">bookmark</span>
-          <span>حفظ</span>
-        </button>
-        <button className="adp-action adp-action--secondary">
-          <span className="material-symbols-outlined">flare</span>
-          <span>في مزاجي</span>
-        </button>
-        <button className="adp-action">
-          <span className="material-symbols-outlined">send</span>
-          <span>لصديق</span>
-        </button>
-      </div>
-
-      {/* ── 6. Description Section ──────────────────────────────── */}
-      {(item.caption || item.description) && (
-        <div className="adp-glass-card adp-description">
-          <h3 className="adp-section-title">عن الصوت</h3>
-          <p className="adp-description__text">
-            {item.description || item.caption}
-          </p>
-        </div>
-      )}
-
-      {/* ── 7. Captions Preview ───────────────────────────────── */}
-      {(item.captionsData?.segments?.length || item.captionsSetup?.enabled) && (
-        <div className="adp-glass-card adp-captions">
-          <h3 className="adp-section-title">النص</h3>
-
-          {/* Phase 8-H.1: Creator-authored captions take priority */}
-          {item.captionsData?.segments?.length ? (
-            <>
-              <div className="adp-captions__header">
-                <span className={`adp-captions__source-chip adp-captions__source-chip--${item.captionsData.source}`}>
-                  <span className="material-symbols-outlined">
-                    {item.captionsData.source === 'manual' ? 'edit_note'
-                      : item.captionsData.source === 'uploaded' ? 'upload_file'
-                      : item.captionsData.source === 'autoCue' ? 'teleprompter'
-                      : item.captionsData.source === 'generated' ? 'auto_awesome'
-                      : 'edit'}
-                  </span>
-                  {item.captionsData.source === 'manual' ? 'نص يدوي'
-                    : item.captionsData.source === 'uploaded' ? 'ملف مرفوع'
-                    : item.captionsData.source === 'autoCue' ? 'نص الملقن'
-                    : item.captionsData.source === 'generated' ? 'توليد تلقائي'
-                    : 'نص معدّل'}
-                </span>
-                <span className="adp-captions__count">
-                  {item.captionsData.segments.length} مقطع
-                  {item.captionsData.segments[0]?.startMs !== undefined ? '' : ' · غير متزامن'}
-                </span>
-              </div>
-              <div className="adp-captions__segments">
-                {item.captionsData.segments.map((seg) => (
-                  <div key={seg.id} className="adp-captions__segment">
-                    {seg.startMs !== undefined && (
-                      <span className="adp-captions__seg-time">
-                        {Math.floor(seg.startMs / 1000)}s
-                      </span>
-                    )}
-                    <span className="adp-captions__seg-text">{seg.text}</span>
-                  </div>
-                ))}
-              </div>
-            </>
-          ) : (
-            /* Fall through to provider pipeline status */
-            <>
-              {captionsStatus === 'requested' || captionsStatus === 'queued' || captionsStatus === 'processing' ? (
-                <p className="adp-captions__quote adp-captions__quote--pending">
-                  <span className="material-symbols-outlined">pending</span>
-                  {captionsStatus === 'processing' ? 'جاري إنشاء النص' : 'في قائمة الانتظار'}
-                </p>
-              ) : captionsStatus === 'pendingProvider' ? (
-                <div className="adp-captions__quote adp-captions__quote--pending-provider">
-                  <span className="material-symbols-outlined">schedule</span>
-                  <div>
-                    <strong>مزود النسخ غير مفعل حالياً</strong>
-                    <br />
-                    <span className="adp-captions__sub">سيتم إنشاء النص تلقائياً بعد تفعيل مزود التفريغ الصوتي.</span>
-                  </div>
-                </div>
-              ) : captionsStatus === 'failed' ? (
-                <p className="adp-captions__quote adp-captions__quote--failed">
-                  <span className="material-symbols-outlined">error_outline</span>
-                  تعذر إنشاء النص
-                </p>
-              ) : captionsStatus === 'ready' ? (
-                <>
-                  <p className="adp-captions__quote adp-captions__quote--ready">
-                    <span className="material-symbols-outlined">subtitles</span>
-                    النص جاهز
-                  </p>
-                  <button className="adp-captions__link">عرض النص الكامل</button>
-                </>
-              ) : (
-                <p className="adp-captions__quote adp-captions__quote--pending">
-                  <span className="material-symbols-outlined">pending</span>
-                  في انتظار المعالجة...
-                </p>
-              )}
-            </>
-          )}
-        </div>
-      )}
-
-      {/* ── 7b. Playlist Placement (Phase 8-I) ─────────────────────── */}
-      {item.playlistId && (
-        <div className="adp-glass-card adp-playlist-link">
-          <span className="material-symbols-outlined adp-playlist-link__icon">queue_music</span>
-          <span className="adp-playlist-link__label">ضمن قائمة تشغيل</span>
-          <button
-            className="adp-playlist-link__btn"
-            onClick={() => navigate(`/playlist/${item.playlistId}`)}
-            type="button"
-          >
-            {item.newPlaylistName || 'عرض القائمة'}
-            <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>arrow_back</span>
-          </button>
-        </div>
-      )}
-
-      {/* ── 7c. Effects Info (Phase 8-J) ──────────────────────────── */}
-      {item.effectsConfig?.enabled && (
-        <div className="adp-glass-card adp-effects-info">
-          <h3 className="adp-section-title">
-            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>tune</span>
-            المؤثرات الصوتية
-          </h3>
-          <div className="adp-effects-info__row">
-            <span className="adp-effects-info__label">النوع:</span>
-            <span>{item.effectsConfig.mode === 'preset' ? item.effectsConfig.selectedPresetLabel || 'إعداد مسبق' : 'تحكم يدوي'}</span>
-          </div>
-          <div className="adp-effects-info__row">
-            <span className="adp-effects-info__label">الحالة:</span>
-            {item.effectsConfig.appliedStatus === 'applied' ? (
-              <span className="adp-effects-info__badge adp-effects-info__badge--applied">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>check_circle</span>
-                تم التطبيق
-              </span>
-            ) : item.effectsConfig.appliedStatus === 'failed' ? (
-              <span className="adp-effects-info__badge adp-effects-info__badge--failed">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>error_outline</span>
-                فشل التطبيق
-              </span>
-            ) : item.effectsConfig.appliedStatus === 'pending' ? (
-              <span className="adp-effects-info__badge adp-effects-info__badge--pending">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>pending</span>
-                قيد المعالجة
-              </span>
-            ) : (
-              <span className="adp-effects-info__badge">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>schedule</span>
-                في الانتظار
-              </span>
-            )}
-          </div>
-          {item.effectsConfig.appliedFilters && item.effectsConfig.appliedFilters.length > 0 && (
-            <div className="adp-effects-info__row">
-              <span className="adp-effects-info__label">الفلاتر:</span>
-              <span>{item.effectsConfig.appliedFilters.join('، ')}</span>
+          {/* Processing Banner directly under waveform */}
+          {(item.contentProcessingStatus === 'processing' || item.contentProcessingStatus === 'uploaded') && (
+            <div className="adp-processing-banner" style={{ textAlign: 'center', color: '#ffb300', padding: '10px', fontSize: '0.9rem', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px' }}>
+              <span className="material-symbols-outlined acp-spin">progress_activity</span>
+              <span>{t('processing_audio', 'جاري معالجة الصوت لتطبيق التعديلات... يرجى الانتظار')}</span>
             </div>
           )}
-          {item.effectsConfig.processingError && (
-            <p className="adp-effects-info__error">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>warning</span>
-              {item.effectsConfig.processingError}
-            </p>
-          )}
-        </div>
-      )}
 
-      {/* ── 7d. Mixing Info (Phase 8-K) ──────────────────────────── */}
-      {item.mixingConfig?.enabled && (
-        <div className="adp-glass-card adp-effects-info">
-          <h3 className="adp-section-title">
-            <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>graphic_eq</span>
-            المكساج
-          </h3>
-          <div className="adp-effects-info__row">
-            <span className="adp-effects-info__label">النوع:</span>
-            <span>{item.mixingConfig.mode === 'preset' ? item.mixingConfig.selectedPresetLabel || 'قالب' : 'ضبط يدوي'}</span>
-          </div>
-          <div className="adp-effects-info__row">
-            <span className="adp-effects-info__label">الحالة:</span>
-            {item.mixingConfig.renderStatus === 'applied' ? (
-              <span className="adp-effects-info__badge adp-effects-info__badge--applied">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>check_circle</span>
-                ضبط الماستر مطبّق
-              </span>
-            ) : item.mixingConfig.renderStatus === 'failed' ? (
-              <span className="adp-effects-info__badge adp-effects-info__badge--failed">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>error_outline</span>
-                فشل التطبيق
-              </span>
-            ) : item.mixingConfig.renderStatus === 'pending' ? (
-              <span className="adp-effects-info__badge adp-effects-info__badge--pending">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>pending</span>
-                إعدادات محفوظة — المعالجة معلقة
-              </span>
-            ) : (
-              <span className="adp-effects-info__badge">
-                <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>schedule</span>
-                في الانتظار
-              </span>
-            )}
-          </div>
-          {item.mixingConfig.appliedOperations && item.mixingConfig.appliedOperations.length > 0 && (
-            <div className="adp-effects-info__row">
-              <span className="adp-effects-info__label">عمليات:</span>
-              <span>{item.mixingConfig.appliedOperations.join('، ')}</span>
+          {/* Error Banner if playback URL failed but not due to processing */}
+          {error && item.contentProcessingStatus !== 'processing' && item.contentProcessingStatus !== 'uploaded' && (
+            <div className="adp-processing-banner" style={{ textAlign: 'center', color: '#ef5350', padding: '10px', fontSize: '0.9rem' }}>
+              {error}
             </div>
           )}
-          {/* Deferred layers note */}
-          {item.mixingConfig.tracks?.some(t => t.type !== 'voice' && t.enabled && !t.storagePath) && (
-            <p className="adp-effects-info__error" style={{ color: 'var(--color-warning, #f59e0b)' }}>
-              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>schedule</span>
-              طبقات الموسيقى/المؤثرات: مؤجلة — تتطلب أصول صوتية
-            </p>
-          )}
-          {item.mixingConfig.processingError && (
-            <p className="adp-effects-info__error">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>warning</span>
-              {item.mixingConfig.processingError}
-            </p>
-          )}
+
+          {/* Actions - 8 buttons in a 4x2 grid */}
+          <div className="adp-actions">
+            <button className="adp-action-item">
+              <span className="material-symbols-outlined">favorite_border</span> 
+              {t('like')}
+            </button>
+            <button className={`adp-action-item ${isFavorite ? 'active' : ''}`} onClick={() => setIsFavorite(!isFavorite)}>
+              <span className="material-symbols-outlined">{isFavorite ? 'star' : 'star_border'}</span> 
+              {t('favorite')}
+            </button>
+            <button className="adp-action-item">
+              <span className="material-symbols-outlined">playlist_add</span> 
+              {t('mood')}
+            </button>
+            <button className="adp-action-item">
+              <span className="material-symbols-outlined">repeat</span> 
+              {t('repost')}
+            </button>
+            
+            {/* Row 2 */}
+            <button className="adp-action-item">
+              <span className="material-symbols-outlined">redeem</span> 
+              {t('gift')}
+            </button>
+            <button className={`adp-action-item ${isSaved ? 'active' : ''}`} onClick={() => setIsSaved(!isSaved)}>
+              <span className="material-symbols-outlined">{isSaved ? 'bookmark' : 'bookmark_border'}</span> 
+              {t('save')}
+            </button>
+            <button className="adp-action-item" onClick={() => setShowCaptions(!showCaptions)}>
+              <span className="material-symbols-outlined">closed_caption</span> 
+              {t('captions')}
+            </button>
+            <button className="adp-action-item">
+              <span className="material-symbols-outlined">download_for_offline</span> 
+              {t('offline')}
+            </button>
+          </div>
+
+          {/* Comments */}
+          <div className="adp-comments">
+            <div className="adp-comments-header">
+              <span className="material-symbols-outlined">chat_bubble_outline</span> {t('comments_title')}
+            </div>
+            <div className="adp-comments-empty">
+              {t('no_comments')}
+            </div>
+          </div>
         </div>
-      )}
-
-      {/* ── 7b. Edit (Trim/Cut) Info (Phase 8-L) ──────────────────── */}
-      {item.editConfig?.enabled && (
-        <div className="adp-glass-card adp-effects-info">
-          <h3 className="adp-section-title">
-            <span className="material-symbols-outlined">content_cut</span>
-            القص والتعديل
-          </h3>
-          <p className="adp-effects-info__mode">
-            <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>tune</span>
-            {item.editConfig.trimStartMs && item.editConfig.trimStartMs > 0
-              ? `قص البداية: ${fmtTime(item.editConfig.trimStartMs)}`
-              : ''}
-            {item.editConfig.trimStartMs && item.editConfig.trimEndMs ? ' · ' : ''}
-            {item.editConfig.trimEndMs && item.editConfig.trimEndMs > 0
-              ? `قص النهاية: ${fmtTime(item.editConfig.trimEndMs)}`
-              : ''}
-            {item.editConfig.cuts && item.editConfig.cuts.length > 0
-              ? ` · ${item.editConfig.cuts.length} مقطع محذوف`
-              : ''}
-          </p>
-          {item.editConfig.editStatus === 'applied' && (
-            <p className="adp-effects-info__status adp-effects-info__status--ok">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>check_circle</span>
-              تم تطبيق القص
-              {item.editConfig.editedDurationMs ? ` — المدة: ${fmtTime(item.editConfig.editedDurationMs)}` : ''}
-            </p>
-          )}
-          {item.editConfig.editStatus === 'failed' && (
-            <p className="adp-effects-info__status adp-effects-info__status--fail">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>error_outline</span>
-              فشل القص — لم يتم نشر المحتوى
-            </p>
-          )}
-          {item.editConfig.editStatus === 'pending' && (
-            <p className="adp-effects-info__status adp-effects-info__status--wait">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>schedule</span>
-              إعدادات محفوظة — المعالجة معلقة
-            </p>
-          )}
-          {item.editConfig.editStatus !== 'applied' && item.editConfig.editStatus !== 'failed' && item.editConfig.editStatus !== 'pending' && (
-            <p className="adp-effects-info__status adp-effects-info__status--wait">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.85rem' }}>hourglass_empty</span>
-              في الانتظار
-            </p>
-          )}
-          {item.editConfig.processingError && (
-            <p className="adp-effects-info__error">
-              <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>warning</span>
-              {item.editConfig.processingError}
-            </p>
-          )}
-        </div>
-      )}
-
-      {/* ── 8. Queue Section ────────────────────────────────────── */}
-      <div className="adp-glass-card adp-queue">
-        <h3 className="adp-section-title">التالي</h3>
-        <p className="adp-queue__count">0 ملفات</p>
-        <p className="adp-queue__empty">لا توجد عناصر في قائمة التشغيل</p>
       </div>
-
-      {/* ── 9. Comments Section ─────────────────────────────────── */}
-      <div className="adp-glass-card adp-comments">
-        <h3 className="adp-section-title">التعليقات</h3>
-        <p className="adp-comments__empty">لا توجد تعليقات بعد</p>
-      </div>
-
-      {/* ── Back ──────────────────────────────────────────────── */}
-      <div style={{ padding: '0 1rem' }}>
-        <button className="adp-btn adp-btn--ghost" onClick={() => navigate(-1)}>
-          <span className="material-symbols-outlined">arrow_forward</span> رجوع
-        </button>
-      </div>
-    </main>
+    </div>
   );
 }

@@ -56,5 +56,8 @@
     "viewPublicProfile": "عرض الملف العام",
     "saving": "جاري الحفظ...",
     "saveChanges": "حفظ التغييرات"
-  }
+  },
+  "viaSynchronizationSystem": "عبر نظام المزامنة.",
+  "510Seconds": "5–10 ثوان",
+  "afterSavingThePublicProfileIsAutomatical": "بعد الحفظ، يُحدَّث الملف الشخصي العام تلقائياً خلال"
 }

@@ -554,7 +554,7 @@ export async function applyTrimCut(
       if (endSec !== undefined) {
         atrimExpr += `:end=${endSec}`;
       }
-      atrimExpr += ',asetpts=PTS-STARTPTS';
+      atrimExpr += `,asetpts=PTS-STARTPTS`;
 
       logger.info('[audioProcessor] Applying trim-only edit.', {
         startSec,
@@ -565,36 +565,70 @@ export async function applyTrimCut(
       const args = [...baseArgs, '-af', atrimExpr, outputPath];
       await runFFmpeg(args);
     } else {
-      // ── Trim + one cut: complex filter with concat ────────────────────
-      const cut = cuts[0]!;
-      const cutStartSec = cut.startMs / 1000;
-      const cutEndSec = cut.endMs / 1000;
+      // ── Trim + multiple cuts: dynamic concat filter ───────────────────
+      const sortedCuts = [...cuts].sort((a, b) => a.startMs - b.startMs);
+      const keepSegments: Array<{ startSec: number; endSec?: number }> = [];
+      let currentStartSec = startSec;
 
-      // Build segments: before-cut and after-cut
-      let filterComplex =
-        `[0]atrim=start=${startSec}:end=${cutStartSec},asetpts=PTS-STARTPTS[a];` +
-        `[0]atrim=start=${cutEndSec}`;
-      if (endSec !== undefined) {
-        filterComplex += `:end=${endSec}`;
+      for (const cut of sortedCuts) {
+        const cutStartSec = cut.startMs / 1000;
+        const cutEndSec = cut.endMs / 1000;
+        
+        if (cutStartSec > currentStartSec) {
+          keepSegments.push({ startSec: currentStartSec, endSec: cutStartSec });
+        }
+        currentStartSec = Math.max(currentStartSec, cutEndSec);
       }
-      filterComplex += `,asetpts=PTS-STARTPTS[b];` +
-        `[a][b]concat=n=2:v=0:a=1[out]`;
 
-      logger.info('[audioProcessor] Applying trim+cut edit.', {
-        startSec,
-        endSec,
-        cutStartSec,
-        cutEndSec,
-        filterComplex: filterComplex.slice(0, 500),
-      });
+      if (endSec === undefined || currentStartSec < endSec) {
+        keepSegments.push({ startSec: currentStartSec, endSec });
+      }
 
-      const args = [
-        ...baseArgs,
-        '-filter_complex', filterComplex,
-        '-map', '[out]',
-        outputPath,
-      ];
-      await runFFmpeg(args);
+      if (keepSegments.length === 0) {
+        throw new Error('Edit configuration removes all audio.');
+      }
+
+      if (keepSegments.length === 1) {
+        // Only one segment to keep (effectively just a trim)
+        let atrimExpr = `atrim=start=${keepSegments[0]!.startSec}`;
+        if (keepSegments[0]!.endSec !== undefined) {
+          atrimExpr += `:end=${keepSegments[0]!.endSec}`;
+        }
+        atrimExpr += `,asetpts=PTS-STARTPTS`;
+        
+        logger.info('[audioProcessor] Applying single segment edit after cuts.', { filter: atrimExpr });
+        const args = [...baseArgs, '-af', atrimExpr, outputPath];
+        await runFFmpeg(args);
+      } else {
+        // Multiple segments to concatenate
+        let filterComplex = '';
+        const inputLabels: string[] = [];
+        
+        keepSegments.forEach((seg, index) => {
+          const label = `[seg${index}]`;
+          inputLabels.push(label);
+          filterComplex += `[0]atrim=start=${seg.startSec}`;
+          if (seg.endSec !== undefined) {
+            filterComplex += `:end=${seg.endSec}`;
+          }
+          filterComplex += `,asetpts=PTS-STARTPTS${label};`;
+        });
+        
+        filterComplex += `${inputLabels.join('')}concat=n=${keepSegments.length}:v=0:a=1[out]`;
+
+        logger.info('[audioProcessor] Applying multi-cut edit.', {
+          numSegments: keepSegments.length,
+          filterComplex: filterComplex.slice(0, 500),
+        });
+
+        const args = [
+          ...baseArgs,
+          '-filter_complex', filterComplex,
+          '-map', '[out]',
+          outputPath,
+        ];
+        await runFFmpeg(args);
+      }
     }
 
     // Verify output exists and is non-empty
@@ -642,8 +676,16 @@ export interface MultiTrackMixResult {
 
 /**
  * Mixes additional audio layers (music bed, SFX) onto the voice master.
- * Uses FFmpeg amix to layer inputs, adelay for placement, volume for levels.
- * On failure: returns error, input file untouched (original tmpMaster preserved).
+ *
+ * Music bed behaviour:
+ *   - If music is shorter than voice → loops automatically until voice ends
+ *   - If music is longer than voice → trimmed to voice length
+ *   - In both cases: the last 3 seconds of the music bed fade out smoothly
+ *
+ * SFX: placed at startMs, volume adjusted, no looping.
+ *
+ * Duration: always matches the voice master (duration=first).
+ * On failure: returns error, voice master file untouched.
  */
 export async function mixMultiTrack(
   voiceMasterPath: string,
@@ -658,77 +700,134 @@ export async function mixMultiTrack(
     return { mixApplied: false, layersMixed: 0, layersFailed: layers.map(l => l.label || l.type) };
   }
 
-  // Build FFmpeg command for multi-input mixing
+  // ── 1. Probe the voice master to get its exact duration ─────────────────
+  const voiceProbe = await probeAudio(voiceMasterPath);
+  const voiceDurationSec = voiceProbe.durationMs / 1000;
+
+  // Fade starts 3 seconds before voice ends (minimum 0)
+  const FADE_DURATION_SEC = 3;
+  const musicFadeStartSec = Math.max(0, voiceDurationSec - FADE_DURATION_SEC);
+
+  logger.info('[audioProcessor] mixMultiTrack: voice duration probed.', {
+    voiceDurationSec,
+    musicFadeStartSec,
+  });
+
   const outputPath = voiceMasterPath.replace(/\.m4a$/, '_multitrack.m4a');
-  const totalInputs = 1 + enabledLayers.length; // [0] = voice, [1..n] = layers
+  const totalInputs = 1 + enabledLayers.length; // [0]=voice, [1..n]=layers
 
   try {
     const args: string[] = [];
-    // Input 0: voice master
+
+    // ── 2. Build input list ────────────────────────────────────────────────
+    // Input 0: voice master (never looped)
     args.push('-i', voiceMasterPath);
+
     // Inputs 1..n: layers
+    // Music bed: use -stream_loop -1 BEFORE -i so FFmpeg loops it indefinitely
+    // (we will trim it to voice duration in filter_complex)
     for (const layer of enabledLayers) {
+      if (layer.type === 'musicBed') {
+        args.push('-stream_loop', '-1');
+      }
       args.push('-i', layer.localPath);
     }
 
-    // Build filter_complex
+    // ── 3. Build filter_complex ────────────────────────────────────────────
     const filterParts: string[] = [];
     const mixInputLabels: string[] = ['[0:a]'];
 
     for (let i = 0; i < enabledLayers.length; i++) {
       const layer = enabledLayers[i]!;
       const inputIdx = i + 1;
-      const label = `[layer${i}]`;
+      const outLabel = `[layer${i}]`;
 
-      // Volume adjustment + delay
-      const volumeFilter = layer.volumeDb !== 0
-        ? `volume=${Math.pow(10, layer.volumeDb / 20).toFixed(4)}`
-        : null;
-      const delayFilter = layer.startMs > 0
-        ? `adelay=${Math.round(layer.startMs)}|${Math.round(layer.startMs)}`
-        : null;
+      const individualFilters: string[] = [];
 
-      const filters = [volumeFilter, delayFilter].filter(Boolean).join(',');
-      if (filters) {
-        filterParts.push(`[${inputIdx}:a]${filters}${label}`);
+      if (layer.type === 'musicBed') {
+        // 3a. Trim to voice duration (handles both shorter-looped and longer-truncated)
+        individualFilters.push(`atrim=start=0:end=${voiceDurationSec.toFixed(3)}`);
+        individualFilters.push('asetpts=PTS-STARTPTS');
+
+        // 3b. Volume adjustment
+        if (layer.volumeDb !== 0) {
+          const linearVol = Math.pow(10, layer.volumeDb / 20).toFixed(4);
+          individualFilters.push(`volume=${linearVol}`);
+        }
+
+        // 3c. Delay (startMs offset — rare for music bed but supported)
+        if (layer.startMs > 0) {
+          const delayMs = Math.round(layer.startMs);
+          individualFilters.push(`adelay=${delayMs}|${delayMs}`);
+        }
+
+        // 3d. Fade out: last 3 seconds before voice ends
+        if (voiceDurationSec > FADE_DURATION_SEC) {
+          individualFilters.push(
+            `afade=t=out:st=${musicFadeStartSec.toFixed(3)}:d=${FADE_DURATION_SEC}`
+          );
+        }
+
       } else {
-        filterParts.push(`[${inputIdx}:a]acopy${label}`);
+        // SFX: volume + delay, no looping, no auto-trim
+        if (layer.volumeDb !== 0) {
+          const linearVol = Math.pow(10, layer.volumeDb / 20).toFixed(4);
+          individualFilters.push(`volume=${linearVol}`);
+        }
+        if (layer.startMs > 0) {
+          const delayMs = Math.round(layer.startMs);
+          individualFilters.push(`adelay=${delayMs}|${delayMs}`);
+        }
       }
-      mixInputLabels.push(label);
+
+      if (individualFilters.length > 0) {
+        filterParts.push(`[${inputIdx}:a]${individualFilters.join(',')}${outLabel}`);
+      } else {
+        filterParts.push(`[${inputIdx}:a]acopy${outLabel}`);
+      }
+
+      mixInputLabels.push(outLabel);
     }
 
-    // Combine all with amix
+    // ── 4. amix: duration=first (output = voice length), dropout_transition=2 ─
     const mixFilter = `${mixInputLabels.join('')}amix=inputs=${totalInputs}:duration=first:dropout_transition=2[out]`;
     filterParts.push(mixFilter);
 
     args.push('-filter_complex', filterParts.join(';'));
     args.push('-map', '[out]');
-    args.push('-c:a', 'aac', '-b:a', '128k', '-y', outputPath);
+    args.push('-c:a', 'aac', '-b:a', '128k', '-movflags', '+faststart', '-y', outputPath);
 
-    logger.info('[audioProcessor] Multi-track mix command:', { totalInputs, filterParts });
+    logger.info('[audioProcessor] Multi-track mix command:', {
+      totalInputs,
+      voiceDurationSec,
+      musicFadeStartSec,
+      filterParts,
+    });
 
     await new Promise<void>((resolve, reject) => {
       const proc = spawn(ffmpegPath, args, { stdio: ['ignore', 'pipe', 'pipe'] });
       let stderr = '';
       proc.stderr?.on('data', (d) => { stderr += d.toString(); });
-      proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`FFmpeg multi-track mix exited ${code}: ${stderr.slice(-500)}`)));
+      proc.on('close', (code) => code === 0 ? resolve() : reject(new Error(`FFmpeg multi-track mix exited ${code}: ${stderr.slice(-800)}`)));
       proc.on('error', reject);
     });
 
-    // Verify output
+    // ── 5. Verify and replace voice master ────────────────────────────────
     const stat = fs.statSync(outputPath);
     if (stat.size === 0) throw new Error('Multi-track mix output is empty');
 
-    // Replace voice master with mixed output
     fs.copyFileSync(outputPath, voiceMasterPath);
     try { fs.unlinkSync(outputPath); } catch { /* ignore */ }
 
     logger.info('[audioProcessor] Multi-track mix applied.', {
       layersMixed: enabledLayers.length,
       outputSize: stat.size,
+      voiceDurationSec,
+      musicFadeStartSec,
     });
 
     return { mixApplied: true, layersMixed: enabledLayers.length, layersFailed: [] };
+
   } catch (err: unknown) {
     const msg = err instanceof Error ? err.message : String(err);
     logger.warn('[audioProcessor] Multi-track mix failed, voice master preserved.', { error: msg });
@@ -736,3 +835,4 @@ export async function mixMultiTrack(
     return { mixApplied: false, layersMixed: 0, layersFailed: enabledLayers.map(l => l.label || l.type), error: msg };
   }
 }
+

@@ -28,6 +28,10 @@ import { EmptyState } from '../../components/EmptyState';
 import { FilterDropdown, type FilterOption } from '../../components/FilterDropdown';
 import type { PublicProfileDoc } from '@sound/shared';
 import './MusicMePage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Tab Definition ────────────────────────────────────────────────────────────
 
@@ -65,96 +69,96 @@ function opts(labels: string[]): FilterOption[] {
 // Authority §8 موسيقى — 12-tab order (UI Foundation Mode: all visible)
 const MUSIC_TABS: MusicTabDef[] = [
   {
-    id: 'songs', label: 'أغاني',
+    id: 'songs', label: t('musicme:songs'),
     filters: [
-      { key: 'status',   label: 'الحالة',    options: opts(['منشور','مسودة','مؤرشف']) },
-      { key: 'category', label: 'التصنيف',   options: opts(['بوب','روك','خليجي','كلاسيك','إلكترونية']) },
-      { key: 'country',  label: 'البلد',     options: opts(['السعودية','مصر','الإمارات','الكويت','المغرب']) },
-      { key: 'sort',     label: 'الترتيب',   options: opts(['الأحدث','الأقدم','الأكثر استماعاً','الأكثر إعجاباً']) },
+      { key: 'status',   label: t('musicme:theCondition'),    options: opts([t('musicme:manifesto'),t('musicme:draft'),t('musicme:archived')]) },
+      { key: 'category', label: t('musicme:classification'),   options: opts([t('musicme:bob'),t('musicme:rock'),t('musicme:gulf'),t('musicme:classic'),t('musicme:electronic')]) },
+      { key: 'country',  label: t('musicme:country'),     options: opts([t('musicme:saudiArabia'),t('musicme:egypt'),t('musicme:theUae'),t('musicme:kuwait'),t('musicme:morocco')]) },
+      { key: 'sort',     label: t('musicme:ranking'),   options: opts([t('musicme:latest'),t('musicme:oldest'),t('musicme:mostListenedTo'),t('musicme:mostLiked')]) },
     ],
   },
   {
-    id: 'albums', label: 'ألبومات',
+    id: 'albums', label: t('musicme:albums'),
     filters: [
-      { key: 'status', label: 'الحالة',  options: opts(['منشور','مسودة','مؤرشف']) },
-      { key: 'year',   label: 'السنة',   options: opts(['2025','2024','2023','2022','أقدم']) },
-      { key: 'sort',   label: 'الترتيب', options: opts(['الأحدث','الأقدم','الأكثر استماعاً']) },
+      { key: 'status', label: t('musicme:theCondition'),  options: opts([t('musicme:manifesto'),t('musicme:draft'),t('musicme:archived')]) },
+      { key: 'year',   label: t('musicme:sunnah'),   options: opts(['2025','2024','2023','2022',t('musicme:oldest1')]) },
+      { key: 'sort',   label: t('musicme:ranking'), options: opts([t('musicme:latest'),t('musicme:oldest'),t('musicme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'labels', label: 'شركات الإنتاج',
+    id: 'labels', label: t('musicme:productionCompanies'),
     filters: [
-      { key: 'status', label: 'الحالة',   options: opts(['نشط','سابق']) },
-      { key: 'sort',   label: 'الترتيب',  options: opts(['الأحدث','الأقدم']) },
+      { key: 'status', label: t('musicme:theCondition'),   options: opts([t('musicme:active1'),t('musicme:ex')]) },
+      { key: 'sort',   label: t('musicme:ranking'),  options: opts([t('musicme:latest'),t('musicme:oldest')]) },
     ],
   },
   {
-    id: 'trends', label: 'ترنداتي',
+    id: 'trends', label: t('musicme:myTrends'),
     filters: [
-      { key: 'period',   label: 'الفترة',     options: opts(['اليوم','هذا الأسبوع','هذا الشهر']) },
-      { key: 'category', label: 'التصنيف',    options: opts(['بوب','روك','خليجي','كلاسيك']) },
-      { key: 'sort',     label: 'الترتيب',    options: opts(['الأكثر استماعاً','الأكثر إعجاباً']) },
+      { key: 'period',   label: t('musicme:period'),     options: opts([t('musicme:today'),t('musicme:thisWeek'),t('musicme:thisMonth')]) },
+      { key: 'category', label: t('musicme:classification'),    options: opts([t('musicme:bob'),t('musicme:rock'),t('musicme:gulf'),t('musicme:classic')]) },
+      { key: 'sort',     label: t('musicme:ranking'),    options: opts([t('musicme:mostListenedTo'),t('musicme:mostLiked')]) },
     ],
   },
   {
-    id: 'mood', label: 'مزاجي',
+    id: 'mood', label: t('musicme:myMood'),
     filters: [
-      { key: 'mood',   label: 'المزاج',         options: opts(['هادئ','نشيط','مركّز','مرح','حزين']) },
-      { key: 'type',   label: 'نوع المحتوى',     options: opts(['موسيقى','بودكاست','صوتيات']) },
-      { key: 'sort',   label: 'الترتيب',         options: opts(['الأحدث','الأكثر استماعاً']) },
+      { key: 'mood',   label: t('musicme:mood1'),         options: opts([t('musicme:calm'),t('musicme:active'),t('musicme:center'),t('musicme:cheerful'),t('musicme:sad')]) },
+      { key: 'type',   label: t('musicme:contentType'),     options: opts([t('musicme:music1'),t('musicme:itsAPodcast'),t('musicme:phonetics')]) },
+      { key: 'sort',   label: t('musicme:ranking'),         options: opts([t('musicme:latest'),t('musicme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'saved', label: 'المحفوظات',
+    id: 'saved', label: t('musicme:archives'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['أغنية','ألبوم','بودكاست']) },
-      { key: 'cat',  label: 'التصنيف',     options: opts(['بوب','خليجي','كلاسيك']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('musicme:contentType'), options: opts([t('musicme:song'),t('musicme:album'),t('musicme:itsAPodcast')]) },
+      { key: 'cat',  label: t('musicme:classification'),     options: opts([t('musicme:bob'),t('musicme:gulf'),t('musicme:classic')]) },
+      { key: 'sort', label: t('musicme:ranking'),     options: opts([t('musicme:latest'),t('musicme:oldest')]) },
     ],
   },
   {
-    id: 'reposts', label: 'الإعادات',
+    id: 'reposts', label: t('musicme:replays'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['أغنية','ألبوم']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('musicme:contentType'), options: opts([t('musicme:song'),t('musicme:album')]) },
+      { key: 'sort', label: t('musicme:ranking'),     options: opts([t('musicme:latest'),t('musicme:oldest')]) },
     ],
   },
   {
-    id: 'subscriptions', label: 'الاشتراكات',
+    id: 'subscriptions', label: t('musicme:subscriptions'),
     filters: [
-      { key: 'type', label: 'نوع الاشتراك', options: opts(['فنان','ألبوم','قناة']) },
-      { key: 'sort', label: 'الترتيب',      options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('musicme:subscriptionType'), options: opts([t('musicme:artist'),t('musicme:album'),t('musicme:channel')]) },
+      { key: 'sort', label: t('musicme:ranking'),      options: opts([t('musicme:latest'),t('musicme:oldest')]) },
     ],
   },
   {
-    id: 'journeys', label: 'الرحلات / الجلسات',
+    id: 'journeys', label: t('musicme:tripssessions'),
     filters: [
-      { key: 'type', label: 'نوع الجلسة', options: opts(['رحلة','مزاج','مخصصة']) },
-      { key: 'sort', label: 'الترتيب',    options: opts(['الأحدث','الأقدم','الأطول']) },
+      { key: 'type', label: t('musicme:sessionType'), options: opts([t('musicme:aTrip'),t('musicme:mood'),t('musicme:customized')]) },
+      { key: 'sort', label: t('musicme:ranking'),    options: opts([t('musicme:latest'),t('musicme:oldest'),t('musicme:theLongest')]) },
     ],
   },
   {
-    id: 'liked', label: 'المفضلة',
+    id: 'liked', label: t('musicme:favorites'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['أغنية','ألبوم','بودكاست']) },
-      { key: 'cat',  label: 'التصنيف',     options: opts(['بوب','خليجي','كلاسيك']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم','الأكثر استماعاً']) },
+      { key: 'type', label: t('musicme:contentType'), options: opts([t('musicme:song'),t('musicme:album'),t('musicme:itsAPodcast')]) },
+      { key: 'cat',  label: t('musicme:classification'),     options: opts([t('musicme:bob'),t('musicme:gulf'),t('musicme:classic')]) },
+      { key: 'sort', label: t('musicme:ranking'),     options: opts([t('musicme:latest'),t('musicme:oldest'),t('musicme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'recent', label: 'الأخيرة',
+    id: 'recent', label: t('musicme:theLast'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['أغنية','ألبوم','فنان']) },
-      { key: 'date', label: 'التاريخ',     options: opts(['اليوم','هذا الأسبوع','هذا الشهر']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('musicme:contentType'), options: opts([t('musicme:song'),t('musicme:album'),t('musicme:artist')]) },
+      { key: 'date', label: t('musicme:theDate'),     options: opts([t('musicme:today'),t('musicme:thisWeek'),t('musicme:thisMonth')]) },
+      { key: 'sort', label: t('musicme:ranking'),     options: opts([t('musicme:latest'),t('musicme:oldest')]) },
     ],
   },
   {
-    id: 'history', label: 'سجل الاستماع',
+    id: 'history', label: t('musicme:listeningRecord'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['أغنية','ألبوم','بودكاست']) },
-      { key: 'date', label: 'التاريخ',     options: opts(['اليوم','هذا الأسبوع','هذا الشهر','أقدم']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('musicme:contentType'), options: opts([t('musicme:song'),t('musicme:album'),t('musicme:itsAPodcast')]) },
+      { key: 'date', label: t('musicme:theDate'),     options: opts([t('musicme:today'),t('musicme:thisWeek'),t('musicme:thisMonth'),t('musicme:oldest1')]) },
+      { key: 'sort', label: t('musicme:ranking'),     options: opts([t('musicme:latest'),t('musicme:oldest')]) },
     ],
   },
 ];
@@ -188,13 +192,13 @@ export function MusicMePage() {
   const profileState    = usePublicProfile(currentUser?.uid ?? null);
 
   if (profileState.status === 'loading') {
-    return <LoadingScreen message="جاري تحميل ملفك الشخصي..." />;
+    return <LoadingScreen message={t('musicme:loadingYourProfile')} />;
   }
 
   if (profileState.status === 'error') {
     return (
       <div className="mme-page">
-        <EmptyState icon="⚠️" title="حدث خطأ" description={profileState.message} />
+        <EmptyState icon="⚠️" title={t('musicme:anErrorOccurred')} description={profileState.message} />
       </div>
     );
   }
@@ -204,8 +208,8 @@ export function MusicMePage() {
       <div className="mme-page">
         <EmptyState
           icon="👤"
-          title="ملفك الشخصي ليس جاهزاً بعد"
-          description="سيتم إنشاء ملفك الشخصي العام تلقائياً"
+          title={t('musicme:yourProfileIsNotReadyYet')}
+          description={t('musicme:yourPublicProfileWillBeCreatedAutomatica')}
         />
       </div>
     );
@@ -248,7 +252,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
   }, [activeTab]);
 
   const musicProfile = (profile as any).musicProfile ?? (profile as any).generalProfile;
-  const displayName  = musicProfile?.displayName ?? 'مستخدم Sound';
+  const displayName  = musicProfile?.displayName ?? t('musicme:soundUser');
   const username     = musicProfile?.username    ?? null;
   const bio          = musicProfile?.bio         ?? null;
   const avatarUrl    = musicProfile?.avatarUrl   ?? null;
@@ -276,10 +280,9 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           {isVerified && (
             <span className="mme-badge mme-badge--verified">
               <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
-              موثق
-            </span>
+              {t('musicme:reliable')}</span>
           )}
-          <span className="mme-badge mme-badge--world">♪ موسيقى</span>
+          <span className="mme-badge mme-badge--world">{t('musicme:music')}</span>
         </div>
 
         {/* Controls — left side (RTL end) */}
@@ -287,7 +290,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="mme-settings-btn"
             className="mme-hdr-btn"
-            aria-label="الإعدادات"
+            aria-label={t('musicme:settings')}
             type="button"
             onClick={() => navigate('/settings')}
           >
@@ -296,7 +299,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="mme-notifications-btn"
             className="mme-hdr-btn"
-            aria-label="الإشعارات"
+            aria-label={t('musicme:notifications')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">notifications</span>
@@ -304,7 +307,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="mme-inbox-btn"
             className="mme-hdr-btn"
-            aria-label="الرسائل"
+            aria-label={t('musicme:messages')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">mail</span>
@@ -336,7 +339,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <div className="mme-identity__name-row">
             <h1 className="mme-display-name">{displayName}</h1>
             {isVerified && (
-              <span className="mme-verified-icon" aria-label="موثق">
+              <span className="mme-verified-icon" aria-label={t('musicme:reliable')}>
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
               </span>
             )}
@@ -355,16 +358,16 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
             id="mme-status-btn"
             className="mme-status-pill"
             type="button"
-            aria-label="تحديث الحالة"
+            aria-label={t('musicme:statusUpdate')}
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit_note</span>
-            <span className="mme-status-pill__text">أضف تحديثاً للحالة…</span>
+            <span className="mme-status-pill__text">{t('musicme:addAStatusUpdate')}</span>
           </button>
 
           {/* Listening-now presence */}
-          <div className="mme-listening-now" aria-label="أستمع الآن">
+          <div className="mme-listening-now" aria-label={t('musicme:listenNow')}>
             <span className="mme-listening-dot" aria-hidden="true" />
-            <span className="mme-listening-label">أستمع الآن</span>
+            <span className="mme-listening-label">{t('musicme:listenNow')}</span>
             <span className="mme-listening-track">—</span>
           </div>
 
@@ -374,10 +377,10 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       {/* ── Stats ──────────────────────────────────────────────────────── */}
       <div className="mme-stats">
         {[
-          { value: followers, label: 'متابعون' },
-          { value: following, label: 'يتابع'   },
-          { value: listens,   label: 'استماع'  },
-          { value: likes,     label: 'إعجاب'   },
+          { value: followers, label: t('musicme:followers') },
+          { value: following, label: t('musicme:heContinues')   },
+          { value: listens,   label: t('musicme:toListen')  },
+          { value: likes,     label: t('musicme:wonder')   },
         ].map((s) => (
           <div key={s.label} className="mme-stat">
             <span className="mme-stat__value">{s.value}</span>
@@ -395,13 +398,12 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           onClick={() => navigate('/settings/edit-profile')}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>
-          تعديل الملف الشخصي
-        </button>
+          {t('musicme:editProfile')}</button>
         <button
           id="mme-share-btn"
           className="mme-btn mme-btn--ghost"
           type="button"
-          aria-label="مشاركة الملف"
+          aria-label={t('musicme:shareFile')}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
@@ -426,7 +428,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
             );
           })
         ) : (
-          <span className="mme-social__hint">أضف روابطك في تعديل الملف الشخصي</span>
+          <span className="mme-social__hint">{t('musicme:addYourLinksInEditProfile')}</span>
         )}
       </div>
 
@@ -434,7 +436,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       <nav
         className="mme-tabs"
         role="tablist"
-        aria-label="محتوى ملف موسيقى"
+        aria-label={t('musicme:musicFileContent')}
       >
         {MUSIC_TABS.map((t) => (
           <button
@@ -453,7 +455,7 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
       {/* ── Smart Filter Dropdowns ───────────────────────────────────────── */}
       {currentTabDef.filters.length > 0 && (
-        <div className="mme-filters" role="group" aria-label="فلاتر المحتوى">
+        <div className="mme-filters" role="group" aria-label={t('musicme:contentFilters')}>
           {currentTabDef.filters.map((f) => (
             <FilterDropdown
               key={`${activeTab}-${f.key}`}
@@ -485,18 +487,18 @@ function MusicMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
 function MusicTabPanel({ tab, navigate }: { tab: MusicTab; navigate: ReturnType<typeof useNavigate> }) {
   const PANELS: Record<MusicTab, React.ReactNode> = {
-    songs:         <EmptyState icon="🎵" title="لم تنشر أي أغاني بعد" description="ابدأ بنشر أغانيك في عالم الموسيقى" action={{ label: 'إنشاء محتوى', onClick: () => navigate('/music/create') }} />,
-    albums:        <EmptyState icon="💿" title="لا توجد ألبومات" description="أنشئ أول ألبوم موسيقي لك" action={{ label: 'إنشاء ألبوم', disabled: true, disabledReason: 'قريباً' }} />,
-    labels:        <EmptyState icon="🏢" title="لا توجد شركات إنتاج مرتبطة" description="شركات الإنتاج المرتبطة بمحتواك ستظهر هنا" />,
-    trends:        <EmptyState icon="🔥" title="لا توجد تريندات بعد" description="أغانيك الرائجة ستظهر هنا" />,
-    mood:          <EmptyState icon="🎭" title="لا توجد قوائم مزاجية بعد" description="احفظ قوائم المزاج من محتوى المنصة" />,
-    saved:         <EmptyState icon="🔖" title="لا يوجد محفوظات" description="احفظ المحتوى الذي تريد الرجوع إليه" />,
-    reposts:       <EmptyState icon="🔄" title="لا توجد إعادات" description="المحتوى الذي تعيد نشره سيظهر هنا" />,
-    subscriptions: <EmptyState icon="⭐" title="لا توجد اشتراكات بعد" description="اشتراكاتك وعضوياتك ستظهر هنا" />,
-    journeys:      <EmptyState icon="🛣️" title="لا توجد رحلات بعد" description="جلسات الاستماع على الطريق ستظهر هنا" />,
-    liked:         <EmptyState icon="❤️" title="لا يوجد مفضلة بعد" description="المحتوى الذي أعجبك سيظهر هنا" />,
-    recent:        <EmptyState icon="🕐" title="لا يوجد محتوى حديث" description="آخر ما استمعت إليه سيظهر هنا" />,
-    history:       <EmptyState icon="📋" title="سجل الاستماع فارغ" description="المحتوى الذي استمعت إليه سيظهر هنا" />,
+    songs:         <EmptyState icon="🎵" title={t('musicme:sheHasntPublishedAnySongsYet')} description={t('musicme:startPublishingYourSongsInTheMusicWorld')} action={{ label: t('musicme:createContent'), onClick: () => navigate('/music/create') }} />,
+    albums:        <EmptyState icon="💿" title={t('musicme:thereAreNoAlbums')} description={t('musicme:createYourFirstMusicAlbum')} action={{ label: t('musicme:createAnAlbum'), disabled: true, disabledReason: t('musicme:almost') }} />,
+    labels:        <EmptyState icon="🏢" title={t('musicme:thereAreNoProductionCompaniesAssociated')} description={t('musicme:productionCompaniesAssociatedWithYourCon')} />,
+    trends:        <EmptyState icon="🔥" title={t('musicme:thereAreNoTrendsYet')} description={t('musicme:yourHitSongsWillAppearHere')} />,
+    mood:          <EmptyState icon="🎭" title={t('musicme:noMoodListsYet')} description={t('musicme:saveMoodListsFromPlatformContent')} />,
+    saved:         <EmptyState icon="🔖" title={t('musicme:noHistory')} description={t('musicme:saveTheContentYouWantToReturnTo')} />,
+    reposts:       <EmptyState icon="🔄" title={t('musicme:thereAreNoReplays')} description={t('musicme:theContentYouRepostWillAppearHere')} />,
+    subscriptions: <EmptyState icon="⭐" title={t('musicme:thereAreNoSubscriptionsYet')} description={t('musicme:yourSubscriptionsAndMembershipsWillAppea')} />,
+    journeys:      <EmptyState icon="🛣️" title={t('musicme:thereAreNoFlightsYet')} description={t('musicme:hearingsOnTheRoadWillAppearHere')} />,
+    liked:         <EmptyState icon="❤️" title={t('musicme:thereAreNoFavoritesYet')} description={t('musicme:contentYouLikedWillAppearHere')} />,
+    recent:        <EmptyState icon="🕐" title={t('musicme:thereIsNoRecentContent')} description={t('musicme:yourLastListenWillAppearHere')} />,
+    history:       <EmptyState icon="📋" title={t('musicme:theListeningRecordIsEmpty')} description={t('musicme:theContentYouListenedToWillAppearHere')} />,
   };
   return <>{PANELS[tab] ?? null}</>;
 }

@@ -94,5 +94,5 @@ export const callGetUserPlaylists = httpsCallable<
 export const callRenderDraftPreview = httpsCallable<
   RenderDraftPreviewRequest,
   RenderDraftPreviewResponse
->(functions, 'renderAudioDraftPreview');
+>(functions, 'renderAudioDraftPreview', { timeout: 300000 });
 

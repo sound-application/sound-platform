@@ -22,8 +22,8 @@
 .app-header {
   position: fixed;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline-end: 0;
+  inset-inline-start: 0;
   height: var(--header-height);   /* 56px */
   z-index: 100;
   display: flex;
@@ -122,8 +122,8 @@
 .app-header__world-strip {
   position: fixed;
   top: var(--header-height);
-  left: 0;
-  right: 0;
+  inset-inline-end: 0;
+  inset-inline-start: 0;
   height: var(--world-strip-height);   /* 48px */
   z-index: 99;
   display: flex;

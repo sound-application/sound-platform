@@ -71,7 +71,7 @@
   font-family: var(--font-sans);
   color: var(--color-text-primary);
   transition: border-color var(--transition-fast), background var(--transition-fast);
-  text-align: right;
+  text-align: start;
 }
 .home-search__input::placeholder { color: var(--color-text-muted); }
 .home-search__input:focus {
@@ -83,7 +83,7 @@
 .home-search__icon {
   position: absolute;
   top: 50%;
-  left: var(--space-3);
+  inset-inline-end: var(--space-3);
   transform: translateY(-50%);
   color: var(--color-text-muted);
   pointer-events: none;
@@ -160,7 +160,7 @@
 .story-ring__add {
   position: absolute;
   bottom: -2px;
-  right: -2px;
+  inset-inline-start: -2px;
   width: 20px;
   height: 20px;
   border-radius: 50%;
@@ -228,7 +228,7 @@
 .content-card__play-stat {
   position: absolute;
   bottom: var(--space-2);
-  right: var(--space-2);
+  inset-inline-start: var(--space-2);
   display: flex;
   align-items: center;
   gap: var(--space-1);

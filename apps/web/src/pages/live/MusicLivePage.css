@@ -120,7 +120,7 @@
 /* ─── CTA block accent ───────────────────────────────────────────────────────── */
 
 .music-cta {
-  border-left-color: #a855f7 !important;
+  border-inline-end-color: #a855f7 !important;
 }
 
 .music-cta__btn {

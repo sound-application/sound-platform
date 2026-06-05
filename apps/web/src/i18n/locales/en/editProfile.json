@@ -56,5 +56,8 @@
     "viewPublicProfile": "View Public Profile",
     "saving": "Saving...",
     "saveChanges": "Save Changes"
-  }
+  },
+  "viaSynchronizationSystem": "Via synchronization system.",
+  "510Seconds": "5–10 seconds",
+  "afterSavingThePublicProfileIsAutomatical": "After saving, the public profile is automatically updated within"
 }

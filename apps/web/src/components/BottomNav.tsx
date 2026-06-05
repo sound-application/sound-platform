@@ -10,6 +10,7 @@
 import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useWorldNav, type WorldTab } from '../contexts/WorldNavContext';
+import { useAppConfig } from '../contexts/ConfigContext';
 import './BottomNav.css';
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -62,11 +63,12 @@ const NAV_ITEM_DEFS: { tab: WorldTab; tKey: string; Icon: React.FC }[] = [
 export function BottomNav() {
   const { t } = useTranslation('common');
   const { tab: activeTab, switchTab } = useWorldNav();
+  const { isFeatureEnabled } = useAppConfig();
 
   return (
     <nav className="bottom-nav" aria-label={t('nav.mainNav')}>
       <div className="bottom-nav__bar">
-        {NAV_ITEM_DEFS.map(({ tab, tKey, Icon }) => {
+        {NAV_ITEM_DEFS.filter(item => isFeatureEnabled(`tab_${item.tab}`)).map(({ tab, tKey, Icon }) => {
           const isActive = activeTab === tab;
           const label = t(tKey);
           return (

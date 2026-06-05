@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+const tWrapper = (key: any, options?: any) => i18n.t(key, options) as any as string;
 /**
  * Sound Platform — useAudioUpload Hook
  * ======================================
@@ -98,11 +100,11 @@ export function useAudioUpload(): AudioUploadResult {
         (error) => {
           if (error.code === 'storage/canceled') {
             setState('cancelled');
-            setErrorMessage('تم إلغاء الرفع.');
+            setErrorMessage(tWrapper('useaudioupload:uploadHasBeenCancelled'));
           } else {
             setState('error');
             setErrorMessage(
-              error.message || 'حدث خطأ أثناء رفع الملف الصوتي.',
+              error.message || tWrapper('useaudioupload:anErrorOccurredWhile'),
             );
           }
           taskRef.current = null;

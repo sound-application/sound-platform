@@ -26,7 +26,7 @@
   background: var(--color-bg-card);
   border: 1px solid var(--color-border-subtle);
   border-radius: var(--radius-lg);
-  text-align: start;
+  text-align: end;
   width: 100%;
   transition: background var(--transition-fast), border-color var(--transition-fast);
   opacity: 1;

@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+const tWrapper = (key: any, options?: any) => i18n.t(key, options) as any as string;
 /**
  * Sound Platform — Locked Product Labels (i18n)
  *
@@ -48,27 +50,27 @@ export const WORLD_ORDER: LockedWorldKey[] = [
 // Legacy exports for files not yet migrated to useTranslation.
 // These return Arabic fallback values only. Migrate consumers to use t() instead.
 export const LOCKED_NAV = {
-  home:     'الرئيسية',
-  discover: 'اكتشف',
-  create:   'إنشاء',
-  live:     'لايف',
-  profile:  'أنا',
+  home:     tWrapper('lockedlabels:home'),
+  discover: tWrapper('lockedlabels:findOut'),
+  create:   tWrapper('lockedlabels:construction'),
+  live:     tWrapper('lockedlabels:live'),
+  profile:  tWrapper('lockedlabels:i'),
 } as const;
 
 export const LOCKED_WORLDS = {
-  general:     'عام',
-  plus:        'بلس',
-  music:       'موسيقى',
-  radio:       'راديو',
-  tournaments: 'مسابقات',
+  general:     tWrapper('lockedlabels:general'),
+  plus:        tWrapper('lockedlabels:plus'),
+  music:       tWrapper('lockedlabels:music'),
+  radio:       tWrapper('lockedlabels:radio'),
+  tournaments: tWrapper('lockedlabels:contests'),
 } as const;
 
 // ─── Forbidden Nav Substitutes ────────────────────────────────────────────────
 export const FORBIDDEN_NAV_SUBSTITUTES = [
-  'مباشر',
-  'بطولات',
+  tWrapper('lockedlabels:direct'),
+  tWrapper('lockedlabels:championships'),
   'Plus',
-  'استكشاف',
+  tWrapper('lockedlabels:exploration'),
 ] as const;
 
 export type ForbiddenSubstitute = typeof FORBIDDEN_NAV_SUBSTITUTES[number];

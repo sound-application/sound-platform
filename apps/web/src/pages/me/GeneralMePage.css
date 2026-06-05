@@ -31,7 +31,7 @@
   min-height: 100dvh;
   color: #ffffff;
   font-family: 'Alexandria', 'Cairo', sans-serif;
-  direction: rtl;
+  
   /* Clear bottom nav */
   padding-bottom: 112px;
 }
@@ -54,8 +54,8 @@
 .gme-cover {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   /* Pull the cover UP behind the fixed header+world-strip (104px total) */
   margin-top: calc(-1 * (var(--header-height) + var(--world-strip-height)));
   /* Extra height = 104px offset + 340px visible = 444px total */
@@ -105,7 +105,7 @@
   justify-content: space-between;
   /* 8px breathing room below where the world strip ends */
   padding: 8px 16px 0;
-  direction: rtl;
+  
 }
 
 /* Badges — right (RTL start) */
@@ -273,7 +273,7 @@
   color: var(--gme-accent-light);
   margin: 0 0 8px;
   direction: ltr;
-  text-align: right;
+  text-align: end;
 }
 
 .gme-bio {

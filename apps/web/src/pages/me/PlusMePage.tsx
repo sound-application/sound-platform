@@ -27,6 +27,10 @@ import { EmptyState } from '../../components/EmptyState';
 import { FilterDropdown, type FilterOption } from '../../components/FilterDropdown';
 import type { PublicProfileDoc } from '@sound/shared';
 import './PlusMePage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Tab Definition ────────────────────────────────────────────────────────────
 
@@ -60,84 +64,84 @@ function opts(labels: string[]): FilterOption[] {
 
 const PLUS_TABS: PlusTabDef[] = [
   {
-    id: 'content', label: 'المحتوى',
+    id: 'content', label: t('plusme:content'),
     filters: [
-      { key: 'type',     label: 'نوع المحتوى', options: opts(['بودكاست','مقال صوتي','مقابلة','تسجيل','قصيرة']) },
-      { key: 'status',   label: 'الحالة',       options: opts(['منشور','مسودة','مؤرشف']) },
-      { key: 'category', label: 'التصنيف',      options: opts(['ثقافة','تقنية','رياضة','ترفيه','أخبار']) },
-      { key: 'sort',     label: 'الترتيب',      options: opts(['الأحدث','الأقدم','الأكثر استماعاً','الأكثر إعجاباً']) },
+      { key: 'type',     label: t('plusme:contentType'), options: opts([t('plusme:itsAPodcast'),t('plusme:audioEssay'),t('plusme:interview'),t('plusme:registration'),t('plusme:short')]) },
+      { key: 'status',   label: t('plusme:theCondition'),       options: opts([t('plusme:manifesto'),t('plusme:draft'),t('plusme:archived')]) },
+      { key: 'category', label: t('plusme:classification'),      options: opts([t('plusme:culture'),t('plusme:technique'),t('plusme:sports'),t('plusme:entertainment'),t('plusme:news')]) },
+      { key: 'sort',     label: t('plusme:ranking'),      options: opts([t('plusme:latest'),t('plusme:oldest'),t('plusme:mostListenedTo'),t('plusme:mostLiked')]) },
     ],
   },
   {
-    id: 'podcast', label: 'بودكاست',
+    id: 'podcast', label: t('plusme:itsAPodcast'),
     filters: [
-      { key: 'status',   label: 'الحالة',   options: opts(['منشور','مسودة','مؤرشف']) },
-      { key: 'category', label: 'التصنيف', options: opts(['ثقافة','تقنية','رياضة','ترفيه','أخبار']) },
-      { key: 'sort',     label: 'الترتيب', options: opts(['الأحدث','الأقدم','الأكثر استماعاً']) },
+      { key: 'status',   label: t('plusme:theCondition'),   options: opts([t('plusme:manifesto'),t('plusme:draft'),t('plusme:archived')]) },
+      { key: 'category', label: t('plusme:classification'), options: opts([t('plusme:culture'),t('plusme:technique'),t('plusme:sports'),t('plusme:entertainment'),t('plusme:news')]) },
+      { key: 'sort',     label: t('plusme:ranking'), options: opts([t('plusme:latest'),t('plusme:oldest'),t('plusme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'trends', label: 'ترنداتي',
+    id: 'trends', label: t('plusme:myTrends'),
     filters: [
-      { key: 'period', label: 'الفترة',      options: opts(['اليوم','هذا الأسبوع','هذا الشهر']) },
-      { key: 'type',   label: 'نوع المحتوى', options: opts(['بودكاست','قصيرة','مقالات']) },
-      { key: 'sort',   label: 'الترتيب',     options: opts(['الأكثر استماعاً','الأكثر إعجاباً','الأكثر مشاركة']) },
+      { key: 'period', label: t('plusme:period'),      options: opts([t('plusme:today'),t('plusme:thisWeek'),t('plusme:thisMonth')]) },
+      { key: 'type',   label: t('plusme:contentType'), options: opts([t('plusme:itsAPodcast'),t('plusme:short'),t('plusme:articles')]) },
+      { key: 'sort',   label: t('plusme:ranking'),     options: opts([t('plusme:mostListenedTo'),t('plusme:mostLiked'),t('plusme:mostShared')]) },
     ],
   },
   {
-    id: 'mood', label: 'مزاجي',
+    id: 'mood', label: t('plusme:myMood'),
     filters: [
-      { key: 'mood',   label: 'المزاج / الغرض', options: opts(['هادئ','نشيط','مركّز','مرح','حزين']) },
-      { key: 'type',   label: 'نوع المحتوى',     options: opts(['موسيقى','بودكاست','صوتيات']) },
-      { key: 'source', label: 'المصدر / العالم', options: opts(['عام','بلس','موسيقى','راديو']) },
-      { key: 'sort',   label: 'الترتيب',         options: opts(['الأحدث','الأكثر استماعاً']) },
+      { key: 'mood',   label: t('plusme:moodpurpose'), options: opts([t('plusme:calm'),t('plusme:active1'),t('plusme:center'),t('plusme:cheerful'),t('plusme:sad')]) },
+      { key: 'type',   label: t('plusme:contentType'),     options: opts([t('plusme:music'),t('plusme:itsAPodcast'),t('plusme:phonetics')]) },
+      { key: 'source', label: t('plusme:sourceworld'), options: opts([t('plusme:general'),t('plusme:plus1'),t('plusme:music'),t('plusme:radio')]) },
+      { key: 'sort',   label: t('plusme:ranking'),         options: opts([t('plusme:latest'),t('plusme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'saved', label: 'المحفوظات',
+    id: 'saved', label: t('plusme:archives'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','راديو','مقالات']) },
-      { key: 'cat',  label: 'التصنيف',     options: opts(['ثقافة','تقنية','ترفيه']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('plusme:contentType'), options: opts([t('plusme:itsAPodcast'),t('plusme:music'),t('plusme:radio'),t('plusme:articles')]) },
+      { key: 'cat',  label: t('plusme:classification'),     options: opts([t('plusme:culture'),t('plusme:technique'),t('plusme:entertainment')]) },
+      { key: 'sort', label: t('plusme:ranking'),     options: opts([t('plusme:latest'),t('plusme:oldest')]) },
     ],
   },
   {
-    id: 'reposts', label: 'الإعادات',
+    id: 'reposts', label: t('plusme:replays'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','مقالات']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('plusme:contentType'), options: opts([t('plusme:itsAPodcast'),t('plusme:music'),t('plusme:articles')]) },
+      { key: 'sort', label: t('plusme:ranking'),     options: opts([t('plusme:latest'),t('plusme:oldest')]) },
     ],
   },
   {
-    id: 'journeys', label: 'الرحلات / الجلسات',
+    id: 'journeys', label: t('plusme:tripssessions'),
     filters: [
-      { key: 'type', label: 'نوع الرحلة', options: opts(['على الطريق','جلسة استماع','مختلطة']) },
-      { key: 'date', label: 'التاريخ',    options: opts(['اليوم','هذا الأسبوع','هذا الشهر','أقدم']) },
-      { key: 'sort', label: 'الترتيب',   options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('plusme:tripType'), options: opts([t('plusme:onTheRoad'),t('plusme:hearing'),t('plusme:mixed')]) },
+      { key: 'date', label: t('plusme:theDate'),    options: opts([t('plusme:today'),t('plusme:thisWeek'),t('plusme:thisMonth'),t('plusme:oldest1')]) },
+      { key: 'sort', label: t('plusme:ranking'),   options: opts([t('plusme:latest'),t('plusme:oldest')]) },
     ],
   },
   {
-    id: 'liked', label: 'المفضلة',
+    id: 'liked', label: t('plusme:favorites'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','راديو','صوتيات']) },
-      { key: 'cat',  label: 'التصنيف',     options: opts(['ثقافة','تقنية','ترفيه','رياضة']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم','الأكثر استماعاً']) },
+      { key: 'type', label: t('plusme:contentType'), options: opts([t('plusme:itsAPodcast'),t('plusme:music'),t('plusme:radio'),t('plusme:phonetics')]) },
+      { key: 'cat',  label: t('plusme:classification'),     options: opts([t('plusme:culture'),t('plusme:technique'),t('plusme:entertainment'),t('plusme:sports')]) },
+      { key: 'sort', label: t('plusme:ranking'),     options: opts([t('plusme:latest'),t('plusme:oldest'),t('plusme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'history', label: 'السجل',
+    id: 'history', label: t('plusme:record'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','راديو']) },
-      { key: 'date', label: 'التاريخ',     options: opts(['اليوم','هذا الأسبوع','هذا الشهر','أقدم']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('plusme:contentType'), options: opts([t('plusme:itsAPodcast'),t('plusme:music'),t('plusme:radio')]) },
+      { key: 'date', label: t('plusme:theDate'),     options: opts([t('plusme:today'),t('plusme:thisWeek'),t('plusme:thisMonth'),t('plusme:oldest1')]) },
+      { key: 'sort', label: t('plusme:ranking'),     options: opts([t('plusme:latest'),t('plusme:oldest')]) },
     ],
   },
   {
-    id: 'subscriptions', label: 'الاشتراكات',
+    id: 'subscriptions', label: t('plusme:subscriptions'),
     filters: [
-      { key: 'subType', label: 'نوع الاشتراك', options: opts(['شهري','سنوي','مدى الحياة']) },
-      { key: 'status',  label: 'الحالة',        options: opts(['نشط','منتهي','مُلغى']) },
-      { key: 'sort',    label: 'الترتيب',       options: opts(['الأحدث','الأقدم','تاريخ الانتهاء']) },
+      { key: 'subType', label: t('plusme:subscriptionType'), options: opts([t('plusme:citizen'),t('plusme:annual'),t('plusme:lifelong')]) },
+      { key: 'status',  label: t('plusme:theCondition'),        options: opts([t('plusme:active'),t('plusme:theEnd'),t('plusme:canceled')]) },
+      { key: 'sort',    label: t('plusme:ranking'),       options: opts([t('plusme:latest'),t('plusme:oldest'),t('plusme:endDate')]) },
     ],
   },
 ];
@@ -169,13 +173,13 @@ export function PlusMePage() {
   const profileState    = usePublicProfile(currentUser?.uid ?? null);
 
   if (profileState.status === 'loading') {
-    return <LoadingScreen message="جاري تحميل ملفك الشخصي..." />;
+    return <LoadingScreen message={t('plusme:loadingYourProfile')} />;
   }
 
   if (profileState.status === 'error') {
     return (
       <div className="pme-page">
-        <EmptyState icon="⚠️" title="حدث خطأ" description={profileState.message} />
+        <EmptyState icon="⚠️" title={t('plusme:anErrorOccurred')} description={profileState.message} />
       </div>
     );
   }
@@ -185,8 +189,8 @@ export function PlusMePage() {
       <div className="pme-page">
         <EmptyState
           icon="👤"
-          title="ملفك الشخصي ليس جاهزاً بعد"
-          description="سيتم إنشاء ملفك الشخصي العام تلقائياً"
+          title={t('plusme:yourProfileIsNotReadyYet')}
+          description={t('plusme:yourPublicProfileWillBeCreatedAutomatica')}
         />
       </div>
     );
@@ -229,7 +233,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
   }, [activeTab]);
 
   const plusProfile = (profile as any).plusProfile ?? (profile as any).generalProfile;
-  const displayName = plusProfile?.displayName ?? 'مستخدم Sound';
+  const displayName = plusProfile?.displayName ?? t('plusme:soundUser');
   const username    = plusProfile?.username    ?? null;
   const bio         = plusProfile?.bio         ?? null;
   const avatarUrl   = plusProfile?.avatarUrl   ?? null;
@@ -257,10 +261,9 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           {isVerified && (
             <span className="pme-badge pme-badge--verified">
               <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
-              موثق
-            </span>
+              {t('plusme:reliable')}</span>
           )}
-          <span className="pme-badge pme-badge--world">✦ بلس</span>
+          <span className="pme-badge pme-badge--world">{t('plusme:plus')}</span>
         </div>
 
         {/* Controls — left side (RTL end) */}
@@ -268,7 +271,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="pme-settings-btn"
             className="pme-hdr-btn"
-            aria-label="الإعدادات"
+            aria-label={t('plusme:settings')}
             type="button"
             onClick={() => navigate('/settings')}
           >
@@ -277,7 +280,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="pme-notifications-btn"
             className="pme-hdr-btn"
-            aria-label="الإشعارات"
+            aria-label={t('plusme:notifications')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">notifications</span>
@@ -285,7 +288,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="pme-inbox-btn"
             className="pme-hdr-btn"
-            aria-label="الرسائل"
+            aria-label={t('plusme:messages')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">mail</span>
@@ -317,7 +320,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <div className="pme-identity__name-row">
             <h1 className="pme-display-name">{displayName}</h1>
             {isVerified && (
-              <span className="pme-verified-icon" aria-label="موثق">
+              <span className="pme-verified-icon" aria-label={t('plusme:reliable')}>
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
               </span>
             )}
@@ -336,16 +339,16 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
             id="pme-status-btn"
             className="pme-status-pill"
             type="button"
-            aria-label="تحديث الحالة"
+            aria-label={t('plusme:statusUpdate')}
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit_note</span>
-            <span className="pme-status-pill__text">أضف تحديثاً للحالة…</span>
+            <span className="pme-status-pill__text">{t('plusme:addAStatusUpdate')}</span>
           </button>
 
           {/* Listening-now presence */}
-          <div className="pme-listening-now" aria-label="أستمع الآن">
+          <div className="pme-listening-now" aria-label={t('plusme:listenNow')}>
             <span className="pme-listening-dot" aria-hidden="true" />
-            <span className="pme-listening-label">أستمع الآن</span>
+            <span className="pme-listening-label">{t('plusme:listenNow')}</span>
             <span className="pme-listening-track">—</span>
           </div>
 
@@ -355,10 +358,10 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       {/* ── Stats ──────────────────────────────────────────────────────── */}
       <div className="pme-stats">
         {[
-          { value: followers, label: 'متابعون' },
-          { value: following, label: 'يتابع'   },
-          { value: listens,   label: 'استماع'  },
-          { value: likes,     label: 'إعجاب'   },
+          { value: followers, label: t('plusme:followers') },
+          { value: following, label: t('plusme:heContinues')   },
+          { value: listens,   label: t('plusme:toListen')  },
+          { value: likes,     label: t('plusme:wonder')   },
         ].map((s) => (
           <div key={s.label} className="pme-stat">
             <span className="pme-stat__value">{s.value}</span>
@@ -376,13 +379,12 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           onClick={() => navigate('/settings/edit-profile')}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>
-          تعديل الملف الشخصي
-        </button>
+          {t('plusme:editProfile')}</button>
         <button
           id="pme-share-btn"
           className="pme-btn pme-btn--ghost"
           type="button"
-          aria-label="مشاركة الملف"
+          aria-label={t('plusme:shareFile')}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
@@ -407,7 +409,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
             );
           })
         ) : (
-          <span className="pme-social__hint">أضف روابطك في تعديل الملف الشخصي</span>
+          <span className="pme-social__hint">{t('plusme:addYourLinksInEditProfile')}</span>
         )}
       </div>
 
@@ -415,7 +417,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       <nav
         className="pme-tabs"
         role="tablist"
-        aria-label="محتوى ملف بلس"
+        aria-label={t('plusme:plusFileContent')}
       >
         {PLUS_TABS.map((t) => (
           <button
@@ -434,7 +436,7 @@ function PlusMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
       {/* ── Smart Filter Dropdowns ────────────────────────────────────────── */}
       {currentTabDef.filters.length > 0 && (
-        <div className="pme-filters" role="group" aria-label="فلاتر المحتوى">
+        <div className="pme-filters" role="group" aria-label={t('plusme:contentFilters')}>
           {currentTabDef.filters.map((f) => (
             <FilterDropdown
               key={`${activeTab}-${f.key}`}
@@ -476,82 +478,82 @@ function PlusTabPanel({
       return (
         <EmptyState
           icon="🎙️"
-          title="لم تنشر أي محتوى بعد"
-          description="ابدأ بنشر محتواك على بلس"
-          action={{ label: 'إنشاء محتوى', onClick: () => navigate('/plus/create') }}
+          title={t('plusme:youHaventPostedAnyContentYet')}
+          description={t('plusme:startPublishingYourContentOnPlus')}
+          action={{ label: t('plusme:createContent'), onClick: () => navigate('/plus/create') }}
         />
       );
     case 'podcast':
       return (
         <EmptyState
           icon="🎧"
-          title="لا توجد حلقات بودكاست بعد"
-          description="انشر أول حلقة بودكاست على بلس"
-          action={{ label: 'إنشاء بودكاست', onClick: () => navigate('/plus/create') }}
+          title={t('plusme:thereAreNoPodcastEpisodesYet')}
+          description={t('plusme:publishYourFirstPodcastEpisodeOnPlus')}
+          action={{ label: t('plusme:createAPodcast'), onClick: () => navigate('/plus/create') }}
         />
       );
     case 'trends':
       return (
         <EmptyState
           icon="📈"
-          title="لا توجد ترندات بعد"
-          description="محتواك الرائج سيظهر هنا"
+          title={t('plusme:thereAreNoTrendsYet')}
+          description={t('plusme:yourPopularContentWillAppearHere')}
         />
       );
     case 'mood':
       return (
         <EmptyState
           icon="🎭"
-          title="لا توجد قوائم مزاجية بعد"
-          description="أنشئ قوائم تعبر عن مزاجك وأفكارك"
+          title={t('plusme:noMoodListsYet')}
+          description={t('plusme:createListsThatExpressYourMoodAndThought')}
         />
       );
     case 'saved':
       return (
         <EmptyState
           icon="🔖"
-          title="لا يوجد محفوظات"
-          description="احفظ المحتوى الذي تريد الرجوع إليه"
+          title={t('plusme:noHistory')}
+          description={t('plusme:saveTheContentYouWantToReturnTo')}
         />
       );
     case 'reposts':
       return (
         <EmptyState
           icon="🔄"
-          title="لا توجد إعادات"
-          description="المحتوى الذي تعيد نشره سيظهر هنا"
+          title={t('plusme:thereAreNoReplays')}
+          description={t('plusme:theContentYouRepostWillAppearHere')}
         />
       );
     case 'journeys':
       return (
         <EmptyState
           icon="🚗"
-          title="لا توجد رحلات أو جلسات بعد"
-          description="جلسات الاستماع على الطريق ستظهر هنا"
+          title={t('plusme:noTripsOrSessionsYet')}
+          description={t('plusme:hearingsOnTheRoadWillAppearHere')}
         />
       );
     case 'liked':
       return (
         <EmptyState
           icon="❤️"
-          title="لا يوجد مفضلة بعد"
-          description="المحتوى الذي أعجبك سيظهر هنا"
+          title={t('plusme:thereAreNoFavoritesYet')}
+          description={t('plusme:contentYouLikedWillAppearHere')}
         />
       );
     case 'history':
       return (
         <EmptyState
           icon="🕐"
-          title="سجل الاستماع فارغ"
-          description="المحتوى الذي استمعت إليه سيظهر هنا"
+          title={t('plusme:theListeningRecordIsEmpty')}
+          description={t('plusme:theContentYouListenedToWillAppearHere')}
         />
       );
     case 'subscriptions':
       return (
         <EmptyState
           icon="⭐"
-          title="لا توجد اشتراكات بعد"
-          description="اشتراكاتك وعضوياتك ستظهر هنا"
+          title={t('plusme:thereAreNoSubscriptionsYet')}
+          description={t('plusme:yourSubscriptionsAndMembershipsWillAppea')}
         />
       );
     default:

@@ -41,3 +41,7 @@
 - `functions/src/callables/getAudioPlaybackUrl.ts` — authorized signed playback URL.
 - `functions/src/triggers/onAudioUploadFinalize.ts` — processing trigger when introduced.
 - `packages/shared/src/audioProcessing.ts` — processing job/status contracts when introduced.
+
+## Scripts and Tooling (Updated 2026-06-03)
+
+- `scripts/fix_all_locales.py`, `scripts/update_i18n_index.js`, `scripts/patch_i18n.js`: Automation scripts that traverse `.tsx` UI files to extract hardcoded Arabic strings, generate translation keys, and automatically sync `apps/web/public/locales/ar/translation.json`.

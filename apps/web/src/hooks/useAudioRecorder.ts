@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+const tWrapper = (key: any, options?: any) => i18n.t(key, options) as any as string;
 /**
  * Sound Platform — useAudioRecorder Hook
  * ========================================
@@ -108,7 +110,7 @@ export function useAudioRecorder(): AudioRecorderResult {
       const mime = getSupportedMime();
       if (!mime) {
         setState('error');
-        setErrorMessage('متصفحك لا يدعم تسجيل الصوت. جرّب Chrome أو Firefox.');
+        setErrorMessage(tWrapper('useaudiorecorder:yourBrowserDoesNot'));
         return;
       }
 
@@ -157,11 +159,11 @@ export function useAudioRecorder(): AudioRecorderResult {
     } catch (err: unknown) {
       setState('error');
       if (err instanceof DOMException && err.name === 'NotAllowedError') {
-        setErrorMessage('تم رفض إذن الميكروفون. يرجى السماح بالوصول من إعدادات المتصفح.');
+        setErrorMessage(tWrapper('useaudiorecorder:microphonePermissionDeniedPlease'));
       } else if (err instanceof DOMException && err.name === 'NotFoundError') {
-        setErrorMessage('لم يتم العثور على ميكروفون. تأكد من توصيل جهاز صوت.');
+        setErrorMessage(tWrapper('useaudiorecorder:noMicrophoneFoundMake'));
       } else {
-        setErrorMessage('حدث خطأ أثناء بدء التسجيل.');
+        setErrorMessage(tWrapper('useaudiorecorder:anErrorOccurredWhile'));
       }
     }
   }, []);

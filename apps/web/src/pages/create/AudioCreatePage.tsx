@@ -23,8 +23,10 @@
  * Query: ?source=record|upload → pre-selects tab in step 6
  */
 
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useSearchParams, useNavigate } from 'react-router-dom';
+import { useTranslation } from 'react-i18next';
+import { useCategories } from '../../hooks/useCategories';
 import { ref as storageRef, uploadBytesResumable, getDownloadURL } from 'firebase/storage';
 import { storage } from '../../lib/firebase';
 import { useAuth } from '../../contexts/AuthContext';
@@ -36,6 +38,7 @@ import {
   callPublishAudioContent,
   callGetUserPlaylists,
   callRenderDraftPreview,
+  callCreatePlaylist,
 } from '../../lib/callables';
 import {
   extractAudioDuration,
@@ -100,121 +103,198 @@ const STEP_LABELS: Record<WizardStep, string> = {
 const ALL_STEPS: WizardStep[] = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12];
 type Step6Tab = 'record' | 'upload';
 
-// ── Constants ─────────────────────────────────────────────────────────────────
+const useAudioOptions = (t: any) => {
+  const WORLDS: { key: string; label: string }[] = [
+    { key: 'general', label: t('world_general', 'عام') },
+    { key: 'plus', label: t('world_plus', 'بلس') },
+    { key: 'music', label: t('world_music', 'موسيقى') }
+  ];
 
-const WORLDS: { key: WorldId; label: string; note: string }[] = [
-  { key: 'general', label: 'عام', note: 'محتوى صوتي مفتوح للجميع' },
-  { key: 'plus', label: 'بلس', note: 'محتوى حصري للمشتركين' },
-];
+  const KINDS_BY_WORLD: Record<string, { key: any; label: string }[]> = {
+    general: [
+      { key: 'shortAudio', label: t('kind_shortAudio', 'مقطع قصير') },
+      { key: 'longAudio', label: t('kind_longAudio', 'صوت طويل') },
+      { key: 'podcast', label: t('kind_podcast', 'بودكاست') }
+    ],
+    plus: [
+      { key: 'shortAudio', label: t('kind_shortAudio', 'مقطع قصير') },
+      { key: 'longAudio', label: t('kind_longAudio', 'صوت طويل') },
+      { key: 'podcast', label: t('kind_podcast', 'بودكاست') }
+    ],
+    music: [
+      { key: 'song', label: t('kind_song', 'أغنية') },
+      { key: 'albumTrack', label: t('kind_album_track', 'مقطع ألبوم') }
+    ]
+  };
 
-const KINDS_BY_WORLD: Record<string, { key: AudioContentKind; label: string }[]> = {
-  general: [
-    { key: 'longAudio', label: 'صوت طويل' },
-    { key: 'podcast', label: 'بودكاست' },
-    { key: 'shortAudio', label: 'مقطع قصير' },
-  ],
-  plus: [
-    { key: 'longAudio', label: 'صوت طويل' },
-    { key: 'podcast', label: 'بودكاست' },
-    { key: 'shortAudio', label: 'مقطع قصير' },
-  ],
+  const CATEGORIES = [
+    { id: 'culture', label: t('cat_culture', 'ثقافة') },
+    { id: 'entertainment', label: t('cat_entertainment', 'ترفيه') },
+    { id: 'education', label: t('cat_education', 'تعليم') },
+    { id: 'religion', label: t('cat_religion', 'ديني') },
+    { id: 'sports', label: t('cat_sports', 'رياضة') },
+    { id: 'news', label: t('cat_news', 'أخبار') },
+    { id: 'technology', label: t('cat_technology', 'تقنية') },
+    { id: 'other', label: t('cat_other', 'أخرى') },
+  ];
+
+  const SUBCATEGORIES_BY_CATEGORY: Record<string, { id: string; label: string }[]> = {
+    culture: [
+      { id: 'creativity', label: t('subcat_creativity', 'إبداع وهدوء') },
+      { id: 'visual_arts', label: t('subcat_visual_arts', 'فنون بصرية') },
+      { id: 'literature', label: t('subcat_literature', 'أدب وشعر') },
+    ],
+    entertainment: [
+      { id: 'comedy', label: t('subcat_comedy', 'كوميديا') },
+      { id: 'drama', label: t('subcat_drama', 'دراما') },
+      { id: 'talk_shows', label: t('subcat_talk_shows', 'برامج حوارية') },
+    ],
+    education: [
+      { id: 'science', label: t('subcat_science', 'علوم') },
+      { id: 'technology', label: t('subcat_technology_edu', 'تقنية') },
+      { id: 'languages', label: t('subcat_languages', 'لغات') },
+    ],
+    religion: [
+      { id: 'quran', label: t('subcat_quran', 'قرآن') },
+      { id: 'lectures', label: t('subcat_lectures', 'دروس ومحاضرات') },
+      { id: 'stories', label: t('subcat_stories', 'قصص دينية') },
+    ],
+    sports: [
+      { id: 'football', label: t('subcat_football', 'كرة قدم') },
+      { id: 'fitness', label: t('subcat_fitness', 'لياقة وصحة') },
+      { id: 'analysis', label: t('subcat_analysis', 'تحليل رياضي') },
+    ],
+    news: [
+      { id: 'local', label: t('subcat_local', 'محلي') },
+      { id: 'international', label: t('subcat_international', 'دولي') },
+      { id: 'economy', label: t('subcat_economy', 'اقتصاد') },
+    ],
+    technology: [
+      { id: 'ai', label: t('subcat_ai', 'ذكاء اصطناعي') },
+      { id: 'programming', label: t('subcat_programming', 'برمجة') },
+      { id: 'reviews', label: t('subcat_reviews', 'مراجعات') },
+    ],
+  };
+
+  const AUDIENCE_OPTIONS: { key: AudienceType; label: string; icon: string }[] = [
+    { key: 'public', label: t('audience_public', 'عام — الجميع'), icon: 'visibility' },
+    { key: 'followers', label: t('audience_followers', 'المتابعون فقط'), icon: 'group' },
+    { key: 'following', label: t('audience_following', 'من أتابعهم فقط'), icon: 'person_add' },
+    { key: 'friends', label: t('audience_friends', 'الأصدقاء فقط'), icon: 'handshake' },
+    { key: 'specificList', label: t('audience_specificList', 'قائمة محددة'), icon: 'list' },
+    { key: 'listExcept', label: t('audience_listExcept', 'الجميع عدا قائمة'), icon: 'block' },
+    { key: 'selectedPeople', label: t('audience_selectedPeople', 'أشخاص مختارون'), icon: 'person_search' },
+    { key: 'onlyMe', label: t('audience_onlyMe', 'أنا فقط'), icon: 'person' },
+  ];
+
+  const LANGUAGES = [
+    { code: 'ar', label: t('lang_ar', 'العربية') },
+    { code: 'en', label: 'English' },
+    { code: 'fr', label: 'Français' },
+    { code: 'es', label: 'Español' },
+    { code: 'other', label: t('lang_other', 'أخرى') },
+  ];
+
+  const MUSIC_SOURCE_OPTIONS = [
+    { id: 'none', label: t('music_none', 'بدون موسيقى'), icon: 'music_off', available: true },
+    { id: 'uploaded', label: t('music_uploaded', 'رفع من الجهاز'), icon: 'upload_file', available: true },
+    { id: 'library', label: t('music_library', 'مكتبة Sound'), icon: 'library_music', available: false },
+  ];
+
+  const SFX_SOURCE_OPTIONS = [
+    { id: 'none', label: t('sfx_none', 'بدون مؤثرات'), icon: 'music_off', available: true },
+    { id: 'uploaded', label: t('sfx_uploaded', 'رفع من الجهاز'), icon: 'upload_file', available: true },
+    { id: 'library', label: t('sfx_library', 'مكتبة ساوند — قريباً'), icon: 'library_music', available: false },
+  ];
+
+  return { WORLDS, KINDS_BY_WORLD, CATEGORIES, SUBCATEGORIES_BY_CATEGORY, AUDIENCE_OPTIONS, LANGUAGES, MUSIC_SOURCE_OPTIONS, SFX_SOURCE_OPTIONS };
 };
-
-const CATEGORIES = [
-  { id: 'culture', label: 'ثقافة' },
-  { id: 'entertainment', label: 'ترفيه' },
-  { id: 'education', label: 'تعليم' },
-  { id: 'religion', label: 'ديني' },
-  { id: 'sports', label: 'رياضة' },
-  { id: 'news', label: 'أخبار' },
-  { id: 'technology', label: 'تقنية' },
-  { id: 'other', label: 'أخرى' },
-];
-
-const SUBCATEGORIES_BY_CATEGORY: Record<string, { id: string; label: string }[]> = {
-  culture: [
-    { id: 'creativity', label: 'إبداع وهدوء' },
-    { id: 'visual_arts', label: 'فنون بصرية' },
-    { id: 'literature', label: 'أدب وشعر' },
-  ],
-  entertainment: [
-    { id: 'comedy', label: 'كوميديا' },
-    { id: 'drama', label: 'دراما' },
-    { id: 'talk_shows', label: 'برامج حوارية' },
-  ],
-  education: [
-    { id: 'science', label: 'علوم' },
-    { id: 'technology', label: 'تقنية' },
-    { id: 'languages', label: 'لغات' },
-  ],
-  religion: [
-    { id: 'quran', label: 'قرآن' },
-    { id: 'lectures', label: 'دروس ومحاضرات' },
-    { id: 'stories', label: 'قصص دينية' },
-  ],
-  sports: [
-    { id: 'football', label: 'كرة قدم' },
-    { id: 'fitness', label: 'لياقة وصحة' },
-    { id: 'analysis', label: 'تحليل رياضي' },
-  ],
-  news: [
-    { id: 'local', label: 'محلي' },
-    { id: 'international', label: 'دولي' },
-    { id: 'economy', label: 'اقتصاد' },
-  ],
-  technology: [
-    { id: 'ai', label: 'ذكاء اصطناعي' },
-    { id: 'programming', label: 'برمجة' },
-    { id: 'reviews', label: 'مراجعات' },
-  ],
-};
-
-const AUDIENCE_OPTIONS: { key: AudienceType; label: string; icon: string }[] = [
-  { key: 'public', label: 'عام — الجميع', icon: 'visibility' },
-  { key: 'followers', label: 'المتابعون فقط', icon: 'group' },
-  { key: 'following', label: 'من أتابعهم فقط', icon: 'person_add' },
-  { key: 'friends', label: 'الأصدقاء فقط', icon: 'handshake' },
-  { key: 'specificList', label: 'قائمة محددة', icon: 'list' },
-  { key: 'listExcept', label: 'الجميع عدا قائمة', icon: 'block' },
-  { key: 'selectedPeople', label: 'أشخاص مختارون', icon: 'person_search' },
-  { key: 'onlyMe', label: 'أنا فقط', icon: 'person' },
-];
-
-const LANGUAGES = [
-  { code: 'ar', label: 'العربية' },
-  { code: 'en', label: 'English' },
-  { code: 'fr', label: 'Français' },
-  { code: 'es', label: 'Español' },
-  { code: 'other', label: 'أخرى' },
-];
-
-// ── Effects: AUDIO_PRESETS + AUDIO_FILTERS imported from @sound/shared ──
-// ── Mixing: MIXING_PRESET_DEFS + createDefaultTracks imported from @sound/shared ──
-
-// Mixing source options for background music
-const MUSIC_SOURCE_OPTIONS = [
-  { id: 'none', label: 'بدون موسيقى', icon: 'music_off', available: true },
-  { id: 'uploaded', label: 'رفع من الجهاز', icon: 'upload_file', available: true },
-  { id: 'library', label: 'مكتبة Sound', icon: 'library_music', available: false },
-];
-
-// SFX source options — separate from music to avoid wrong labels
-const SFX_SOURCE_OPTIONS = [
-  { id: 'none', label: 'بدون مؤثرات', icon: 'music_off', available: true },
-  { id: 'uploaded', label: 'رفع من الجهاز', icon: 'upload_file', available: true },
-  { id: 'library', label: 'مكتبة ساوند — قريباً', icon: 'library_music', available: false },
-];
 
 /** Max SFX items — configurable, generous default */
 const MAX_SFX_ITEMS = 50;
 
+/** Format ms to mm:ss.mmm for SFX and Trim timing display */
+const formatMsToTimeInput = (ms: number): string => {
+  const totalMs = Math.max(0, Math.round(ms));
+  const min = Math.floor(totalMs / 60000);
+  const sec = Math.floor((totalMs % 60000) / 1000);
+  const millis = totalMs % 1000;
+  return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
+};
+
+/** Parse mm:ss.mmm to ms */
+const parseTimeInputToMs = (val: string): number => {
+  const parts = val.split(':');
+  if (parts.length === 2) {
+    const min = parseInt(parts[0] ?? '0') || 0;
+    const secParts = (parts[1] ?? '0').split('.');
+    const sec = parseInt(secParts[0] ?? '0') || 0;
+    const msStr = (secParts[1] ?? '0').padEnd(3, '0').slice(0, 3);
+    const millis = parseInt(msStr) || 0;
+    return Math.max(0, min * 60000 + Math.min(sec, 59) * 1000 + Math.min(millis, 999));
+  }
+  const sec = parseFloat(val) || 0;
+  return Math.max(0, Math.round(sec * 1000));
+};
+
+const TimeInputControl = ({ valueMs, onChange }: { valueMs: number; onChange: (ms: number) => void }) => {
+  const [localStr, setLocalStr] = useState<string | null>(null);
+  
+  useEffect(() => {
+    setLocalStr(formatMsToTimeInput(valueMs));
+  }, [valueMs]);
+
+  return (
+    <input
+      type="text"
+      dir="ltr"
+      className="acp-input acp-input--sm"
+      style={{ width: '90px', fontFamily: 'monospace', textAlign: 'center' }}
+      value={localStr !== null ? localStr : formatMsToTimeInput(valueMs)}
+      onChange={e => setLocalStr(e.target.value)}
+      onBlur={() => {
+        if (localStr) onChange(parseTimeInputToMs(localStr));
+      }}
+      onKeyDown={e => {
+        if (e.key === 'Enter' && localStr) {
+          onChange(parseTimeInputToMs(localStr));
+          e.currentTarget.blur();
+        }
+      }}
+      placeholder="00:00.000"
+    />
+  );
+};
+
 // ── Page Component ───────────────────────────────────────────────────────────
 
 export function AudioCreatePage() {
+  const { t, i18n } = useTranslation('audiocreate');
+  const { WORLDS, KINDS_BY_WORLD, CATEGORIES, SUBCATEGORIES_BY_CATEGORY, AUDIENCE_OPTIONS, LANGUAGES, MUSIC_SOURCE_OPTIONS, SFX_SOURCE_OPTIONS } = useAudioOptions(t);
   const { currentUser } = useAuth();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
   const uid = currentUser?.uid ?? '';
+
+  const iconNext = i18n.dir() === 'rtl' ? 'arrow_back' : 'arrow_forward';
+  const iconPrev = i18n.dir() === 'rtl' ? 'arrow_forward' : 'arrow_back';
+
+  const STEP_LABELS: Record<number, string> = {
+    1: t('step1_info', 'المعلومات'),
+    2: t('step2_publish', 'تفاصيل النشر'),
+    3: t('step3_cover', 'الغلاف'),
+    4: t('step4_captions', 'الترجمة'),
+    5: t('step5_prompter', 'الملقن'),
+    6: t('step6_recording', 'التسجيل'),
+    7: t('step7_review', 'المراجعة'),
+    8: t('step8_effects', 'المؤثرات'),
+    9: t('step9_mixing', 'المكساج'),
+    10: t('step10_preview', 'المعاينة'),
+    11: t('step11_confirm', 'التأكيد'),
+    12: t('step12_result', 'النتيجة'),
+  };
+
+
 
   // ── Wizard state ──────────────────────────────────────────────────────────
   const [step, setStep] = useState<WizardStep>(1);
@@ -227,6 +307,8 @@ export function AudioCreatePage() {
   const [caption, setCaption] = useState('');
   const [world, setWorld] = useState<WorldId>('general');
   const [kind, setKind] = useState<AudioContentKind>('longAudio');
+
+  const { categoryOptions, getSubcategoryOptions } = useCategories(world);
 
   // ── Step 2: Publish Details ───────────────────────────────────────────────
   const [categoryId, setCategoryId] = useState('');
@@ -249,7 +331,28 @@ export function AudioCreatePage() {
   const [userPlaylists, setUserPlaylists] = useState<PlaylistDoc[]>([]);
   const [playlistsLoaded, setPlaylistsLoaded] = useState(false);
   const [playlistsLoading, setPlaylistsLoading] = useState(false);
+
+  useEffect(() => {
+    if (currentUser && !playlistsLoaded && !playlistsLoading) {
+      setPlaylistsLoading(true);
+      callGetUserPlaylists({})
+        .then((res: any) => {
+          setUserPlaylists(res.data.playlists || []);
+          setPlaylistsLoaded(true);
+        })
+        .catch(() => {
+          setUserPlaylists([]);
+          setPlaylistsLoaded(true);
+        })
+        .finally(() => {
+          setPlaylistsLoading(false);
+        });
+    }
+  }, [currentUser, playlistsLoaded, playlistsLoading, callGetUserPlaylists]);
   const [playlistDropdownOpen, setPlaylistDropdownOpen] = useState(false);
+  const [newPlaylistVisibility, setNewPlaylistVisibility] = useState<AudienceType>('public');
+  const [privacyDropdownOpen, setPrivacyDropdownOpen] = useState(false);
+  const [playlistCreating, setPlaylistCreating] = useState(false);
   const [commentsEnabled, setCommentsEnabled] = useState(true);
   const [giftsEnabled, setGiftsEnabled] = useState(true);
   const [sharingEnabled, setSharingEnabled] = useState(true);
@@ -400,6 +503,7 @@ export function AudioCreatePage() {
   const [trimStartMs, setTrimStartMs] = useState(0);
   const [trimEndMs, setTrimEndMs] = useState(0); // 0 = use original end
   const [editCuts, setEditCuts] = useState<AudioCutSegment[]>([]);
+  const [isCutsSaved, setIsCutsSaved] = useState(true); // Phase 8-L.2 Guard
 
   // Phase 8-L.1: Client-side waveform + preview playback
   const [waveformPeaks, setWaveformPeaks] = useState<number[]>([]);
@@ -407,8 +511,11 @@ export function AudioCreatePage() {
   const waveformAudioRef = useRef<HTMLAudioElement>(null);
   const [wfPlaying, setWfPlaying] = useState(false);
   const [wfCurrentMs, setWfCurrentMs] = useState(0);
+  const [waveformDurationMs, setWaveformDurationMs] = useState<number | null>(null);
   const wfAnimRef = useRef<number>(0);
   const [wfDragging, setWfDragging] = useState(false);
+  const [wfHoverMs, setWfHoverMs] = useState<number | null>(null);
+  const [wfHoverX, setWfHoverX] = useState(0);
   const waveformTimelineRef = useRef<HTMLDivElement>(null);
 
   const originalDurationMs = audioAsset?.durationMs || 0;
@@ -418,11 +525,36 @@ export function AudioCreatePage() {
   const [renderingStage, setRenderingStage] = useState<PreviewStage | null>(null);
   const [previewUrls, setPreviewUrls] = useState<Record<string, string>>({});
 
+  //  Phase 8-L.2: Sequential Audio Handoff 
+  // Determine which audio the user is currently working on based on the step.
+  const getWorkingAudioUrl = () => {
+    // In Mixing (Step 9), the "base" is Effects output.
+    if (step >= 9 && previewUrls.effects) return previewUrls.effects;
+    // In Effects (Step 8), the "base" is Edit output.
+    if (step >= 8 && previewUrls.edit) return previewUrls.edit;
+    // In Edit (Step 7), or if previews don't exist, we work on the original audio.
+    return recorder.audioUrl || (selectedFile ? URL.createObjectURL(selectedFile) : null);
+  };
+
+  const workingDurationMs = useMemo(() => {
+    if (step >= 9 && previewAssets.effects?.durationMs) return previewAssets.effects.durationMs;
+    if (step >= 8 && previewAssets.edit?.durationMs) return previewAssets.edit.durationMs;
+    return originalDurationMs;
+  }, [step, previewAssets.edit?.durationMs, previewAssets.effects?.durationMs, originalDurationMs]);
+
   /** Call backend to render a stage preview. Returns playback URL. */
   const renderPreview = async (stage: PreviewStage) => {
     if (!draftId) return;
     setRenderingStage(stage);
     try {
+      // MAJOR FIX: Ensure all current config states are pushed to backend BEFORE telling the backend to render them!
+      const payload = {
+        editConfig: buildEditConfig(),
+        effectsConfig: buildEffectsConfig(),
+        mixingConfig: buildMixingConfig(),
+      };
+      await callUpdateAudioDraft({ draftId, ...payload });
+
       const result = await callRenderDraftPreview({ draftId, stage });
       const resp = result.data;
       setPreviewAssets(prev => ({
@@ -456,7 +588,7 @@ export function AudioCreatePage() {
     // If any stage is enabled but no preview URL exists, return null (render required)
     if (anyStageEnabled) return null;
     // No stages enabled — original audio is the preview
-    return previewAudioUrl;
+    return recorder.audioUrl || (selectedFile ? URL.createObjectURL(selectedFile) : null);
   };
 
   const getStagePreviewStatus = (stage: PreviewStage): PreviewStatus => {
@@ -468,7 +600,25 @@ export function AudioCreatePage() {
     const effectiveEnd = tEnd > 0 && tEnd < origDur ? tEnd : origDur;
     const effectiveStart = tStart > 0 ? Math.min(tStart, effectiveEnd) : 0;
     let duration = effectiveEnd - effectiveStart;
-    for (const cut of cuts) {
+    
+    // Merge overlapping cuts first so they don't exponentially shrink the duration
+    const sortedCuts = [...cuts].sort((a, b) => a.startMs - b.startMs);
+    const mergedCuts: {startMs: number, endMs: number}[] = [];
+    
+    for (const cut of sortedCuts) {
+      if (mergedCuts.length === 0) {
+        mergedCuts.push({startMs: cut.startMs, endMs: cut.endMs});
+      } else {
+        const last = mergedCuts[mergedCuts.length - 1];
+        if (cut.startMs <= last!.endMs) {
+          last!.endMs = Math.max(last!.endMs, cut.endMs);
+        } else {
+          mergedCuts.push({startMs: cut.startMs, endMs: cut.endMs});
+        }
+      }
+    }
+
+    for (const cut of mergedCuts) {
       const cStart = Math.max(cut.startMs, effectiveStart);
       const cEnd = Math.min(cut.endMs, effectiveEnd);
       if (cEnd > cStart) duration -= (cEnd - cStart);
@@ -481,21 +631,33 @@ export function AudioCreatePage() {
     : originalDurationMs;
 
   const addCut = () => {
-    if (editCuts.length >= 1) return; // Phase 8-L: max 1 cut
-    const mid = Math.floor(originalDurationMs / 2);
+    setIsCutsSaved(false);
     const cutLen = Math.min(5000, Math.floor(originalDurationMs / 4));
-    setEditCuts([{
-      id: `cut_${Date.now()}`,
-      startMs: Math.max(0, mid - Math.floor(cutLen / 2)),
-      endMs: Math.min(originalDurationMs, mid + Math.floor(cutLen / 2)),
+    
+    // Place new cuts after existing cuts to prevent exact overlaps
+    let startPoint = Math.floor(originalDurationMs / 2) - Math.floor(cutLen / 2);
+    if (editCuts.length > 0) {
+      const maxEnd = Math.max(...editCuts.map(c => c.endMs));
+      startPoint = maxEnd + 1000; // Place 1 second after the last cut
+      if (startPoint + cutLen > originalDurationMs) {
+        startPoint = 0; // Wrap to beginning if we run out of space
+      }
+    }
+    
+    setEditCuts(prev => [...prev, {
+      id: `cut_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
+      startMs: Math.max(0, startPoint),
+      endMs: Math.min(originalDurationMs, startPoint + cutLen),
     }]);
   };
 
   const removeCut = (cutId: string) => {
+    setIsCutsSaved(false);
     setEditCuts(prev => prev.filter(c => c.id !== cutId));
   };
 
   const updateCut = (cutId: string, updates: Partial<AudioCutSegment>) => {
+    setIsCutsSaved(false);
     setEditCuts(prev => prev.map(c => c.id === cutId ? { ...c, ...updates } : c));
   };
 
@@ -504,6 +666,7 @@ export function AudioCreatePage() {
     setTrimStartMs(0);
     setTrimEndMs(0);
     setEditCuts([]);
+    setIsCutsSaved(true);
     // Clear stale preview state for edit and all downstream
     setPreviewAssets(prev => { const next = { ...prev }; delete next.edit; delete next.effects; delete next.mixing; delete next.final; return next; });
     setPreviewUrls(prev => { const next = { ...prev }; delete next.edit; delete next.effects; delete next.mixing; delete next.final; return next; });
@@ -526,10 +689,10 @@ export function AudioCreatePage() {
 
   // ── Phase 8-L.1: Client-side waveform generation ──────────────────────────
   useEffect(() => {
-    const audioUrl = recorder.audioUrl || (selectedFile ? URL.createObjectURL(selectedFile) : null);
+    const audioUrl = getWorkingAudioUrl();
     if (!audioUrl) { setWaveformPeaks([]); return; }
     let cancelled = false;
-    const needsRevoke = !recorder.audioUrl && !!selectedFile;
+    const needsRevoke = audioUrl.startsWith('blob:');
     setWaveformLoading(true);
     (async () => {
       try {
@@ -538,6 +701,7 @@ export function AudioCreatePage() {
         const ctx = new (window.AudioContext || (window as any).webkitAudioContext)();
         const decoded = await ctx.decodeAudioData(buf);
         if (cancelled) { ctx.close(); return; }
+        setWaveformDurationMs(decoded.duration * 1000);
         const data = decoded.getChannelData(0);
         const peakCount = 200;
         const blockSize = Math.floor(data.length / peakCount);
@@ -555,20 +719,20 @@ export function AudioCreatePage() {
       if (!cancelled) setWaveformLoading(false);
     })();
     return () => { cancelled = true; if (needsRevoke) URL.revokeObjectURL(audioUrl); };
-  }, [recorder.audioUrl, selectedFile]);
+  }, [step, previewUrls.edit, previewUrls.effects, recorder.audioUrl, selectedFile]);
 
   // ── Trim/cut-aware playback (client-side preview) ──────────────────────────
-  const effectiveStart = editEnabled && trimStartMs > 0 ? trimStartMs : 0;
-  const effectiveEnd = editEnabled && trimEndMs > 0 && trimEndMs < originalDurationMs ? trimEndMs : originalDurationMs;
+  const effectiveStart = (step === 7 && editEnabled && trimStartMs > 0) ? trimStartMs : 0;
+  const effectiveEnd = (step === 7 && editEnabled && trimEndMs > 0 && trimEndMs < originalDurationMs) ? trimEndMs : (waveformDurationMs || workingDurationMs);
 
   /** Check if a given ms is inside a cut region */
   const isInsideCut = useCallback((ms: number): AudioCutSegment | null => {
-    if (!editEnabled) return null;
+    if (step !== 7 || !editEnabled) return null;
     for (const cut of editCuts) {
       if (ms >= cut.startMs && ms < cut.endMs) return cut;
     }
     return null;
-  }, [editEnabled, editCuts]);
+  }, [step, editEnabled, editCuts]);
 
   /** Waveform playback tick — handles trim bounds + cut skipping */
   const wfTick = useCallback(() => {
@@ -731,30 +895,6 @@ export function AudioCreatePage() {
     setSfxItems(prev => prev.map(s => s.id === sfxId ? { ...s, ...updates } : s));
   };
 
-  /** Format ms to mm:ss.S */
-  /** Format ms to mm:ss.mmm for SFX timing display */
-  const formatMsToTimeInput = (ms: number): string => {
-    const totalMs = Math.max(0, Math.round(ms));
-    const min = Math.floor(totalMs / 60000);
-    const sec = Math.floor((totalMs % 60000) / 1000);
-    const millis = totalMs % 1000;
-    return `${String(min).padStart(2, '0')}:${String(sec).padStart(2, '0')}.${String(millis).padStart(3, '0')}`;
-  };
-
-  /** Parse mm:ss.mmm to ms */
-  const parseTimeInputToMs = (val: string): number => {
-    const parts = val.split(':');
-    if (parts.length === 2) {
-      const min = parseInt(parts[0] ?? '0') || 0;
-      const secParts = (parts[1] ?? '0').split('.');
-      const sec = parseInt(secParts[0] ?? '0') || 0;
-      const msStr = (secParts[1] ?? '0').padEnd(3, '0').slice(0, 3);
-      const millis = parseInt(msStr) || 0;
-      return Math.max(0, min * 60000 + Math.min(sec, 59) * 1000 + Math.min(millis, 999));
-    }
-    const sec = parseFloat(val) || 0;
-    return Math.max(0, Math.round(sec * 1000));
-  };
 
   // ── Step 10: Preview playback ──────────────────────────────────────────────
   const previewAudioRef = useRef<HTMLAudioElement>(null);
@@ -795,7 +935,7 @@ export function AudioCreatePage() {
   // Trim/cut-aware timeupdate for Final Preview
   useEffect(() => {
     const audio = previewAudioRef.current;
-    if (!audio || !editEnabled) return;
+    if (!audio || step !== 7 || !editEnabled) return;
     const handler = () => {
       const curMs = audio.currentTime * 1000;
       // Stop at trim end
@@ -810,7 +950,7 @@ export function AudioCreatePage() {
     };
     audio.addEventListener('timeupdate', handler);
     return () => audio.removeEventListener('timeupdate', handler);
-  }, [editEnabled, effectiveEnd, isInsideCut]);
+  }, [step, editEnabled, effectiveEnd, isInsideCut]);
 
   // ── Step 12: Publish ──────────────────────────────────────────────────────
   const [publishing, setPublishing] = useState(false);
@@ -898,14 +1038,18 @@ export function AudioCreatePage() {
       };
 
       if (draftId) {
-        await callUpdateAudioDraft({ draftId, ...payload });
+        // Fire-and-forget update to improve navigation speed
+        callUpdateAudioDraft({ draftId, ...payload }).catch(err => {
+          console.error('Background save error:', err);
+        });
+        setStep(nextStep);
       } else {
         const result = await callCreateAudioDraft(payload);
         setDraftId(result.data.draftId);
+        setStep(nextStep);
       }
-      setStep(nextStep);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل حفظ المسودة.';
+      const msg = err instanceof Error ? err.message : t('draftSaveFailed', 'فشل حفظ المسودة.');
       setSaveError(msg);
     } finally {
       setSaving(false);
@@ -930,7 +1074,7 @@ export function AudioCreatePage() {
     setFileError(null);
     setFileDurationMs(null);
     if (!file.type.startsWith('audio/')) {
-      setFileError('يجب أن يكون الملف من نوع صوتي (audio/*).');
+      setFileError(t('fileMustBeAudio', 'يجب أن يكون الملف من نوع صوتي (audio/*).'));
       setSelectedFile(null);
       return;
     }
@@ -977,10 +1121,17 @@ export function AudioCreatePage() {
           waveformStatus: 'pending',
           transcriptStatus: 'pending',
         };
-        await callUpdateAudioDraft({ draftId, audioAsset: asset, currentStep: '7' });
+        // Reset trim and cuts when a new audio file is attached to prevent out-of-bounds ghost cuts
+        const resetEditConfig = { trimStartMs: 0, trimEndMs: 0, cuts: [], enabled: false };
+        await callUpdateAudioDraft({ draftId, audioAsset: asset, editConfig: resetEditConfig, currentStep: '7' });
         setAudioAsset(asset);
+        setTrimStartMs(0);
+        setTrimEndMs(0);
+        setEditCuts([]);
+        setEditEnabled(false);
+        setIsCutsSaved(false);
       } catch (err: unknown) {
-        const msg = err instanceof Error ? err.message : 'فشل ربط الملف الصوتي بالمسودة.';
+        const msg = err instanceof Error ? err.message : t('attachFailed', 'فشل ربط الملف الصوتي بالمسودة.');
         setAttachError(msg);
       } finally {
         setAttaching(false);
@@ -1002,7 +1153,7 @@ export function AudioCreatePage() {
 
     // Must have a draft to upload
     if (!draftId || !uid) {
-      setCoverError('يجب حفظ المسودة أولاً لرفع الغلاف.');
+      setCoverError(t('saveDraftFirstForCover', 'يجب حفظ المسودة أولاً لرفع الغلاف.'));
       return;
     }
 
@@ -1022,7 +1173,7 @@ export function AudioCreatePage() {
       (snap) => setCoverProgress(Math.round((snap.bytesTransferred / snap.totalBytes) * 100)),
       (err) => {
         setCoverUploading(false);
-        setCoverError(err.message || 'فشل رفع الغلاف.');
+        setCoverError(err.message || t('coverUploadFailed', 'فشل رفع الغلاف.'));
       },
       async () => {
         // Upload done → build coverAsset with storagePath
@@ -1053,11 +1204,56 @@ export function AudioCreatePage() {
     setPublishing(true);
     setPublishError(null);
     try {
+      // Force a final synchronous save to ensure all edit/mixing/effects payloads are committed
+      // before the backend publish function reads the draft. This fixes the race condition where
+      // rapid clicks on "Next -> Publish" could cause the publish to read the old draft.
+      const finalPayload = {
+        title: title.trim(),
+        caption: caption.trim() || undefined,
+        world,
+        kind,
+        categoryId: categoryId || undefined,
+        categoryLabel: CATEGORIES.find((c) => c.id === categoryId)?.label,
+        subcategoryId: subcategoryId || undefined,
+        subcategoryLabel: SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label,
+        language,
+        tags: tags.trim() ? tags.split(',').map((t) => t.trim()).filter(Boolean) : [],
+        countryMode,
+        countryCodes: countryMode !== 'all' && countryCodes.trim()
+          ? countryCodes.split(',').map((c) => c.trim()).filter(Boolean)
+          : [],
+        ageSuitability,
+        isExplicit,
+        isChildContent,
+        placementFeed,
+        playlistIntent,
+        playlistId: selectedPlaylistId || undefined,
+        newPlaylistName: newPlaylistName || undefined,
+        audience,
+        publishToggles: { commentsEnabled, giftsEnabled, sharingEnabled },
+        coverAsset: coverAsset ?? undefined,
+        captionsSetup: { enabled: captionsEnabled, language: captionLang, style: captionStyle },
+        autoCue: {
+          enabled: autoCueEnabled,
+          scriptText: scriptText || undefined,
+          scriptSource: 'manual' as const,
+          scrollSpeed,
+          fontSize,
+          readingMode,
+          startDelaySec: startDelay,
+          highlightCurrentLine: highlightLine,
+        },
+        effectsConfig: buildEffectsConfig(),
+        mixingConfig: buildMixingConfig(),
+        editConfig: buildEditConfig(),
+      };
+      await callUpdateAudioDraft({ draftId, ...finalPayload });
+
       const result = await callPublishAudioContent({ draftId, deleteDraftAfterPublish: false });
       setPublishResult({ contentId: result.data.contentId, status: result.data.status });
       setStep(12);
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : 'فشل النشر.';
+      const msg = err instanceof Error ? err.message : t('publishFailed', 'فشل النشر.');
       setPublishError(msg);
     } finally {
       setPublishing(false);
@@ -1073,9 +1269,9 @@ export function AudioCreatePage() {
   // ── Render ─────────────────────────────────────────────────────────────
 
   return (
-    <main className="page acp-page" dir="rtl">
+    <main className="page acp-page" dir={i18n.dir()}>
       {/* ── Step rail ───────────────────────────────────────────────── */}
-      <nav className="acp-rail" aria-label="خطوات الإنشاء">
+      <nav className="acp-rail" aria-label={t('creationSteps')}>
         {ALL_STEPS.map((s) => (
           <div
             key={s}
@@ -1094,36 +1290,36 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">edit_note</span>
-            معلومات المحتوى الصوتي
+            {t('audioContentInformation')}
           </h1>
           <div className="acp-form">
             <label className="acp-label">
-              العنوان <span className="acp-required">*</span>
-              <input type="text" className="acp-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder="عنوان التسجيل أو الحلقة..." maxLength={200} autoFocus />
+              {t('theAddress')} <span className="acp-required">*</span>
+              <input type="text" className="acp-input" value={title} onChange={(e) => setTitle(e.target.value)} placeholder={t('titleOfRecordingOrEpisode')} maxLength={200} autoFocus />
             </label>
             <label className="acp-label">
-              الوصف / التوضيح
-              <textarea className="acp-textarea" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder="وصف مختصر..." maxLength={1000} rows={3} />
+              {t('descriptionClarification')}
+              <textarea className="acp-textarea" value={caption} onChange={(e) => setCaption(e.target.value)} placeholder={t('briefDescription')} maxLength={1000} rows={3} />
             </label>
             <label className="acp-label">
-              العالم
+              {t('world1')}
               <div className="acp-chips">
                 {WORLDS.map((w) => (
-                  <button key={w.key} className={`acp-chip ${world === w.key ? 'acp-chip--selected' : ''}`} onClick={() => setWorld(w.key)} type="button" title={w.note}>{w.label}</button>
+                  <button key={w.key} className={`acp-chip ${world === w.key ? 'acp-chip--selected' : ''}`} onClick={() => setWorld(w.key as WorldId)} type="button">{w.label}</button>
                 ))}
               </div>
             </label>
             <label className="acp-label">
-              نوع المحتوى
+              {t('typeOfContent')}
               <div className="acp-chips">
                 {(KINDS_BY_WORLD[world] ?? []).map((k) => (
-                  <button key={k.key} className={`acp-chip ${kind === k.key ? 'acp-chip--selected' : ''}`} onClick={() => setKind(k.key)} type="button">{k.label}</button>
+                  <button key={k.key} className={`acp-chip ${kind === k.key ? 'acp-chip--selected' : ''}`} onClick={() => setKind(k.key as AudioContentKind)} type="button">{k.label}</button>
                 ))}
               </div>
             </label>
             {saveError && <p className="acp-error">{saveError}</p>}
-            <button className="acp-btn acp-btn--primary" onClick={() => { if (!title.trim()) { setSaveError('العنوان مطلوب.'); return; } saveDraft(2); }} disabled={saving || !title.trim()}>
-              {saving ? <><span className="acp-spinner" aria-hidden="true" /> جاري الحفظ...</> : <><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> التالي</>}
+            <button className="acp-btn acp-btn--primary" onClick={() => { if (!title.trim()) { setSaveError(t('addressIsRequired')); return; } saveDraft(2); }} disabled={saving || !title.trim()}>
+              {saving ? <><span className="acp-spinner" aria-hidden="true" /> {t('saving')}</> : <><span className="material-symbols-outlined" aria-hidden="true">{iconNext}</span> {t('theNext')}</>}
             </button>
           </div>
         </section>
@@ -1134,20 +1330,20 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">tune</span>
-            تفاصيل النشر
+            {t('publicationDetails')}
           </h1>
           <div className="acp-form">
             {/* Category — glass dropdown */}
             <div className="acp-label">
-              التصنيف
+              {t('classification')}
               <div className="acp-glass-dropdown">
                 <button className="acp-glass-dropdown__trigger" onClick={() => { setCategoryOpen(!categoryOpen); setSubcategoryOpen(false); }} type="button">
-                  <span>{categoryId ? CATEGORIES.find((c) => c.id === categoryId)?.label : 'اختر التصنيف...'}</span>
+                  <span>{categoryId ? categoryOptions.find((c) => c.id === categoryId)?.label : t('chooseACategory')}</span>
                   <span className="material-symbols-outlined">{categoryOpen ? 'expand_less' : 'expand_more'}</span>
                 </button>
                 {categoryOpen && (
                   <div className="acp-glass-dropdown__menu">
-                    {CATEGORIES.map((c) => (
+                    {categoryOptions.map((c) => (
                       <button key={c.id} className={`acp-glass-dropdown__option ${categoryId === c.id ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setCategoryId(c.id); setCategoryOpen(false); }} type="button">{c.label}</button>
                     ))}
                   </div>
@@ -1156,17 +1352,17 @@ export function AudioCreatePage() {
             </div>
 
             {/* Subcategory — glass dropdown, only when category selected */}
-            {categoryId && SUBCATEGORIES_BY_CATEGORY[categoryId] && (
+            {categoryId && getSubcategoryOptions(categoryId).length > 0 && (
               <div className="acp-label">
-                التصنيف الفرعي
+                {t('subclassification')}
                 <div className="acp-glass-dropdown">
                   <button className="acp-glass-dropdown__trigger" onClick={() => { setSubcategoryOpen(!subcategoryOpen); setCategoryOpen(false); }} type="button">
-                    <span>{subcategoryId ? SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label : 'اختر التصنيف الفرعي...'}</span>
+                    <span>{subcategoryId ? getSubcategoryOptions(categoryId)?.find((s) => s.id === subcategoryId)?.label : t('chooseASubcategory')}</span>
                     <span className="material-symbols-outlined">{subcategoryOpen ? 'expand_less' : 'expand_more'}</span>
                   </button>
                   {subcategoryOpen && (
                     <div className="acp-glass-dropdown__menu">
-                      {SUBCATEGORIES_BY_CATEGORY[categoryId]!.map((sc) => (
+                      {getSubcategoryOptions(categoryId).map((sc) => (
                         <button key={sc.id} className={`acp-glass-dropdown__option ${subcategoryId === sc.id ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setSubcategoryId(sc.id); setSubcategoryOpen(false); }} type="button">{sc.label}</button>
                       ))}
                     </div>
@@ -1176,13 +1372,13 @@ export function AudioCreatePage() {
             )}
 
             <label className="acp-label">
-              الوسوم (مفصولة بفواصل)
-              <input type="text" className="acp-input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder="بودكاست, تقنية, حوار..." />
+              {t('tagsSeparatedByCommas')}
+              <input type="text" className="acp-input" value={tags} onChange={(e) => setTags(e.target.value)} placeholder={t('podcastTechnologyDialogue')} />
             </label>
 
             {/* Language — glass dropdown */}
             <div className="acp-label">
-              اللغة
+              {t('language')}
               <div className="acp-glass-dropdown">
                 <button className="acp-glass-dropdown__trigger" onClick={() => setLanguageOpen(!languageOpen)} type="button">
                   <span>{LANGUAGES.find((l) => l.code === language)?.label}</span>
@@ -1199,27 +1395,27 @@ export function AudioCreatePage() {
             </div>
 
             <label className="acp-label">
-              الدول المستهدفة
+              {t('targetCountries')}
               <div className="acp-chips">
                 {(['all', 'one', 'upToFour'] as CountryMode[]).map((m) => (
                   <button key={m} className={`acp-chip ${countryMode === m ? 'acp-chip--selected' : ''}`} onClick={() => setCountryMode(m)} type="button">
-                    {m === 'all' ? 'جميع الدول' : m === 'one' ? 'دولة واحدة' : 'حتى ٤ دول'}
+                    {m === 'all' ? t('allCountries') : m === 'one' ? t('oneCountry') : t('upToCountries')}
                   </button>
                 ))}
               </div>
             </label>
             {countryMode !== 'all' && (
               <label className="acp-label">
-                رموز الدول (مفصولة بفواصل)
+                {t('countryCodesSeparatedByCommas')}
                 <input type="text" className="acp-input" value={countryCodes} onChange={(e) => setCountryCodes(e.target.value)} placeholder="SA, AE, EG, KW" maxLength={20} />
               </label>
             )}
 
             {/* Age suitability */}
             <label className="acp-label">
-              الفئة العمرية
+              {t('ageGroup')}
               <div className="acp-chips">
-                {([{ k: 'everyone' as const, l: 'الجميع' }, { k: 'teen' as const, l: '+13 مراهقين' }, { k: 'mature' as const, l: '+18 بالغين' }]).map((a) => (
+                {([{ k: 'everyone' as const, l: t('generalEveryone') }, { k: 'teen' as const, l: t('teenagers13') }, { k: 'mature' as const, l: t('adults18') }]).map((a) => (
                   <button key={a.k} className={`acp-chip ${ageSuitability === a.k ? 'acp-chip--selected' : ''}`} onClick={() => setAgeSuitability(a.k)} type="button">{a.l}</button>
                 ))}
               </div>
@@ -1227,13 +1423,13 @@ export function AudioCreatePage() {
 
             <label className="acp-label acp-label--row">
               <input type="checkbox" checked={isExplicit} onChange={(e) => setIsExplicit(e.target.checked)} />
-              محتوى صريح (Explicit)
+              {t('explicitContentExplicit')}
             </label>
 
             {/* Child content toggle */}
             <div className="acp-toggle-row">
               <span className="material-symbols-outlined">child_care</span>
-              <span>محتوى أطفال</span>
+              <span>{t('kidsContent')}</span>
               <button className={`acp-toggle ${isChildContent ? 'acp-toggle--on' : ''}`} onClick={() => setIsChildContent(!isChildContent)} type="button">
                 <span className="acp-toggle__knob" />
               </button>
@@ -1241,7 +1437,7 @@ export function AudioCreatePage() {
 
             {/* Audience — card list with icons */}
             <div className="acp-label">
-              الجمهور / الخصوصية
+              {t('audiencePrivacy')}
               <div className="acp-audience-list">
                 {AUDIENCE_OPTIONS.map((a) => (
                   <button key={a.key} className={`acp-audience-item ${audience === a.key ? 'acp-audience-item--selected' : ''}`} onClick={() => setAudience(a.key)} type="button">
@@ -1254,34 +1450,34 @@ export function AudioCreatePage() {
 
             {/* Placement feed */}
             <div className="acp-label">
-              موضع النشر
+              {t('publishingLocation', 'موضع النشر')}
               <div className="acp-cards-row">
                 <button className={`acp-card-btn ${placementFeed === 'main' ? 'acp-card-btn--selected' : ''}`} onClick={() => setPlacementFeed('main')} type="button">
                   <span className="material-symbols-outlined">home</span>
-                  <span>الرئيسية</span>
+                  <span>{t('main', 'الرئيسية')}</span>
                 </button>
                 <button className={`acp-card-btn ${placementFeed === 'shorts' ? 'acp-card-btn--selected' : ''}`} onClick={() => setPlacementFeed('shorts')} type="button">
                   <span className="material-symbols-outlined">movie</span>
-                  <span>لقطات</span>
+                  <span>{t('shots', 'لقطات')}</span>
                 </button>
               </div>
             </div>
 
             {/* Playlist intent (Phase 8-I) */}
             <div className="acp-label">
-              قائمة التشغيل
+              {t('playlist', 'قائمة التشغيل')}
               <div className="acp-playlist-cards">
                 <button className={`acp-playlist-card ${playlistIntent === 'none' ? 'acp-playlist-card--selected' : ''}`} onClick={() => { setPlaylistIntent('none'); setSelectedPlaylistId(''); setNewPlaylistName(''); setPlaylistDropdownOpen(false); }} type="button">
                   <span className="material-symbols-outlined">playlist_remove</span>
-                  بدون قائمة
+                  {t('withoutAMenu', 'بدون قائمة')}
                 </button>
                 <button className={`acp-playlist-card ${playlistIntent === 'existing' ? 'acp-playlist-card--selected' : ''}`} onClick={async () => { setPlaylistIntent('existing'); setNewPlaylistName(''); if (!playlistsLoaded && !playlistsLoading) { setPlaylistsLoading(true); try { const res = await callGetUserPlaylists({}); setUserPlaylists(res.data.playlists || []); setPlaylistsLoaded(true); } catch { setUserPlaylists([]); setPlaylistsLoaded(true); } finally { setPlaylistsLoading(false); } } setPlaylistDropdownOpen(true); }} type="button">
                   <span className="material-symbols-outlined">playlist_add</span>
-                  إضافة لقائمة موجودة
+                  {t('addToExistingPlaylist', 'إضافة لقائمة موجودة')}
                 </button>
                 <button className={`acp-playlist-card ${playlistIntent === 'new' ? 'acp-playlist-card--selected' : ''}`} onClick={() => { setPlaylistIntent('new'); setSelectedPlaylistId(''); setPlaylistDropdownOpen(false); }} type="button">
                   <span className="material-symbols-outlined">queue_music</span>
-                  إنشاء قائمة جديدة
+                  {t('createNewPlaylist', 'إنشاء قائمة جديدة')}
                 </button>
               </div>
 
@@ -1291,27 +1487,27 @@ export function AudioCreatePage() {
                   {playlistsLoading ? (
                     <div className="acp-playlist-loading">
                       <span className="material-symbols-outlined acp-spin">progress_activity</span>
-                      <span>جارٍ تحميل القوائم...</span>
+                      <span>{t('loadingPlaylists', 'جارٍ تحميل القوائم...')}</span>
                     </div>
                   ) : userPlaylists.length === 0 ? (
                     <div className="acp-playlist-empty">
                       <span className="material-symbols-outlined">info</span>
-                      <span>لا توجد قوائم تشغيل بعد. يمكنك إنشاء قائمة جديدة.</span>
+                      <span>{t('noPlaylistsYet', 'لا توجد قوائم تشغيل بعد. يمكنك إنشاء قائمة جديدة.')}</span>
                     </div>
                   ) : (
                     <div className="acp-glass-dropdown">
                       <button className="acp-glass-dropdown__trigger" onClick={() => setPlaylistDropdownOpen(!playlistDropdownOpen)} type="button">
-                        <span>{selectedPlaylistId ? userPlaylists.find(p => p.playlistId === selectedPlaylistId)?.title || 'قائمة غير معروفة' : 'اختر قائمة تشغيل...'}</span>
+                        <span>{selectedPlaylistId ? userPlaylists.find(p => p.playlistId === selectedPlaylistId)?.title || t('unknownPlaylist', 'قائمة غير معروفة') : t('selectPlaylist', 'اختر قائمة تشغيل...')}</span>
                         <span className="material-symbols-outlined">{playlistDropdownOpen ? 'expand_less' : 'expand_more'}</span>
                       </button>
                       {playlistDropdownOpen && (
                         <div className="acp-glass-dropdown__menu">
                           {userPlaylists.map((pl) => (
-                            <button key={pl.playlistId} className={`acp-glass-dropdown__item ${selectedPlaylistId === pl.playlistId ? 'acp-glass-dropdown__item--selected' : ''}`} onClick={() => { setSelectedPlaylistId(pl.playlistId); setPlaylistDropdownOpen(false); }} type="button">
+                            <button key={pl.playlistId} className={`acp-glass-dropdown__option ${selectedPlaylistId === pl.playlistId ? 'acp-glass-dropdown__option--selected' : ''}`} onClick={() => { setSelectedPlaylistId(pl.playlistId); setPlaylistDropdownOpen(false); }} type="button">
                               <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>queue_music</span>
                               <span className="acp-playlist-item-info">
                                 <span className="acp-playlist-item-title">{pl.title}</span>
-                                <span className="acp-playlist-item-meta">{pl.itemCount} مقطع · {pl.visibility === 'public' ? 'عامة' : 'خاصة'}</span>
+                                <span className="acp-playlist-item-meta">{pl.itemCount} {t('segment', 'مقطع')} · {pl.visibility === 'public' ? t('public', 'عامة') : t('private', 'خاصة')}</span>
                               </span>
                             </button>
                           ))}
@@ -1328,27 +1524,88 @@ export function AudioCreatePage() {
                   <input
                     type="text"
                     className="acp-input"
-                    placeholder="اسم القائمة الجديدة..."
+                    placeholder={t('newPlaylistNamePlaceholder', 'اسم القائمة الجديدة...')}
                     value={newPlaylistName}
                     onChange={(e) => setNewPlaylistName(e.target.value)}
                     maxLength={80}
                     autoFocus
                   />
+                  <div className="acp-playlist-new-actions" style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
+                    <div className="acp-glass-dropdown" style={{ flex: 1, position: 'relative' }}>
+                      <button className="acp-glass-dropdown__trigger" onClick={() => setPrivacyDropdownOpen(!privacyDropdownOpen)} type="button" style={{ width: '100%' }}>
+                        <span className="material-symbols-outlined" style={{ fontSize: '1.2rem', color: 'inherit' }}>{AUDIENCE_OPTIONS.find(a => a.key === newPlaylistVisibility)?.icon || 'visibility'}</span>
+                        <span style={{ flex: 1, textAlign: 'start' }}>{AUDIENCE_OPTIONS.find(a => a.key === newPlaylistVisibility)?.label || t('public', 'عام')}</span>
+                        <span className="material-symbols-outlined">{privacyDropdownOpen ? 'expand_less' : 'expand_more'}</span>
+                      </button>
+                      {privacyDropdownOpen && (
+                        <div className="acp-glass-dropdown__menu" style={{ width: '100%', top: 'calc(100% + 4px)', position: 'absolute', zIndex: 10 }}>
+                          {AUDIENCE_OPTIONS.map((a) => (
+                            <button
+                              key={a.key}
+                              className={`acp-glass-dropdown__option ${newPlaylistVisibility === a.key ? 'acp-glass-dropdown__option--selected' : ''}`}
+                              onClick={() => { setNewPlaylistVisibility(a.key); setPrivacyDropdownOpen(false); }}
+                              type="button"
+                            >
+                              <span className="material-symbols-outlined" style={{ fontSize: '1.2rem' }}>{a.icon}</span>
+                              {a.label}
+                            </button>
+                          ))}
+                        </div>
+                      )}
+                    </div>
+                    
+                    <button 
+                      className="acp-btn acp-btn--primary"
+                      disabled={playlistCreating || !newPlaylistName.trim()}
+                      onClick={async () => {
+                        if (!newPlaylistName.trim()) return;
+                        setPlaylistCreating(true);
+                        try {
+                          const visibilityMapped = newPlaylistVisibility === 'public' ? 'public' : 'private';
+                          const res = await callCreatePlaylist({
+                            title: newPlaylistName.trim(),
+                            visibility: visibilityMapped as any
+                          });
+                          const newPl = {
+                            playlistId: res.data.playlistId,
+                            title: newPlaylistName.trim(),
+                            visibility: visibilityMapped,
+                            itemCount: 0,
+                            ownerUid: uid,
+                            source: 'creator',
+                            createdAt: Date.now(),
+                            updatedAt: Date.now()
+                          } as any;
+                          setUserPlaylists([newPl, ...userPlaylists]);
+                          setSelectedPlaylistId(res.data.playlistId);
+                          setPlaylistIntent('existing');
+                        } catch (err) {
+                          console.error('Failed to create playlist', err);
+                        } finally {
+                          setPlaylistCreating(false);
+                        }
+                      }}
+                      type="button"
+                      style={{ minWidth: '100px', display: 'flex', alignItems: 'center', gap: '6px', justifyContent: 'center' }}
+                    >
+                      {playlistCreating ? <span className="acp-spinner" /> : <><span className="material-symbols-outlined">save</span> {t('save', 'حفظ')}</>}
+                    </button>
+                  </div>
                 </div>
               )}
             </div>
 
             <div className="acp-toggles-group">
-              <h3 className="acp-toggles-group__title">إعدادات النشر</h3>
-              <label className="acp-label acp-label--row"><input type="checkbox" checked={commentsEnabled} onChange={(e) => setCommentsEnabled(e.target.checked)} /> السماح بالتعليقات</label>
-              <label className="acp-label acp-label--row"><input type="checkbox" checked={giftsEnabled} onChange={(e) => setGiftsEnabled(e.target.checked)} /> السماح بالهدايا</label>
-              <label className="acp-label acp-label--row"><input type="checkbox" checked={sharingEnabled} onChange={(e) => setSharingEnabled(e.target.checked)} /> السماح بالمشاركة</label>
+              <h3 className="acp-toggles-group__title">{t('publishSettings', 'إعدادات النشر')}</h3>
+              <label className="acp-label acp-label--row"><input type="checkbox" checked={commentsEnabled} onChange={(e) => setCommentsEnabled(e.target.checked)} /> {t('allowComments', 'السماح بالتعليقات')}</label>
+              <label className="acp-label acp-label--row"><input type="checkbox" checked={giftsEnabled} onChange={(e) => setGiftsEnabled(e.target.checked)} /> {t('allowGifts', 'السماح بالهدايا')}</label>
+              <label className="acp-label acp-label--row"><input type="checkbox" checked={sharingEnabled} onChange={(e) => setSharingEnabled(e.target.checked)} /> {t('allowSharing', 'السماح بالمشاركة')}</label>
 
               {/* Schedule — disabled with gate badge */}
               <div className="acp-toggle-row" style={{ opacity: 0.5, cursor: 'not-allowed' }}>
                 <span className="material-symbols-outlined">schedule_send</span>
-                <span>جدولة النشر</span>
-                <span className="acp-gate-badge">حسب الباقة</span>
+                <span>{t('schedulePublish', 'جدولة النشر')}</span>
+                <span className="acp-gate-badge">{t('byTier', 'حسب الباقة')}</span>
                 <button className="acp-toggle acp-toggle--disabled" disabled type="button">
                   <span className="acp-toggle__knob" />
                 </button>
@@ -1358,10 +1615,10 @@ export function AudioCreatePage() {
             {saveError && <p className="acp-error">{saveError}</p>}
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(1)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(3)} disabled={saving}>
-                {saving ? <><span className="acp-spinner" aria-hidden="true" /> جاري الحفظ...</> : <><span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> التالي</>}
+                {saving ? <><span className="acp-spinner" aria-hidden="true" /> {t('saving', 'جاري الحفظ...')}</> : <><span className="material-symbols-outlined" aria-hidden="true">{iconNext}</span> {t('theNext', 'التالي')}</>}
               </button>
             </div>
           </div>
@@ -1373,13 +1630,13 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">image</span>
-            غلاف المحتوى
-            <span className="acp-badge acp-badge--optional">اختياري</span>
+            {t('contentCover', 'غلاف المحتوى')}
+            <span className="acp-badge acp-badge--optional">{t('optional', 'اختياري')}</span>
           </h1>
           <div className="acp-form">
             {coverPreviewUrl && (
               <div className="acp-cover-preview">
-                <img src={coverPreviewUrl} alt="معاينة الغلاف" className="acp-cover-preview__img" />
+                <img src={coverPreviewUrl} alt={t('coverPreview', 'معاينة الغلاف')} className="acp-cover-preview__img" />
               </div>
             )}
             {coverUploading && (
@@ -1387,40 +1644,40 @@ export function AudioCreatePage() {
                 <div className="acp-progress__bar">
                   <div className="acp-progress__fill" style={{ width: `${coverProgress}%` }} />
                 </div>
-                <p className="acp-progress__text">جاري رفع الغلاف... {coverProgress}%</p>
+                <p className="acp-progress__text">{t('uploadingCover', 'جاري رفع الغلاف...')} {coverProgress}%</p>
               </div>
             )}
             {coverError && <p className="acp-error">{coverError}</p>}
             {coverAsset?.storagePath && !coverUploading && (
               <p className="acp-hint">
                 <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">check_circle</span>
-                تم رفع الغلاف بنجاح.
+                {t('coverUploadedSuccessfully', 'تم رفع الغلاف بنجاح.')}
               </p>
             )}
             <div className="acp-cover-actions">
               <button className="acp-btn acp-btn--outline" onClick={() => coverInputRef.current?.click()} type="button" disabled={coverUploading}>
-                <span className="material-symbols-outlined" aria-hidden="true">upload</span> {coverUploading ? 'جاري الرفع...' : 'رفع صورة'}
+                <span className="material-symbols-outlined" aria-hidden="true">upload</span> {coverUploading ? t('uploading', 'جاري الرفع...') : t('uploadImage', 'رفع صورة')}
               </button>
               <input ref={coverInputRef} type="file" accept="image/*" onChange={handleCoverSelect} className="acp-file-input" tabIndex={-1} />
               <button className="acp-btn acp-btn--outline acp-btn--gated" disabled type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">photo_camera</span> كاميرا
-                <span className="acp-gate-badge">قريباً</span>
+                <span className="material-symbols-outlined" aria-hidden="true">photo_camera</span> {t('camera', 'كاميرا')}
+                <span className="acp-gate-badge">{t('soon', 'قريباً')}</span>
               </button>
               <button className="acp-btn acp-btn--outline acp-btn--gated" disabled type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span> غلاف ذكي (AI)
-                <span className="acp-gate-badge">مدفوع</span>
+                <span className="material-symbols-outlined" aria-hidden="true">auto_awesome</span> {t('smartCoverAI', 'غلاف ذكي (AI)')}
+                <span className="acp-gate-badge">{t('paid', 'مدفوع')}</span>
               </button>
             </div>
             {!coverPreviewUrl && (
-              <p className="acp-hint">سيتم استخدام غلاف افتراضي إذا تخطيت هذه الخطوة.</p>
+              <p className="acp-hint">{t('defaultCoverWillBeUsed', 'سيتم استخدام غلاف افتراضي إذا تخطيت هذه الخطوة.')}</p>
             )}
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(2)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
-              <button className="acp-btn acp-btn--ghost" onClick={() => setStep(4)} type="button">تخطي</button>
+              <button className="acp-btn acp-btn--ghost" onClick={() => setStep(4)} type="button">{t('skip', 'تخطي')}</button>
               <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(4)} disabled={saving || coverUploading}>
-                {saving ? 'حفظ...' : 'التالي'}
+                {saving ? t('savingDots', 'حفظ...') : t('theNext', 'التالي')}
               </button>
             </div>
           </div>
@@ -1432,24 +1689,24 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">subtitles</span>
-            إعداد الترجمة والنصوص
-            <span className="acp-badge acp-badge--optional">اختياري</span>
+            {t('captionsSetup', 'إعداد الترجمة والنصوص')}
+            <span className="acp-badge acp-badge--optional">{t('optional', 'اختياري')}</span>
           </h1>
           <div className="acp-form">
             <label className="acp-label acp-label--row acp-toggle-main">
               <input type="checkbox" checked={captionsEnabled} onChange={(e) => setCaptionsEnabled(e.target.checked)} />
-              <span>تفعيل النصوص / الترجمة</span>
+              <span>{t('enableCaptions', 'تفعيل النصوص / الترجمة')}</span>
             </label>
             {captionsEnabled && (
               <>
                 {/* Caption source mode selector */}
-                <label className="acp-label">مصدر النص</label>
+                <label className="acp-label">{t('captionSource', 'مصدر النص')}</label>
                 <div className="acp-chips">
                   {([
-                    { k: 'manual' as CaptionSource, l: 'كتابة يدوية', icon: 'edit_note' },
-                    { k: 'uploaded' as CaptionSource, l: 'رفع ملف', icon: 'upload_file' },
-                    { k: 'autoCue' as CaptionSource, l: 'استيراد من الملقن', icon: 'teleprompter' },
-                    { k: 'generated' as CaptionSource, l: 'توليد تلقائي', icon: 'auto_awesome' },
+                    { k: 'manual' as CaptionSource, l: t('manualInput', 'كتابة يدوية'), icon: 'edit_note' },
+                    { k: 'uploaded' as CaptionSource, l: t('uploadFile', 'رفع ملف'), icon: 'upload_file' },
+                    { k: 'autoCue' as CaptionSource, l: t('importFromPrompter', 'استيراد من الملقن'), icon: 'teleprompter' },
+                    { k: 'generated' as CaptionSource, l: t('autoGenerated', 'توليد تلقائي'), icon: 'auto_awesome' },
                   ]).map((s) => (
                     <button
                       key={s.k}
@@ -1460,7 +1717,7 @@ export function AudioCreatePage() {
                     >
                       <span className="material-symbols-outlined acp-chip__icon">{s.icon}</span>
                       {s.l}
-                      {s.k === 'generated' && <span className="acp-badge acp-badge--soon">قريباً</span>}
+                      {s.k === 'generated' && <span className="acp-badge acp-badge--soon">{t('soon', 'قريباً')}</span>}
                     </button>
                   ))}
                 </div>
@@ -1468,13 +1725,12 @@ export function AudioCreatePage() {
                 {/* ── Manual mode ── */}
                 {captionSource === 'manual' && (
                   <div className="acp-captions-editor">
-                    <label className="acp-label">اكتب النص (كل سطر = مقطع واحد)</label>
+                    <label className="acp-label">{t('writeCaptionText', 'اكتب النص (كل سطر = مقطع واحد)')}</label>
                     <textarea
                       className="acp-textarea acp-textarea--captions"
                       rows={8}
                       dir="auto"
-                      placeholder="اكتب النص هنا...
-كل سطر سيصبح مقطع منفصل"
+                      placeholder={t('captionPlaceholder', 'اكتب النص هنا...\nكل سطر سيصبح مقطع منفصل')}
                       value={captionRawText}
                       onChange={(e) => {
                         setCaptionRawText(e.target.value);
@@ -1484,7 +1740,7 @@ export function AudioCreatePage() {
                     {captionSegments.length > 0 && (
                       <p className="acp-hint">
                         <span className="material-symbols-outlined acp-hint__icon">segment</span>
-                        {captionSegments.length} مقطع — بدون توقيت (نص غير متزامن)
+                        {captionSegments.length} {t('segmentNoTiming', 'مقطع — بدون توقيت (نص غير متزامن)')}
                       </p>
                     )}
                   </div>
@@ -1493,7 +1749,7 @@ export function AudioCreatePage() {
                 {/* ── Upload mode ── */}
                 {captionSource === 'uploaded' && (
                   <div className="acp-captions-editor">
-                    <label className="acp-label">ارفع ملف ترجمة (SRT أو VTT)</label>
+                    <label className="acp-label">{t('uploadSubtitleFile', 'ارفع ملف ترجمة (SRT أو VTT)')}</label>
                     <input
                       ref={captionFileRef}
                       type="file"
@@ -1529,8 +1785,8 @@ export function AudioCreatePage() {
                       <div className="acp-captions-preview">
                         <p className="acp-hint">
                           <span className="material-symbols-outlined acp-hint__icon">segment</span>
-                          {captionSegments.length} مقطع
-                          {captionSegments[0]?.startMs !== undefined ? ' — مع توقيت' : ' — بدون توقيت'}
+                          {captionSegments.length} {t('segment', 'مقطع')}
+                          {captionSegments[0]?.startMs !== undefined ? t('withTiming', ' — مع توقيت') : t('withoutTiming', ' — بدون توقيت')}
                         </p>
                         <div className="acp-captions-preview__list">
                           {captionSegments.slice(0, 5).map((seg) => (
@@ -1544,7 +1800,7 @@ export function AudioCreatePage() {
                             </div>
                           ))}
                           {captionSegments.length > 5 && (
-                            <p className="acp-hint">و{captionSegments.length - 5} مقطع آخر...</p>
+                            <p className="acp-hint">{t('andMoreSegments', `و${captionSegments.length - 5} مقطع آخر...`)}</p>
                           )}
                         </div>
                       </div>
@@ -1559,7 +1815,7 @@ export function AudioCreatePage() {
                       <>
                         <p className="acp-hint">
                           <span className="material-symbols-outlined acp-hint__icon">teleprompter</span>
-                          يمكنك استيراد نص الملقن كنص ترجمة
+                          {t('youCanImportPrompterText', 'يمكنك استيراد نص الملقن كنص ترجمة')}
                         </p>
                         <button
                           className="acp-btn acp-btn--ghost"
@@ -1570,19 +1826,19 @@ export function AudioCreatePage() {
                           }}
                         >
                           <span className="material-symbols-outlined">content_copy</span>
-                          استيراد نص الملقن
+                          {t('importPrompterText', 'استيراد نص الملقن')}
                         </button>
                         {captionSegments.length > 0 && (
                           <p className="acp-hint">
                             <span className="material-symbols-outlined acp-hint__icon">check_circle</span>
-                            تم استيراد {captionSegments.length} مقطع (بدون توقيت)
+                            {t('imported', 'تم استيراد')} {captionSegments.length} {t('segmentsNoTiming', 'مقطع (بدون توقيت)')}
                           </p>
                         )}
                       </>
                     ) : (
                       <p className="acp-hint">
                         <span className="material-symbols-outlined acp-hint__icon">info</span>
-                        لا يوجد نص ملقن. أضف نص الملقن في الخطوة 5 أولاً.
+                        {t('noPrompterTextFound', 'لا يوجد نص ملقن. أضف نص الملقن في الخطوة 5 أولاً.')}
                       </p>
                     )}
                   </div>
@@ -1593,14 +1849,14 @@ export function AudioCreatePage() {
                   <div className="acp-captions-editor">
                     <p className="acp-hint">
                       <span className="material-symbols-outlined acp-hint__icon">auto_awesome</span>
-                      قريباً — يتطلب مزود تفريغ صوتي
+                      {t('soonNeedsVoiceProvider', 'قريباً — يتطلب مزود تفريغ صوتي')}
                     </p>
                   </div>
                 )}
 
                 {/* Language + Style selectors (shared across modes) */}
                 <div className="acp-label">
-                  لغة النص
+                  {t('textLanguage', 'لغة النص')}
                   <div className="acp-glass-dropdown">
                     <button className="acp-glass-dropdown__trigger" onClick={() => setCaptionLangOpen(!captionLangOpen)} type="button">
                       <span>{LANGUAGES.find((l) => l.code === captionLang)?.label}</span>
@@ -1616,9 +1872,9 @@ export function AudioCreatePage() {
                   </div>
                 </div>
                 <label className="acp-label">
-                  نمط العرض
+                  {t('displayStyle', 'نمط العرض')}
                   <div className="acp-chips">
-                    {([{ k: 'standard' as const, l: 'عادي' }, { k: 'karaoke' as const, l: 'كاريوكي' }, { k: 'subtitles' as const, l: 'ترجمة سفلية' }]).map((s) => (
+                    {([{ k: 'standard' as const, l: t('normal', 'عادي') }, { k: 'karaoke' as const, l: t('karaoke', 'كاريوكي') }, { k: 'subtitles' as const, l: t('subtitle', 'ترجمة سفلية') }]).map((s) => (
                       <button key={s.k} className={`acp-chip ${captionStyle === s.k ? 'acp-chip--selected' : ''}`} onClick={() => setCaptionStyle(s.k)} type="button">{s.l}</button>
                     ))}
                   </div>
@@ -1627,11 +1883,11 @@ export function AudioCreatePage() {
             )}
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(3)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
-              <button className="acp-btn acp-btn--ghost" onClick={() => setStep(5)} type="button">تخطي</button>
+              <button className="acp-btn acp-btn--ghost" onClick={() => setStep(5)} type="button">{t('skip', 'تخطي')}</button>
               <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(5)} disabled={saving}>
-                {saving ? 'حفظ...' : 'التالي'}
+                {saving ? t('savingDots', 'حفظ...') : t('theNext', 'التالي')}
               </button>
             </div>
           </div>
@@ -1643,73 +1899,73 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">teleprompter</span>
-            الملقن (AutoCue)
-            <span className="acp-badge acp-badge--optional">اختياري</span>
+            {t('autoCue', 'الملقن (AutoCue)')}
+            <span className="acp-badge acp-badge--optional">{t('optional', 'اختياري')}</span>
           </h1>
           <div className="acp-form">
             <div className="acp-gate-banner">
               <span className="material-symbols-outlined" aria-hidden="true">workspace_premium</span>
-              <span>ميزة مدفوعة — متاحة لمشتركي الحزم المتقدمة أو بتفعيل إداري.</span>
+              <span>{t('paidFeaturePro', 'ميزة مدفوعة — متاحة لمشتركي الحزم المتقدمة أو بتفعيل إداري.')}</span>
             </div>
             <label className="acp-label acp-label--row acp-toggle-main">
               <input type="checkbox" checked={autoCueEnabled} onChange={(e) => setAutoCueEnabled(e.target.checked)} />
-              <span>تفعيل الملقن أثناء التسجيل</span>
+              <span>{t('enablePrompterDuringRecording', 'تفعيل الملقن أثناء التسجيل')}</span>
             </label>
             {autoCueEnabled && (
               <>
                 <label className="acp-label">
-                  النص / كلمات الأغنية
-                  <textarea className="acp-textarea acp-textarea--script" value={scriptText} onChange={(e) => setScriptText(e.target.value)} placeholder="اكتب أو الصق النص هنا..." rows={8} />
+                  {t('textLyrics', 'النص / كلمات الأغنية')}
+                  <textarea className="acp-textarea acp-textarea--script" value={scriptText} onChange={(e) => setScriptText(e.target.value)} placeholder={t('typeOrPasteTextHere', 'اكتب أو الصق النص هنا...')} rows={8} />
                 </label>
                 <div className="acp-autocue-actions">
-                  <button className="acp-btn acp-btn--outline acp-btn--sm" onClick={() => setScriptText(caption)} type="button" disabled={!caption}>نسخ من الوصف</button>
+                  <button className="acp-btn acp-btn--outline acp-btn--sm" onClick={() => setScriptText(caption)} type="button" disabled={!caption}>{t('copyFromDescription', 'نسخ من الوصف')}</button>
                   <button className="acp-btn acp-btn--outline acp-btn--sm acp-btn--gated" disabled type="button">
-                    توليد ذكي (AI) <span className="acp-gate-badge">مدفوع</span>
+                    {t('smartGenerateAI', 'توليد ذكي (AI)')} <span className="acp-gate-badge">{t('paid', 'مدفوع')}</span>
                   </button>
-                  <button className="acp-btn acp-btn--outline acp-btn--sm" onClick={() => setScriptText('')} type="button">مسح</button>
+                  <button className="acp-btn acp-btn--outline acp-btn--sm" onClick={() => setScriptText('')} type="button">{t('clear', 'مسح')}</button>
                 </div>
                 <div className="acp-autocue-settings">
                   <label className="acp-label">
-                    سرعة التمرير
+                    {t('scrollSpeed', 'سرعة التمرير')}
                     <div className="acp-chips">
-                      {([{ k: 'slow' as const, l: 'بطيء' }, { k: 'medium' as const, l: 'متوسط' }, { k: 'fast' as const, l: 'سريع' }]).map((s) => (
+                      {([{ k: 'slow' as const, l: t('slow', 'بطيء') }, { k: 'medium' as const, l: t('medium', 'متوسط') }, { k: 'fast' as const, l: t('fast', 'سريع') }]).map((s) => (
                         <button key={s.k} className={`acp-chip ${scrollSpeed === s.k ? 'acp-chip--selected' : ''}`} onClick={() => setScrollSpeed(s.k)} type="button">{s.l}</button>
                       ))}
                     </div>
                   </label>
                   <label className="acp-label">
-                    حجم الخط
+                    {t('fontSize', 'حجم الخط')}
                     <div className="acp-chips">
-                      {([{ k: 'small' as const, l: 'صغير' }, { k: 'medium' as const, l: 'متوسط' }, { k: 'large' as const, l: 'كبير' }]).map((s) => (
+                      {([{ k: 'small' as const, l: t('small', 'صغير') }, { k: 'medium' as const, l: t('medium', 'متوسط') }, { k: 'large' as const, l: t('large', 'كبير') }]).map((s) => (
                         <button key={s.k} className={`acp-chip ${fontSize === s.k ? 'acp-chip--selected' : ''}`} onClick={() => setFontSize(s.k)} type="button">{s.l}</button>
                       ))}
                     </div>
                   </label>
                   <label className="acp-label">
-                    وضع القراءة
+                    {t('readingMode', 'وضع القراءة')}
                     <div className="acp-chips">
-                      <button className={`acp-chip ${readingMode === 'lineByLine' ? 'acp-chip--selected' : ''}`} onClick={() => setReadingMode('lineByLine')} type="button">سطر بسطر</button>
-                      <button className={`acp-chip ${readingMode === 'paragraphByParagraph' ? 'acp-chip--selected' : ''}`} onClick={() => setReadingMode('paragraphByParagraph')} type="button">فقرة بفقرة</button>
+                      <button className={`acp-chip ${readingMode === 'lineByLine' ? 'acp-chip--selected' : ''}`} onClick={() => setReadingMode('lineByLine')} type="button">{t('lineByLine', 'سطر بسطر')}</button>
+                      <button className={`acp-chip ${readingMode === 'paragraphByParagraph' ? 'acp-chip--selected' : ''}`} onClick={() => setReadingMode('paragraphByParagraph')} type="button">{t('paragraphByParagraph', 'فقرة بفقرة')}</button>
                     </div>
                   </label>
                   <label className="acp-label">
-                    تأخير البداية (ثوان)
+                    {t('startDelaySeconds', 'تأخير البداية (ثوان)')}
                     <input type="number" className="acp-input acp-input--narrow" value={startDelay} onChange={(e) => setStartDelay(Number(e.target.value))} min={0} max={30} />
                   </label>
                   <label className="acp-label acp-label--row">
                     <input type="checkbox" checked={highlightLine} onChange={(e) => setHighlightLine(e.target.checked)} />
-                    تمييز السطر الحالي
+                    {t('highlightCurrentLine', 'تمييز السطر الحالي')}
                   </label>
                 </div>
               </>
             )}
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(4)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
-              <button className="acp-btn acp-btn--ghost" onClick={() => setStep(6)} type="button">تخطي</button>
+              <button className="acp-btn acp-btn--ghost" onClick={() => setStep(6)} type="button">{t('skip', 'تخطي')}</button>
               <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(6)} disabled={saving}>
-                {saving ? 'حفظ...' : 'التالي'}
+                {saving ? t('savingDots', 'حفظ...') : t('theNext', 'التالي')}
               </button>
             </div>
           </div>
@@ -1721,24 +1977,24 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">mic</span>
-            التسجيل أو الرفع
+            {t('recordOrUpload', 'التسجيل أو الرفع')}
           </h1>
 
           {/* AutoCue banner */}
           {autoCueEnabled && scriptText && (
             <div className="acp-autocue-banner">
               <span className="material-symbols-outlined" aria-hidden="true">teleprompter</span>
-              <span>وضع الملقن مفعّل — النص سيظهر أثناء التسجيل</span>
+              <span>{t('prompterActiveTextWillShow', 'وضع الملقن مفعّل — النص سيظهر أثناء التسجيل')}</span>
             </div>
           )}
 
           {/* Tab switcher */}
           <div className="acp-tabs">
             <button className={`acp-tab ${tab === 'record' ? 'acp-tab--active' : ''}`} onClick={() => setTab('record')} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">mic</span> تسجيل
+              <span className="material-symbols-outlined" aria-hidden="true">mic</span> {t('record', 'تسجيل')}
             </button>
             <button className={`acp-tab ${tab === 'upload' ? 'acp-tab--active' : ''}`} onClick={() => setTab('upload')} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">upload_file</span> رفع ملف
+              <span className="material-symbols-outlined" aria-hidden="true">upload_file</span> {t('uploadFile', 'رفع ملف')}
             </button>
           </div>
 
@@ -1761,18 +2017,18 @@ export function AudioCreatePage() {
                 {recorder.state === 'idle' && (
                   <button className="acp-record-btn" onClick={recorder.startRecording} type="button">
                     <span className="material-symbols-outlined acp-record-btn__icon">mic</span>
-                    <span>ابدأ التسجيل</span>
+                    <span>{t('startRecording', 'ابدأ التسجيل')}</span>
                   </button>
                 )}
                 {recorder.state === 'requesting' && (
-                  <div className="acp-record-status"><span className="acp-spinner" /><p>جاري طلب إذن الميكروفون...</p></div>
+                  <div className="acp-record-status"><span className="acp-spinner" /><p>{t('requestingMicPermission', 'جاري طلب إذن الميكروفون...')}</p></div>
                 )}
                 {recorder.state === 'recording' && (
                   <div className="acp-record-live">
                     <div className="acp-record-pulse" />
                     <p className="acp-record-time">{formatDuration(recorder.elapsedMs)}</p>
                     <button className="acp-btn acp-btn--danger" onClick={recorder.stopRecording} type="button">
-                      <span className="material-symbols-outlined" aria-hidden="true">stop_circle</span> إيقاف
+                      <span className="material-symbols-outlined" aria-hidden="true">stop_circle</span> {t('stop', 'إيقاف')}
                     </button>
                   </div>
                 )}
@@ -1780,14 +2036,14 @@ export function AudioCreatePage() {
                   <div className="acp-record-preview">
                     <audio controls src={recorder.audioUrl} className="acp-audio-player" />
                     <div className="acp-record-preview__info">
-                      <span>المدة: {formatDuration(recorder.elapsedMs)}</span>
-                      {recorder.audioBlob && <span>الحجم: {formatFileSize(recorder.audioBlob.size)}</span>}
+                      <span>{t('duration', 'المدة:')} {formatDuration(recorder.elapsedMs)}</span>
+                      {recorder.audioBlob && <span>{t('size', 'الحجم:')} {formatFileSize(recorder.audioBlob.size)}</span>}
                     </div>
                     <div className="acp-record-preview__actions">
                       <button className="acp-btn acp-btn--primary" onClick={handleUploadRecording} disabled={uploader.state === 'uploading' || uploader.state === 'done'} type="button">
-                        <span className="material-symbols-outlined" aria-hidden="true">cloud_upload</span> رفع التسجيل
+                        <span className="material-symbols-outlined" aria-hidden="true">cloud_upload</span> {t('uploadRecording', 'رفع التسجيل')}
                       </button>
-                      <button className="acp-btn acp-btn--ghost" onClick={recorder.reset} disabled={uploader.state === 'uploading'} type="button">إعادة التسجيل</button>
+                      <button className="acp-btn acp-btn--ghost" onClick={recorder.reset} disabled={uploader.state === 'uploading'} type="button">{t('reRecord', 'إعادة التسجيل')}</button>
                     </div>
                   </div>
                 )}
@@ -1795,7 +2051,7 @@ export function AudioCreatePage() {
                   <div className="acp-error-box">
                     <span className="material-symbols-outlined">error</span>
                     <p>{recorder.errorMessage}</p>
-                    <button className="acp-btn acp-btn--ghost" onClick={recorder.reset} type="button">حاول مجدداً</button>
+                    <button className="acp-btn acp-btn--ghost" onClick={recorder.reset} type="button">{t('tryAgain', 'حاول مجدداً')}</button>
                   </div>
                 )}
               </div>
@@ -1808,8 +2064,8 @@ export function AudioCreatePage() {
               {!selectedFile && (
                 <div className="acp-drop-zone" onClick={() => fileInputRef.current?.click()} role="button" tabIndex={0} onKeyDown={(e) => e.key === 'Enter' && fileInputRef.current?.click()}>
                   <span className="material-symbols-outlined acp-drop-zone__icon">audio_file</span>
-                  <p>اختر ملفاً صوتياً</p>
-                  <p className="acp-drop-zone__hint">MP3, WAV, AAC, OGG, WebM — حتى 100MB</p>
+                  <p>{t('chooseAudioFile', 'اختر ملفاً صوتياً')}</p>
+                  <p className="acp-drop-zone__hint">{t('audioFormatsHint', 'MP3, WAV, AAC, OGG, WebM — حتى 100MB')}</p>
                   <input ref={fileInputRef} type="file" accept="audio/*" onChange={handleFileSelect} className="acp-file-input" tabIndex={-1} />
                 </div>
               )}
@@ -1826,9 +2082,9 @@ export function AudioCreatePage() {
                   </div>
                   <div className="acp-file-info__actions">
                     <button className="acp-btn acp-btn--primary" onClick={handleUploadFile} disabled={uploader.state === 'uploading' || uploader.state === 'done'} type="button">
-                      <span className="material-symbols-outlined" aria-hidden="true">cloud_upload</span> رفع الملف
+                      <span className="material-symbols-outlined" aria-hidden="true">cloud_upload</span> {t('uploadFileAction', 'رفع الملف')}
                     </button>
-                    <button className="acp-btn acp-btn--ghost" onClick={() => { setSelectedFile(null); setFileDurationMs(null); uploader.reset(); if (fileInputRef.current) fileInputRef.current.value = ''; }} disabled={uploader.state === 'uploading'} type="button">تغيير الملف</button>
+                    <button className="acp-btn acp-btn--ghost" onClick={() => { setSelectedFile(null); setFileDurationMs(null); uploader.reset(); if (fileInputRef.current) fileInputRef.current.value = ''; }} disabled={uploader.state === 'uploading'} type="button">{t('changeFile', 'تغيير الملف')}</button>
                   </div>
                 </div>
               )}
@@ -1839,11 +2095,11 @@ export function AudioCreatePage() {
           {uploader.state === 'uploading' && (
             <div className="acp-progress">
               <div className="acp-progress__bar"><div className="acp-progress__fill" style={{ width: `${uploader.progress}%` }} /></div>
-              <p className="acp-progress__text">جاري الرفع... {uploader.progress}%</p>
-              <button className="acp-btn acp-btn--ghost acp-btn--sm" onClick={uploader.cancel} type="button">إلغاء</button>
+              <p className="acp-progress__text">{t('uploadingWithProgress', 'جاري الرفع...')} {uploader.progress}%</p>
+              <button className="acp-btn acp-btn--ghost acp-btn--sm" onClick={uploader.cancel} type="button">{t('cancel', 'إلغاء')}</button>
             </div>
           )}
-          {attaching && <div className="acp-progress"><span className="acp-spinner" /><p className="acp-progress__text">جاري ربط الملف بالمسودة...</p></div>}
+          {attaching && <div className="acp-progress"><span className="acp-spinner" /><p className="acp-progress__text">{t('attachingFileToDraft', 'جاري ربط الملف بالمسودة...')}</p></div>}
           {uploader.state === 'error' && <div className="acp-error-box"><span className="material-symbols-outlined">error</span><p>{uploader.errorMessage}</p></div>}
           {attachError && <div className="acp-error-box"><span className="material-symbols-outlined">error</span><p>{attachError}</p></div>}
 
@@ -1851,7 +2107,7 @@ export function AudioCreatePage() {
           {audioAsset && (
             <div className="acp-success-box">
               <span className="material-symbols-outlined">check_circle</span>
-              <p>تم ربط الملف الصوتي بالمسودة بنجاح!</p>
+              <p>{t('audioFileAttachedSuccessfully', 'تم ربط الملف الصوتي بالمسودة بنجاح!')}</p>
               <div className="acp-asset-summary">
                 <span className="acp-asset-summary__item">
                   <span className="material-symbols-outlined">description</span> {audioAsset.originalFileName}
@@ -1860,7 +2116,7 @@ export function AudioCreatePage() {
                 {audioAsset.sizeBytes ? <span className="acp-asset-summary__item"><span className="material-symbols-outlined">inventory_2</span> {formatFileSize(audioAsset.sizeBytes)}</span> : null}
               </div>
               <button className="acp-btn acp-btn--primary" onClick={() => setStep(7)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> متابعة
+                <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> {t('continue', 'متابعة')}
               </button>
             </div>
           )}
@@ -1868,7 +2124,7 @@ export function AudioCreatePage() {
           {/* Back button */}
           {!audioAsset && (
             <button className="acp-btn acp-btn--ghost acp-back" onClick={() => setStep(5)} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+              <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
             </button>
           )}
         </section>
@@ -1879,29 +2135,29 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">preview</span>
-            مراجعة وتعديل الصوت
+            {t('reviewAndEditAudio', 'مراجعة وتعديل الصوت')}
           </h1>
           <div className="acp-form">
             {audioAsset ? (
               <div className="acp-review-audio">
-                <div className="acp-review__item"><span>الملف:</span> <strong>{audioAsset.originalFileName}</strong></div>
-                {audioAsset.durationMs ? <div className="acp-review__item"><span>المدة:</span> {formatDuration(audioAsset.durationMs)}</div> : null}
-                {audioAsset.sizeBytes ? <div className="acp-review__item"><span>الحجم:</span> {formatFileSize(audioAsset.sizeBytes)}</div> : null}
+                <div className="acp-review__item"><span>{t('theFile', 'الملف:')}</span> <strong>{audioAsset.originalFileName}</strong></div>
+                {audioAsset.durationMs ? <div className="acp-review__item"><span>{t('duration', 'المدة:')}</span> {formatDuration(audioAsset.durationMs)}</div> : null}
+                {audioAsset.sizeBytes ? <div className="acp-review__item"><span>{t('size', 'الحجم:')}</span> {formatFileSize(audioAsset.sizeBytes)}</div> : null}
                 <div className="acp-review__item">
-                  <span>المصدر:</span>
+                  <span>{t('theSource', 'المصدر:')}</span>
                   <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>{audioAsset.sourceType === 'recorded' ? 'mic' : 'upload_file'}</span>
-                  {audioAsset.sourceType === 'recorded' ? ' مسجّل' : ' مرفوع'}
+                  {audioAsset.sourceType === 'recorded' ? t('recorded', ' مسجّل') : t('uploaded', ' مرفوع')}
                 </div>
                 <div className="acp-review__item">
-                  <span>الحالة:</span>
+                  <span>{t('theStatus', 'الحالة:')}</span>
                   <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', color: '#22c55e' }}>check_circle</span>
-                  مرفوع
+                  {t('uploadedStatus', 'مرفوع')}
                 </div>
               </div>
             ) : (
               <div className="acp-warning-box">
                 <span className="material-symbols-outlined">warning</span>
-                <p>لا يوجد ملف صوتي. ارجع للخطوة السابقة.</p>
+                <p>{t('noAudioFileGoBack', 'لا يوجد ملف صوتي. ارجع للخطوة السابقة.')}</p>
               </div>
             )}
 
@@ -1915,33 +2171,45 @@ export function AudioCreatePage() {
                 {waveformLoading ? (
                   <div className="acp-waveform-loading">
                     <span className="acp-spinner" aria-hidden="true" />
-                    جاري تحليل الموجة الصوتية...
+                    {t('analyzingAudioWaveform', 'جاري تحليل الموجة الصوتية...')}
                   </div>
                 ) : waveformPeaks.length > 0 ? (
                   <>
                     {/* SVG Waveform */}
                     <div className="acp-waveform-timeline"
                       ref={waveformTimelineRef}
-                      onClick={(e) => {
-                        if (!originalDurationMs || wfDragging) return;
+                      onMouseMove={(e) => {
+                        const activeDur = waveformDurationMs || workingDurationMs;
+                        if (!activeDur || wfDragging) return;
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
                         const pct = Math.max(0, Math.min(1, x / rect.width));
-                        const seekMs = pct * originalDurationMs;
+                        setWfHoverMs(pct * activeDur);
+                        setWfHoverX(pct * 100);
+                      }}
+                      onMouseLeave={() => setWfHoverMs(null)}
+                      onClick={(e) => {
+                        const activeDur = waveformDurationMs || workingDurationMs;
+                        if (!activeDur || wfDragging) return;
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const pct = Math.max(0, Math.min(1, x / rect.width));
+                        const seekMs = pct * activeDur;
                         if (waveformAudioRef.current) {
                           waveformAudioRef.current.currentTime = seekMs / 1000;
                           setWfCurrentMs(seekMs);
                         }
                       }}
                       onMouseDown={(e) => {
-                        if (!originalDurationMs) return;
+                        const activeDur = waveformDurationMs || workingDurationMs;
+                        if (!activeDur) return;
                         e.preventDefault();
                         setWfDragging(true);
                         const rect = e.currentTarget.getBoundingClientRect();
                         const seek = (clientX: number) => {
                           const x = clientX - rect.left;
                           const pct = Math.max(0, Math.min(1, x / rect.width));
-                          const seekMs = pct * originalDurationMs;
+                          const seekMs = pct * activeDur;
                           if (waveformAudioRef.current) {
                             waveformAudioRef.current.currentTime = seekMs / 1000;
                             setWfCurrentMs(seekMs);
@@ -1958,13 +2226,14 @@ export function AudioCreatePage() {
                         document.addEventListener('mouseup', onUp);
                       }}
                       onTouchStart={(e) => {
-                        if (!originalDurationMs) return;
+                        const activeDur = waveformDurationMs || workingDurationMs;
+                        if (!activeDur) return;
                         setWfDragging(true);
                         const rect = e.currentTarget.getBoundingClientRect();
                         const seek = (clientX: number) => {
                           const x = clientX - rect.left;
                           const pct = Math.max(0, Math.min(1, x / rect.width));
-                          const seekMs = pct * originalDurationMs;
+                          const seekMs = pct * activeDur;
                           if (waveformAudioRef.current) {
                             waveformAudioRef.current.currentTime = seekMs / 1000;
                             setWfCurrentMs(seekMs);
@@ -1985,9 +2254,11 @@ export function AudioCreatePage() {
                     >
                       <svg viewBox="0 0 200 100" preserveAspectRatio="none">
                         {waveformPeaks.map((peak, i) => {
-                          const barMs = (i / 200) * originalDurationMs;
-                          const isTrimmedOut = editEnabled && (barMs < effectiveStart || barMs > effectiveEnd);
-                          const isCut = editEnabled && editCuts.some(c => barMs >= c.startMs && barMs < c.endMs);
+                          const activeDur = waveformDurationMs || workingDurationMs;
+                          const barMs = (i / 200) * activeDur;
+                          // Only show red cut regions if we are in step 7 (Edit). In later steps, the audio is already cut!
+                          const isTrimmedOut = step === 7 && editEnabled && (barMs < effectiveStart || barMs > effectiveEnd);
+                          const isCut = step === 7 && editEnabled && editCuts.some(c => barMs >= c.startMs && barMs < c.endMs);
                           const barH = Math.max(2, peak * 80);
                           const y = 50 - barH / 2;
                           let fill = 'url(#wfGrad)';
@@ -2004,9 +2275,41 @@ export function AudioCreatePage() {
                         </defs>
                       </svg>
                       {/* Playhead */}
-                      {originalDurationMs > 0 && (
+                      {(waveformDurationMs || workingDurationMs) > 0 && (
                         <div className="acp-waveform-timeline__playhead"
-                          style={{ left: `${(wfCurrentMs / originalDurationMs) * 100}%` }} />
+                          style={{ left: `${(wfCurrentMs / (waveformDurationMs || workingDurationMs)) * 100}%` }} />
+                      )}
+                      {/* Hover Tooltip & Line */}
+                      {wfHoverMs !== null && originalDurationMs > 0 && !wfDragging && (
+                        <>
+                          <div style={{
+                            position: 'absolute',
+                            top: 0,
+                            bottom: 0,
+                            left: `${wfHoverX}%`,
+                            width: '1px',
+                            background: 'rgba(255,255,255,0.4)',
+                            pointerEvents: 'none',
+                            zIndex: 5
+                          }} />
+                          <div style={{
+                            position: 'absolute',
+                            top: '-25px',
+                            left: `${wfHoverX}%`,
+                            transform: 'translateX(-50%)',
+                            background: 'rgba(0,0,0,0.8)',
+                            color: '#fff',
+                            padding: '2px 6px',
+                            borderRadius: '4px',
+                            fontSize: '12px',
+                            pointerEvents: 'none',
+                            zIndex: 10,
+                            fontFamily: 'monospace',
+                            whiteSpace: 'nowrap'
+                          }}>
+                            {formatMsToTimeInput(wfHoverMs)}
+                          </div>
+                        </>
                       )}
                     </div>
 
@@ -2021,7 +2324,7 @@ export function AudioCreatePage() {
                             setWfCurrentMs(t * 1000);
                           }
                         }}>-10</button>
-                      <button type="button" className="acp-waveform-controls__play" onClick={toggleWfPlayback} aria-label={wfPlaying ? 'إيقاف' : 'تشغيل'}>
+                      <button type="button" className="acp-waveform-controls__play" onClick={toggleWfPlayback} aria-label={wfPlaying ? t('stop', 'إيقاف') : t('play', 'تشغيل')}>
                         <span className="material-symbols-outlined">{wfPlaying ? 'pause' : 'play_arrow'}</span>
                       </button>
                       <button type="button" className="acp-waveform-controls__skip"
@@ -2032,7 +2335,7 @@ export function AudioCreatePage() {
                             setWfCurrentMs(t * 1000);
                           }
                         }}>+10</button>
-                      <span className="acp-waveform-controls__time">{formatDuration(editEnabled ? editedDurationMs : originalDurationMs)}</span>
+                      <span className="acp-waveform-controls__time">{formatDuration(workingDurationMs)}</span>
                     </div>
 
                     {/* Phase 8-L.1: Edit preview render button */}
@@ -2045,15 +2348,15 @@ export function AudioCreatePage() {
                           disabled={renderingStage === 'edit'}
                         >
                           {renderingStage === 'edit' ? (
-                            <><span className="material-symbols-outlined acp-spin">progress_activity</span> جاري معالجة المعاينة...</>
+                            <><span className="material-symbols-outlined acp-spin">progress_activity</span> {t('processingPreview', 'جاري معالجة المعاينة...')}</>
                           ) : getStagePreviewStatus('edit') === 'ready' ? (
-                            <><span className="material-symbols-outlined">check_circle</span> ✓ المعاينة جاهزة — إعادة المعاينة</>
+                            <><span className="material-symbols-outlined">check_circle</span> {t('previewReadyRePreview', '✓ المعاينة جاهزة — إعادة المعاينة')}</>
                           ) : getStagePreviewStatus('edit') === 'failed' ? (
-                            <><span className="material-symbols-outlined">error</span> فشلت المعاينة — إعادة المحاولة</>
+                            <><span className="material-symbols-outlined">error</span> {t('previewFailedRetry', 'فشلت المعاينة — إعادة المحاولة')}</>
                           ) : getStagePreviewStatus('edit') === 'dirty' ? (
-                            <><span className="material-symbols-outlined">warning</span> الإعدادات تغيرت — أعد المعاينة</>
+                            <><span className="material-symbols-outlined">warning</span> {t('settingsChangedRePreview', 'الإعدادات تغيرت — أعد المعاينة')}</>
                           ) : (
-                            <><span className="material-symbols-outlined">play_circle</span> معاينة القص</>
+                            <><span className="material-symbols-outlined">play_circle</span> {t('previewCut', 'حفظ ومعاينة القص')}</>
                           )}
                         </button>
                         {previewUrls.edit && (
@@ -2068,7 +2371,7 @@ export function AudioCreatePage() {
                 ) : (
                   <div className="acp-waveform-loading">
                     <span className="material-symbols-outlined">graphic_eq</span>
-                    لم يتمكن من تحليل الموجة الصوتية
+                    {t('couldNotAnalyzeWaveform', 'لم يتمكن من تحليل الموجة الصوتية')}
                   </div>
                 )}
               </div>
@@ -2080,8 +2383,8 @@ export function AudioCreatePage() {
                 <div className="acp-edit-panel__header">
                   <div className="acp-edit-panel__title-row">
                     <span className="material-symbols-outlined">content_cut</span>
-                    <span>قص وتعديل الصوت</span>
-                    <span className="acp-badge acp-badge--optional">اختياري</span>
+                    <span>{t('cutAndEditAudio', 'قص وتعديل الصوت')}</span>
+                    <span className="acp-badge acp-badge--optional">{t('optional', 'اختياري')}</span>
                   </div>
                   <button
                     type="button"
@@ -2100,123 +2403,180 @@ export function AudioCreatePage() {
                     <div className="acp-edit-control" id="edit-trim-start">
                       <div className="acp-edit-control__label">
                         <span className="material-symbols-outlined">first_page</span>
-                        قص البداية
+                        {t('trimStart', 'قص البداية')}
                       </div>
                       <input
                         type="range"
+                        dir="ltr"
                         className="acp-edit-control__slider"
                         min={0}
-                        max={Math.max(0, (trimEndMs > 0 ? trimEndMs : originalDurationMs) - 1000)}
+                        max={originalDurationMs}
                         step={100}
                         value={trimStartMs}
-                        onChange={e => setTrimStartMs(Number(e.target.value))}
+                        onChange={e => {
+                          let v = Math.max(0, Math.min(originalDurationMs, Number(e.target.value)));
+                          const end = trimEndMs > 0 ? trimEndMs : originalDurationMs;
+                          if (v > end - 500) setTrimEndMs(Math.min(originalDurationMs, v + 500));
+                          setTrimStartMs(v);
+                          setIsCutsSaved(false);
+                        }}
                       />
-                      <div className="acp-edit-control__value">
-                        {formatDuration(trimStartMs)}
-                      </div>
+                      <TimeInputControl
+                        valueMs={trimStartMs}
+                        onChange={v => {
+                          let newVal = Math.max(0, Math.min(originalDurationMs, v));
+                          const end = trimEndMs > 0 ? trimEndMs : originalDurationMs;
+                          if (newVal > end - 500) setTrimEndMs(Math.min(originalDurationMs, newVal + 500));
+                          setTrimStartMs(newVal);
+                          setIsCutsSaved(false);
+                        }}
+                      />
                     </div>
 
                     {/* Trim end */}
                     <div className="acp-edit-control" id="edit-trim-end">
                       <div className="acp-edit-control__label">
                         <span className="material-symbols-outlined">last_page</span>
-                        قص النهاية
+                        {t('trimEnd', 'قص النهاية')}
                       </div>
                       <input
                         type="range"
+                        dir="ltr"
                         className="acp-edit-control__slider"
-                        min={Math.max(1000, trimStartMs + 1000)}
+                        min={0}
                         max={originalDurationMs}
                         step={100}
                         value={trimEndMs > 0 ? trimEndMs : originalDurationMs}
                         onChange={e => {
-                          const v = Number(e.target.value);
+                          let v = Math.max(0, Math.min(originalDurationMs, Number(e.target.value)));
+                          if (v < trimStartMs + 500) setTrimStartMs(Math.max(0, v - 500));
                           setTrimEndMs(v >= originalDurationMs ? 0 : v);
+                          setIsCutsSaved(false);
                         }}
                       />
-                      <div className="acp-edit-control__value">
-                        {formatDuration(trimEndMs > 0 ? trimEndMs : originalDurationMs)}
-                      </div>
+                      <TimeInputControl
+                        valueMs={trimEndMs > 0 ? trimEndMs : originalDurationMs}
+                        onChange={v => {
+                          let newVal = Math.max(0, Math.min(originalDurationMs, v));
+                          if (newVal < trimStartMs + 500) setTrimStartMs(Math.max(0, newVal - 500));
+                          setTrimEndMs(newVal >= originalDurationMs ? 0 : newVal);
+                          setIsCutsSaved(false);
+                        }}
+                      />
                     </div>
 
                     {/* Middle cut */}
                     <div className="acp-edit-cut-section" id="edit-middle-cut">
                       <div className="acp-edit-cut-section__header">
                         <span className="material-symbols-outlined">content_cut</span>
-                        <span>حذف مقطع من المنتصف</span>
-                        <span className="acp-hint">(حد أقصى: 1)</span>
+                        <span>{t('deleteMiddleSection', 'حذف مقطع من المنتصف')}</span>
+                        <span className="acp-hint">{t('unlimited', '(بدون حد أقصى)')}</span>
                       </div>
                       {editCuts.map(cut => (
                         <div key={cut.id} className="acp-edit-cut-card">
                           <div className="acp-edit-cut-card__row">
                             <div className="acp-edit-cut-card__field">
-                              <span className="acp-edit-cut-card__field-label">من:</span>
+                              <span className="acp-edit-cut-card__field-label">{t('from', 'من:')}</span>
                               <input
                                 type="range"
+                                dir="ltr"
                                 className="acp-edit-control__slider"
-                                min={trimStartMs}
-                                max={Math.max(trimStartMs, cut.endMs - 500)}
+                                min={0}
+                                max={originalDurationMs}
                                 step={100}
                                 value={cut.startMs}
-                                onChange={e => updateCut(cut.id, { startMs: Number(e.target.value) })}
+                                onChange={e => {
+                                  let v = Math.max(0, Math.min(originalDurationMs, Number(e.target.value)));
+                                  if (v > cut.endMs - 100) {
+                                    updateCut(cut.id, { startMs: v, endMs: Math.min(originalDurationMs, v + 100) });
+                                  } else {
+                                    updateCut(cut.id, { startMs: v });
+                                  }
+                                }}
                               />
-                              <span className="acp-edit-control__value">{formatDuration(cut.startMs)}</span>
+                              <TimeInputControl
+                                valueMs={cut.startMs}
+                                onChange={v => {
+                                  let newVal = Math.max(0, Math.min(originalDurationMs, v));
+                                  if (newVal > cut.endMs - 100) {
+                                    updateCut(cut.id, { startMs: newVal, endMs: Math.min(originalDurationMs, newVal + 100) });
+                                  } else {
+                                    updateCut(cut.id, { startMs: newVal });
+                                  }
+                                }}
+                              />
                             </div>
                             <div className="acp-edit-cut-card__field">
-                              <span className="acp-edit-cut-card__field-label">إلى:</span>
+                              <span className="acp-edit-cut-card__field-label">{t('to', 'إلى:')}</span>
                               <input
                                 type="range"
+                                dir="ltr"
                                 className="acp-edit-control__slider"
-                                min={Math.min(cut.startMs + 500, trimEndMs > 0 ? trimEndMs : originalDurationMs)}
-                                max={trimEndMs > 0 ? trimEndMs : originalDurationMs}
+                                min={0}
+                                max={originalDurationMs}
                                 step={100}
                                 value={cut.endMs}
-                                onChange={e => updateCut(cut.id, { endMs: Number(e.target.value) })}
+                                onChange={e => {
+                                  let v = Math.max(0, Math.min(originalDurationMs, Number(e.target.value)));
+                                  if (v < cut.startMs + 100) {
+                                    updateCut(cut.id, { startMs: Math.max(0, v - 100), endMs: v });
+                                  } else {
+                                    updateCut(cut.id, { endMs: v });
+                                  }
+                                }}
                               />
-                              <span className="acp-edit-control__value">{formatDuration(cut.endMs)}</span>
+                              <TimeInputControl
+                                valueMs={cut.endMs}
+                                onChange={v => {
+                                  let newVal = Math.max(0, Math.min(originalDurationMs, v));
+                                  if (newVal < cut.startMs + 100) {
+                                    updateCut(cut.id, { startMs: Math.max(0, newVal - 100), endMs: newVal });
+                                  } else {
+                                    updateCut(cut.id, { endMs: newVal });
+                                  }
+                                }}
+                              />
                             </div>
                           </div>
                           <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={() => removeCut(cut.id)}>
-                            <span className="material-symbols-outlined">delete</span> إزالة القص
+                            <span className="material-symbols-outlined">delete</span> {t('removeCut', 'إزالة القص')}
                           </button>
                         </div>
                       ))}
-                      {editCuts.length === 0 && (
-                        <button type="button" className="acp-btn acp-btn--outline acp-btn--sm" onClick={addCut}>
-                          <span className="material-symbols-outlined">add</span> إضافة قص
-                        </button>
-                      )}
+                      <button type="button" className="acp-btn acp-btn--outline acp-btn--sm" onClick={addCut} style={{ marginTop: '0.5rem' }}>
+                        <span className="material-symbols-outlined">add</span> {t('addCut', 'إضافة قص')}
+                      </button>
                     </div>
 
                     {/* Duration summary */}
                     <div className="acp-edit-duration-summary">
                       <div className="acp-edit-duration-summary__row">
                         <span className="material-symbols-outlined">schedule</span>
-                        <span>المدة الأصلية:</span>
+                        <span>{t('originalDuration', 'المدة الأصلية:')}</span>
                         <strong>{formatDuration(originalDurationMs)}</strong>
                       </div>
                       <div className="acp-edit-duration-summary__row acp-edit-duration-summary__row--edited">
                         <span className="material-symbols-outlined">timer</span>
-                        <span>المدة بعد التعديل:</span>
+                        <span>{t('editedDuration', 'المدة بعد التعديل:')}</span>
                         <strong>{formatDuration(editedDurationMs)}</strong>
                       </div>
                     </div>
 
                     {/* Reset button */}
                     <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetEdits}>
-                      <span className="material-symbols-outlined">restart_alt</span> إعادة ضبط التعديلات
+                      <span className="material-symbols-outlined">restart_alt</span> {t('resetEdits', 'إعادة ضبط التعديلات')}
                     </button>
                   </div>
                 )}
               </div>
             )}
 
-            <div className="acp-nav-row">
+            <div className="acp-nav-row" style={{ marginTop: '1rem' }}>
               <button className="acp-btn acp-btn--ghost" onClick={() => { setAudioAsset(null); uploader.reset(); recorder.reset(); setStep(6); }} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">refresh</span> إعادة التسجيل / الرفع
+                <span className="material-symbols-outlined" aria-hidden="true">refresh</span> {t('reRecordUpload', 'إعادة التسجيل / الرفع')}
               </button>
-              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(8)} disabled={!audioAsset} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span> تأكيد ومتابعة
+              <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(8)} disabled={!audioAsset || renderingStage === 'edit'} type="button">
+                <span className="material-symbols-outlined" aria-hidden="true">{iconNext}</span> {t('confirmAndContinue', 'تأكيد ومتابعة')}
               </button>
             </div>
           </div>
@@ -2228,14 +2588,53 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">tune</span>
-            المؤثرات الصوتية
-            <span className="acp-badge acp-badge--optional">اختياري</span>
+            {t('audioEffects', 'المؤثرات الصوتية')}
+            <span className="acp-badge acp-badge--optional">{t('optional', 'اختياري')}</span>
           </h1>
           <div className="acp-form">
+
+            {/* ── Working-audio preview (cut audio from Step 7) ─────────── */}
+            {(previewUrls.edit || audioAsset?.storagePath) && (
+              <div className="acp-working-audio-card" id="effects-source-preview">
+                <div className="acp-working-audio-card__header">
+                  <span className="material-symbols-outlined">graphic_eq</span>
+                  <div className="acp-working-audio-card__info">
+                    <span className="acp-working-audio-card__title">
+                      {previewUrls.edit
+                        ? t('audioAfterCuts', 'الصوت بعد القص')
+                        : t('originalAudio', 'الصوت الأصلي')}
+                    </span>
+                    <span className="acp-working-audio-card__subtitle">
+                      {previewUrls.edit
+                        ? t('effectsAppliedToThis', 'المؤثرات ستُطبَّق على هذا الصوت')
+                        : t('noEditsApplied', 'لم تُطبَّق تعديلات — الصوت كامل')}
+                    </span>
+                  </div>
+                  {workingDurationMs > 0 && (
+                    <span className="acp-working-audio-card__duration">
+                      {formatDuration(workingDurationMs)}
+                    </span>
+                  )}
+                </div>
+                <audio
+                  controls
+                  src={previewUrls.edit || (audioAsset?.storagePath ?? undefined)}
+                  className="acp-working-audio-card__player"
+                  preload="metadata"
+                />
+                {!previewUrls.edit && editEnabled && (
+                  <p className="acp-working-audio-card__warn">
+                    <span className="material-symbols-outlined">warning</span>
+                    {t('noEditPreviewYet', 'لم يتم حفظ معاينة القص بعد — سيتم تطبيق المؤثرات على الصوت الكامل')}
+                  </p>
+                )}
+              </div>
+            )}
+
             {/* Enable/disable toggle */}
             <div className="acp-effects-toggle-row">
               <label className="acp-effects-toggle" id="effects-master-toggle">
-                <span>تفعيل المؤثرات الصوتية</span>
+                <span>{t('enableAudioEffects', 'تفعيل المؤثرات الصوتية')}</span>
                 <button
                   type="button"
                   role="switch"
@@ -2258,8 +2657,8 @@ export function AudioCreatePage() {
                     onClick={() => setEffectsMode('preset')}
                   >
                     <span className="material-symbols-outlined">auto_awesome</span>
-                    <span className="acp-effects-mode-card__label">إعدادات مسبقة</span>
-                    <span className="acp-effects-mode-card__desc">اختر من الأنماط الجاهزة</span>
+                    <span className="acp-effects-mode-card__label">{t('presets', 'إعدادات مسبقة')}</span>
+                    <span className="acp-effects-mode-card__desc">{t('chooseFromPresets', 'اختر من الأنماط الجاهزة')}</span>
                   </button>
                   <button
                     type="button"
@@ -2267,8 +2666,8 @@ export function AudioCreatePage() {
                     onClick={() => setEffectsMode('manual')}
                   >
                     <span className="material-symbols-outlined">tune</span>
-                    <span className="acp-effects-mode-card__label">تحكم يدوي</span>
-                    <span className="acp-effects-mode-card__desc">تعديل كل فلتر على حدة</span>
+                    <span className="acp-effects-mode-card__label">{t('manualControl', 'تحكم يدوي')}</span>
+                    <span className="acp-effects-mode-card__desc">{t('editEachFilter', 'تعديل كل فلتر على حدة')}</span>
                   </button>
                 </div>
 
@@ -2322,6 +2721,7 @@ export function AudioCreatePage() {
                             <div className="acp-filter-row__slider">
                               <input
                                 type="range"
+                                dir="ltr"
                                 min={0}
                                 max={100}
                                 value={intensity}
@@ -2346,19 +2746,19 @@ export function AudioCreatePage() {
                     disabled={renderingStage === 'effects' || (editEnabled && getStagePreviewStatus('edit') !== 'ready')}
                   >
                     {renderingStage === 'effects' ? (
-                      <><span className="material-symbols-outlined acp-spin">progress_activity</span> جاري معالجة المعاينة...</>
+                      <><span className="material-symbols-outlined acp-spin">progress_activity</span> {t('processingPreview', 'جاري معالجة المعاينة...')}</>
                     ) : getStagePreviewStatus('effects') === 'ready' ? (
-                      <><span className="material-symbols-outlined">check_circle</span> ✓ المعاينة جاهزة — إعادة المعاينة</>
+                      <><span className="material-symbols-outlined">check_circle</span> {t('previewReadyRePreview', '✓ المعاينة جاهزة — إعادة المعاينة')}</>
                     ) : getStagePreviewStatus('effects') === 'failed' ? (
-                      <><span className="material-symbols-outlined">error</span> فشلت المعاينة — إعادة المحاولة</>
+                      <><span className="material-symbols-outlined">error</span> {t('previewFailedRetry', 'فشلت المعاينة — إعادة المحاولة')}</>
                     ) : getStagePreviewStatus('effects') === 'dirty' ? (
-                      <><span className="material-symbols-outlined">warning</span> الإعدادات تغيرت — أعد المعاينة</>
+                      <><span className="material-symbols-outlined">warning</span> {t('settingsChangedRePreview', 'الإعدادات تغيرت — أعد المعاينة')}</>
                     ) : (
-                      <><span className="material-symbols-outlined">play_circle</span> معاينة المؤثرات</>
+                      <><span className="material-symbols-outlined">play_circle</span> {t('previewEffects', 'حفظ ومعاينة المؤثرات')}</>
                     )}
                   </button>
                   {editEnabled && getStagePreviewStatus('edit') !== 'ready' && (
-                    <p className="acp-hint">يجب معاينة القص أولاً</p>
+                    <p className="acp-hint">{t('previewCutFirst', 'يجب معاينة القص أولاً')}</p>
                   )}
                   {previewUrls.effects && (
                     <audio controls src={previewUrls.effects} className="acp-preview-audio" />
@@ -2371,7 +2771,7 @@ export function AudioCreatePage() {
                 {/* Reset button */}
                 <button type="button" className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetEffects}>
                   <span className="material-symbols-outlined" aria-hidden="true">restart_alt</span>
-                  إعادة تعيين المؤثرات
+                  {t('resetEffects', 'إعادة تعيين المؤثرات')}
                 </button>
               </>
             )}
@@ -2379,16 +2779,16 @@ export function AudioCreatePage() {
             {!effectsEnabled && (
               <p className="acp-hint">
                 <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-                لن يتم تطبيق أي مؤثرات صوتية. يمكنك تخطي هذه الخطوة.
+                {t('noEffectsWillBeAppliedCanSkip', 'لن يتم تطبيق أي مؤثرات صوتية. يمكنك تخطي هذه الخطوة.')}
               </p>
             )}
 
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(7)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(9)} disabled={saving} type="button">
-                {effectsEnabled ? 'التالي' : 'تخطي'} <span className="material-symbols-outlined" aria-hidden="true">arrow_back</span>
+                {effectsEnabled ? t('theNext', 'التالي') : t('skip', 'تخطي')} <span className="material-symbols-outlined" aria-hidden="true">{iconNext}</span>
               </button>
             </div>
           </div>
@@ -2400,22 +2800,56 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">graphic_eq</span>
-            مكساج الصوت
-            <span className="acp-badge acp-badge--optional">اختياري</span>
+            {t('audioMixing', 'مكساج الصوت')}
+            <span className="acp-badge acp-badge--optional">{t('optional', 'اختياري')}</span>
           </h1>
           <div className="acp-form">
-            {/* Master enable toggle */}
-            <div className="acp-fx-toggle-row">
-              <div className="acp-fx-toggle-row__info">
-                <span className="material-symbols-outlined">graphic_eq</span>
-                <div>
-                  <span className="acp-fx-toggle-row__title">تفعيل المكساج</span>
-                  <span className="acp-fx-toggle-row__desc">اضبط طبقات الصوت والموسيقى قبل الحفظ</span>
+
+            {/* ── Working-audio preview (effects or cut audio from prev step) ── */}
+            {(previewUrls.effects || previewUrls.edit || audioAsset?.storagePath) && (
+              <div className="acp-working-audio-card" id="mixing-source-preview">
+                <div className="acp-working-audio-card__header">
+                  <span className="material-symbols-outlined">graphic_eq</span>
+                  <div className="acp-working-audio-card__info">
+                    <span className="acp-working-audio-card__title">
+                      {previewUrls.effects
+                        ? t('audioAfterEffects', 'الصوت بعد المؤثرات')
+                        : previewUrls.edit
+                        ? t('audioAfterCuts', 'الصوت بعد القص')
+                        : t('originalAudio', 'الصوت الأصلي')}
+                    </span>
+                    <span className="acp-working-audio-card__subtitle">
+                      {t('mixingAppliedToThis', 'المكساج سيُطبَّق على هذا الصوت')}
+                    </span>
+                  </div>
+                  {workingDurationMs > 0 && (
+                    <span className="acp-working-audio-card__duration">
+                      {formatDuration(workingDurationMs)}
+                    </span>
+                  )}
                 </div>
+                <audio
+                  controls
+                  src={previewUrls.effects || previewUrls.edit || (audioAsset?.storagePath ?? undefined)}
+                  className="acp-working-audio-card__player"
+                  preload="metadata"
+                />
               </div>
-              <label className="acp-toggle">
-                <input type="checkbox" checked={mixingEnabled} onChange={e => setMixingEnabled(e.target.checked)} />
-                <span className="acp-toggle__track" />
+            )}
+
+            {/* Master enable toggle */}
+            <div className="acp-effects-toggle-row">
+              <label className="acp-effects-toggle" id="mixing-master-toggle">
+                <span>{t('enableMixing', 'تفعيل المكساج')}</span>
+                <button
+                  type="button"
+                  role="switch"
+                  aria-checked={mixingEnabled}
+                  className={`acp-toggle-switch ${mixingEnabled ? 'acp-toggle-switch--on' : ''}`}
+                  onClick={() => setMixingEnabled(!mixingEnabled)}
+                >
+                  <span className="acp-toggle-switch__thumb" />
+                </button>
               </label>
             </div>
 
@@ -2437,7 +2871,7 @@ export function AudioCreatePage() {
                 {/* Layer tracks section */}
                 <div className="acp-mix-layers">
                   <h3 className="acp-mix-layers__title">
-                    <span className="material-symbols-outlined">layers</span> الطبقات
+                    <span className="material-symbols-outlined">layers</span> {t('layers', 'الطبقات')}
                   </h3>
                   {mixTracks.map(track => (
                     <div className="acp-mix-track-card" key={track.id}>
@@ -2448,7 +2882,7 @@ export function AudioCreatePage() {
                             className={`acp-mix-icon-btn ${track.muted ? 'acp-mix-icon-btn--active' : ''}`}
                             type="button"
                             onClick={() => updateMixTrack(track.id, { muted: !track.muted })}
-                            title={track.muted ? 'إلغاء الكتم' : 'كتم'}
+                            title={track.muted ? t('unmute', 'إلغاء الكتم') : t('mute', 'كتم')}
                           >
                             <span className="material-symbols-outlined">{track.muted ? 'volume_off' : 'volume_up'}</span>
                           </button>
@@ -2457,6 +2891,7 @@ export function AudioCreatePage() {
                       <div className="acp-mix-track-card__slider">
                         <input
                           type="range"
+                          dir="ltr"
                           className="acp-range-slider"
                           min={0}
                           max={130}
@@ -2478,7 +2913,7 @@ export function AudioCreatePage() {
                             >
                               <span className="material-symbols-outlined">{opt.icon}</span>
                               {opt.label}
-                              {!opt.available && opt.id !== 'none' && <span className="acp-gate-badge">قريباً</span>}
+                              {!opt.available && opt.id !== 'none' && <span className="acp-gate-badge">{t('soon', 'قريباً')}</span>}
                             </button>
                           ))}
                           {/* Music bed upload area */}
@@ -2490,17 +2925,17 @@ export function AudioCreatePage() {
                                 <>
                                   <div className="acp-music-upload__file-info">
                                     <span className="material-symbols-outlined">audio_file</span>
-                                    {track.fileName || 'ملف موسيقى'}
+                                    {track.fileName || t('musicFile', 'ملف موسيقى')}
                                   </div>
                                   {track.durationMs && <div className="acp-music-upload__meta">{formatDuration(track.durationMs)} · {track.sizeBytes ? formatFileSize(track.sizeBytes) : ''}</div>}
                                   <button type="button" className="acp-music-upload__remove" onClick={removeMusicUpload}>
-                                    <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>delete</span> إزالة
+                                    <span className="material-symbols-outlined" style={{ fontSize: '0.8rem' }}>delete</span> {t('remove', 'إزالة')}
                                   </button>
                                 </>
                               ) : (
                                 <button type="button" className="acp-sfx-add-btn" onClick={() => musicFileRef.current?.click()} disabled={musicUploading}>
                                   <span className="material-symbols-outlined" style={{ fontSize: '1rem' }}>{musicUploading ? 'hourglass_empty' : 'upload_file'}</span>
-                                  {musicUploading ? `جاري الرفع... ${musicUploadProgress}%` : 'اختر ملف موسيقى'}
+                                  {musicUploading ? `${t('uploadingWithProgress', 'جاري الرفع...')} ${musicUploadProgress}%` : t('chooseMusicFile', 'اختر ملف موسيقى')}
                                 </button>
                               )}
                             </div>
@@ -2534,7 +2969,7 @@ export function AudioCreatePage() {
                     <div className="acp-sfx-section__header">
                       <span className="acp-sfx-section__title">
                         <span className="material-symbols-outlined">music_note</span>
-                        مؤثرات صوتية ({sfxItems.length}/{MAX_SFX_ITEMS})
+                        {t('soundEffectsSfx', 'مؤثرات صوتية')} ({sfxItems.length}/{MAX_SFX_ITEMS})
                       </span>
                       <input ref={sfxFileRef} type="file" accept="audio/*" style={{ display: 'none' }}
                         onChange={e => { const f = e.target.files?.[0]; if (f) handleSfxUpload(f); e.target.value = ''; }} />
@@ -2542,7 +2977,7 @@ export function AudioCreatePage() {
                         onClick={() => sfxFileRef.current?.click()}
                         disabled={sfxItems.length >= MAX_SFX_ITEMS || sfxUploading}>
                         <span className="material-symbols-outlined" style={{ fontSize: '0.9rem' }}>{sfxUploading ? 'hourglass_empty' : 'add'}</span>
-                        {sfxUploading ? 'جاري الرفع...' : 'إضافة مؤثر'}
+                        {sfxUploading ? t('uploadingWithProgress', 'جاري الرفع...') : t('addSfx', 'إضافة مؤثر')}
                       </button>
                     </div>
                     {sfxItems.map(sfx => (
@@ -2552,21 +2987,21 @@ export function AudioCreatePage() {
                             <span className="material-symbols-outlined" style={{ fontSize: '0.9rem', verticalAlign: 'middle', marginLeft: '0.25rem' }}>audio_file</span>
                             {sfx.fileName}
                           </span>
-                          <button type="button" className="acp-sfx-card__remove" onClick={() => removeSfxItem(sfx.id)} title="إزالة">
+                          <button type="button" className="acp-sfx-card__remove" onClick={() => removeSfxItem(sfx.id)} title={t('remove', 'إزالة')}>
                             <span className="material-symbols-outlined">close</span>
                           </button>
                         </div>
                         <div className="acp-sfx-card__controls">
                           <div className="acp-sfx-card__field">
-                            <span className="acp-sfx-card__field-label">التوقيت (دقيقة:ثانية.ملي ثانية)</span>
-                            <input type="text" className="acp-sfx-card__time-input"
-                              value={formatMsToTimeInput(sfx.startMs)}
-                              onChange={e => updateSfxItem(sfx.id, { startMs: parseTimeInputToMs(e.target.value) })}
-                              placeholder="00:00.000" />
+                            <span className="acp-sfx-card__field-label">{t('timingMinSecMs', 'التوقيت (دقيقة:ثانية.ملي ثانية)')}</span>
+                            <TimeInputControl
+                              valueMs={sfx.startMs}
+                              onChange={v => updateSfxItem(sfx.id, { startMs: v })}
+                            />
                           </div>
                           <div className="acp-sfx-card__slider">
-                            <span className="acp-sfx-card__field-label">الصوت</span>
-                            <input type="range" className="acp-range-slider" min={-20} max={6}
+                            <span className="acp-sfx-card__field-label">{t('volumeLevel', 'الصوت')}</span>
+                            <input type="range" dir="ltr" className="acp-range-slider" min={-20} max={6}
                               value={sfx.volumeDb} onChange={e => updateSfxItem(sfx.id, { volumeDb: Number(e.target.value) })} />
                             <span className="acp-sfx-card__slider-value">{sfx.volumeDb > 0 ? '+' : ''}{sfx.volumeDb}dB</span>
                           </div>
@@ -2580,7 +3015,7 @@ export function AudioCreatePage() {
                     {sfxItems.length === 0 && (
                       <p className="acp-hint" style={{ textAlign: 'center' }}>
                         <span className="material-symbols-outlined acp-hint__icon">info</span>
-                        ارفع ملفات مؤثرات صوتية وحدد التوقيت الدقيق لكل مؤثر
+                        {t('uploadSfxAndSetTimingHint', 'ارفع ملفات مؤثرات صوتية وحدد التوقيت الدقيق لكل مؤثر')}
                       </p>
                     )}
                   </div>
@@ -2589,24 +3024,29 @@ export function AudioCreatePage() {
                 {/* Advanced tools */}
                 <div className="acp-mix-advanced">
                   <h3 className="acp-mix-layers__title">
-                    <span className="material-symbols-outlined">tune</span> أدوات متقدمة
+                    <span className="material-symbols-outlined">tune</span> {t('advancedTools', 'أدوات متقدمة')}
                   </h3>
                   <div className="acp-mix-tools-grid">
                     {/* Auto-duck toggle */}
                     <div className="acp-mix-tool-card">
                       <div className="acp-mix-tool-card__header">
                         <span className="material-symbols-outlined">hearing</span>
-                        <span>خفض الموسيقى</span>
+                        <span>{t('musicDucking', 'خفض الموسيقى')}</span>
+                        <button
+                          type="button"
+                          role="switch"
+                          aria-checked={autoDuckEnabled}
+                          className={`acp-toggle-switch acp-toggle-switch--sm ${autoDuckEnabled ? 'acp-toggle-switch--on' : ''}`}
+                          onClick={() => setAutoDuckEnabled(!autoDuckEnabled)}
+                        >
+                          <span className="acp-toggle-switch__thumb" />
+                        </button>
                       </div>
-                      <span className="acp-mix-tool-card__desc">تلقائياً أثناء الكلام</span>
-                      <label className="acp-toggle acp-toggle--sm">
-                        <input type="checkbox" checked={autoDuckEnabled} onChange={e => setAutoDuckEnabled(e.target.checked)} />
-                        <span className="acp-toggle__track" />
-                      </label>
+                      <span className="acp-mix-tool-card__desc">{t('automaticallyDuringSpeech', 'تلقائياً أثناء الكلام')}</span>
                       {autoDuckEnabled && (
                         <span className="acp-mix-tool-card__note">
                           <span className="material-symbols-outlined" style={{ fontSize: '0.7rem' }}>schedule</span>
-                          مؤجل — يتطلب مسار موسيقى
+                          {t('delayedRequiresMusicTrack', 'مؤجل — يتطلب مسار موسيقى')}
                         </span>
                       )}
                     </div>
@@ -2617,7 +3057,7 @@ export function AudioCreatePage() {
                         <span className="material-symbols-outlined">signal_cellular_alt</span>
                         <span>Fade In</span>
                       </div>
-                      <span className="acp-mix-tool-card__desc">تدرج دخول</span>
+                      <span className="acp-mix-tool-card__desc">{t('fadeInDesc', 'تدرج دخول')}</span>
                       <div className="acp-mix-tool-card__control">
                         <input
                           type="range" className="acp-range-slider" min={0} max={5000} step={100}
@@ -2633,7 +3073,7 @@ export function AudioCreatePage() {
                         <span className="material-symbols-outlined">signal_cellular_alt</span>
                         <span>Fade Out</span>
                       </div>
-                      <span className="acp-mix-tool-card__desc">تدرج خروج</span>
+                      <span className="acp-mix-tool-card__desc">{t('fadeOutDesc', 'تدرج خروج')}</span>
                       <div className="acp-mix-tool-card__control">
                         <input
                           type="range" className="acp-range-slider" min={0} max={5000} step={100}
@@ -2647,9 +3087,9 @@ export function AudioCreatePage() {
                     <div className="acp-mix-tool-card">
                       <div className="acp-mix-tool-card__header">
                         <span className="material-symbols-outlined">volume_up</span>
-                        <span>مستوى الماستر</span>
+                        <span>{t('masterLevel', 'مستوى الماستر')}</span>
                       </div>
-                      <span className="acp-mix-tool-card__desc">معايرة المستوى العام</span>
+                      <span className="acp-mix-tool-card__desc">{t('calibrateOverallLevel', 'معايرة المستوى العام')}</span>
                       <div className="acp-mix-tool-card__control">
                         <input
                           type="range" className="acp-range-slider" min={-20} max={6}
@@ -2664,7 +3104,7 @@ export function AudioCreatePage() {
                 {/* Presets */}
                 <div className="acp-mix-presets">
                   <h3 className="acp-mix-layers__title">
-                    <span className="material-symbols-outlined">auto_awesome</span> قوالب جاهزة
+                    <span className="material-symbols-outlined">auto_awesome</span> {t('readyPresets', 'قوالب جاهزة')}
                   </h3>
                   <div className="acp-chips">
                     {MIXING_PRESET_DEFS.map(preset => (
@@ -2683,12 +3123,12 @@ export function AudioCreatePage() {
 
                 <p className="acp-hint">
                   <span className="material-symbols-outlined acp-hint__icon" aria-hidden="true">info</span>
-                  اضغط معاينة المكساج لسماع النتيجة قبل النشر. الملف الأصلي يبقى محفوظاً.
+                  {t('pressPreviewMixingToHearResult', 'اضغط معاينة المكساج لسماع النتيجة قبل النشر. الملف الأصلي يبقى محفوظاً.')}
                 </p>
 
                 {/* Reset button */}
                 <button className="acp-btn acp-btn--ghost acp-btn--sm" onClick={resetMixing} type="button">
-                  <span className="material-symbols-outlined">restart_alt</span> إعادة ضبط
+                  <span className="material-symbols-outlined">restart_alt</span> {t('reset', 'إعادة ضبط')}
                 </button>
               </>
             )}
@@ -2711,14 +3151,14 @@ export function AudioCreatePage() {
                   ) : getStagePreviewStatus('mixing') === 'dirty' ? (
                     <><span className="material-symbols-outlined">warning</span> الإعدادات تغيرت — أعد المعاينة</>
                   ) : (
-                    <><span className="material-symbols-outlined">play_circle</span> معاينة المكساج</>
+                    <><span className="material-symbols-outlined">play_circle</span> {t('previewMixing', 'معاينة المكساج')}</>
                   )}
                 </button>
                 {effectsEnabled && getStagePreviewStatus('effects') !== 'ready' && (
-                  <p className="acp-hint">يجب معاينة المؤثرات أولاً</p>
+                  <p className="acp-hint">{t('mustPreviewEffectsFirst', 'يجب معاينة المؤثرات أولاً')}</p>
                 )}
                 {!effectsEnabled && editEnabled && getStagePreviewStatus('edit') !== 'ready' && (
-                  <p className="acp-hint">يجب معاينة القص أولاً</p>
+                  <p className="acp-hint">{t('previewCutFirst', 'يجب معاينة القص أولاً')}</p>
                 )}
                 {previewUrls.mixing && (
                   <audio controls src={previewUrls.mixing} className="acp-preview-audio" />
@@ -2731,11 +3171,11 @@ export function AudioCreatePage() {
 
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(8)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
               <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(10)} disabled={saving} type="button">
                 <span className="material-symbols-outlined" aria-hidden="true">{mixingEnabled ? 'save' : 'skip_previous'}</span>
-                {saving ? 'جاري الحفظ...' : mixingEnabled ? 'حفظ المكساج' : 'تخطي'}
+                {saving ? t('savingDots', 'جاري الحفظ...') : mixingEnabled ? t('saveMixing', 'حفظ المكساج') : t('skip', 'تخطي')}
               </button>
             </div>
           </div>
@@ -2747,14 +3187,14 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">visibility</span>
-            المعاينة النهائية
+            {t('finalPreview', 'المعاينة النهائية')}
           </h1>
 
           {/* Preview card with cover, play overlay, timer */}
           <div className="acp-preview-card">
             <div className="acp-preview-card__cover-wrap">
               {coverPreviewUrl ? (
-                <img src={coverPreviewUrl} alt="غلاف" className="acp-preview-card__cover" />
+                <img src={coverPreviewUrl} alt={t('cover', 'غلاف')} className="acp-preview-card__cover" />
               ) : (
                 <div className="acp-preview-card__cover--default">
                   <span className="material-symbols-outlined">music_note</span>
@@ -2772,7 +3212,7 @@ export function AudioCreatePage() {
                     className={`acp-preview-card__play-overlay${previewPlaying ? ' acp-preview-card__play-overlay--playing' : ''}`}
                     onClick={togglePreviewPlayback}
                     type="button"
-                    aria-label={previewPlaying ? 'إيقاف' : 'تشغيل'}
+                    aria-label={previewPlaying ? t('stop', 'إيقاف') : t('play', 'تشغيل')}
                   >
                     <span className="material-symbols-outlined">
                       {previewPlaying ? 'pause' : 'play_arrow'}
@@ -2790,8 +3230,8 @@ export function AudioCreatePage() {
               ) : null}
             </div>
             <div className="acp-preview-card__body">
-              <h2 className="acp-preview-card__title">{title || 'بدون عنوان'}</h2>
-              <p className="acp-preview-card__owner">{currentUser?.displayName || 'المؤلف'}</p>
+              <h2 className="acp-preview-card__title">{title || t('untitled', 'بدون عنوان')}</h2>
+              <p className="acp-preview-card__owner">{currentUser?.displayName || t('author', 'المؤلف')}</p>
               <div className="acp-preview-card__meta">
                 <span className="acp-preview-card__badge">{WORLDS.find((w) => w.key === world)?.label}</span>
                 <span className="acp-preview-card__badge">{(KINDS_BY_WORLD[world] ?? []).find((k) => k.key === kind)?.label}</span>
@@ -2832,20 +3272,20 @@ export function AudioCreatePage() {
                       <>
                         <div className="acp-waveform-hint">
                           <span className="material-symbols-outlined">check_circle</span>
-                          المعاينة النهائية — هذا هو الصوت الذي سيتم نشره
+                          {t('finalPreviewHint', 'المعاينة النهائية — هذا هو الصوت الذي سيتم نشره')}
                         </div>
                         <audio controls src={previewUrl} className="acp-preview-audio" />
                       </>
                     ) : (
                       <div className="acp-waveform-hint">
                         <span className="material-symbols-outlined">warning</span>
-                        يجب معاينة كل مرحلة قبل النشر
+                        {t('mustPreviewEachStageBeforePublish', 'يجب معاينة كل مرحلة قبل النشر')}
                       </div>
                     )}
                     {anyDirty && (
                       <p className="acp-hint">
                         <span className="material-symbols-outlined acp-hint__icon">warning</span>
-                        بعض المراحل تحتاج إعادة معاينة
+                        {t('someStagesNeedRePreview', 'بعض المراحل تحتاج إعادة معاينة')}
                       </p>
                     )}
                   </>
@@ -2857,10 +3297,10 @@ export function AudioCreatePage() {
           {/* Preview tabs (visual only) */}
           <div className="acp-preview-tabs">
             <button className={`acp-preview-tab ${placementFeed === 'main' || placementFeed === 'both' ? 'acp-preview-tab--active' : ''}`} type="button">
-              <span className="material-symbols-outlined">home</span> الرئيسية
+              <span className="material-symbols-outlined">home</span> {t('mainFeed', 'الرئيسية')}
             </button>
             <button className={`acp-preview-tab ${placementFeed === 'shorts' || placementFeed === 'both' ? 'acp-preview-tab--active' : ''}`} type="button">
-              <span className="material-symbols-outlined">movie</span> لقطات
+              <span className="material-symbols-outlined">movie</span> {t('shortsFeed', 'لقطات')}
             </button>
           </div>
 
@@ -2868,39 +3308,39 @@ export function AudioCreatePage() {
           <div className="acp-bento-grid">
             <div className="acp-bento-cell">
               <div className="acp-bento-cell__label">
-                <span className="material-symbols-outlined">public</span> نطاق النشر
+                <span className="material-symbols-outlined">public</span> {t('publishScope', 'نطاق النشر')}
               </div>
               <span className="acp-bento-cell__value">{WORLDS.find((w) => w.key === world)?.label}</span>
             </div>
             <div className="acp-bento-cell">
               <div className="acp-bento-cell__label">
-                <span className="material-symbols-outlined">visibility</span> الخصوصية
+                <span className="material-symbols-outlined">visibility</span> {t('privacy', 'الخصوصية')}
               </div>
               <span className="acp-bento-cell__value">{AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}</span>
             </div>
             <div className="acp-bento-cell">
               <div className="acp-bento-cell__label">
-                <span className="material-symbols-outlined">category</span> القسم
+                <span className="material-symbols-outlined">category</span> {t('category', 'القسم')}
               </div>
               <span className="acp-bento-cell__value">{CATEGORIES.find((c) => c.id === categoryId)?.label || '—'}</span>
             </div>
             <div className="acp-bento-cell">
               <div className="acp-bento-cell__label">
-                <span className="material-symbols-outlined">segment</span> القسم الفرعي
+                <span className="material-symbols-outlined">segment</span> {t('subcategory', 'القسم الفرعي')}
               </div>
               <span className="acp-bento-cell__value">{SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label || '—'}</span>
             </div>
             <div className="acp-bento-cell">
               <div className="acp-bento-cell__label">
-                <span className="material-symbols-outlined">face</span> العمر المناسب
+                <span className="material-symbols-outlined">face</span> {t('ageSuitability', 'العمر المناسب')}
               </div>
-              <span className="acp-bento-cell__value">{ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13' : '+18'}</span>
+              <span className="acp-bento-cell__value">{ageSuitability === 'everyone' ? t('everyone', 'الجميع') : ageSuitability === 'teen' ? '+13' : '+18'}</span>
             </div>
             <div className="acp-bento-cell">
               <div className="acp-bento-cell__label">
-                <span className="material-symbols-outlined">language</span> البلد
+                <span className="material-symbols-outlined">language</span> {t('country', 'البلد')}
               </div>
-              <span className="acp-bento-cell__value">{countryMode === 'all' ? 'جميع الدول' : countryCodes || '—'}</span>
+              <span className="acp-bento-cell__value">{countryMode === 'all' ? t('allCountries', 'جميع الدول') : countryCodes || '—'}</span>
             </div>
           </div>
 
@@ -2908,75 +3348,75 @@ export function AudioCreatePage() {
           <div className="acp-status-chips">
             <span className={`acp-status-chip ${captionsEnabled ? 'acp-status-chip--ok' : 'acp-status-chip--skip'}`}>
               <span className="material-symbols-outlined">{captionsEnabled ? 'check_circle' : 'skip_next'}</span>
-              الكابشن: {captionsEnabled ? 'جاهز' : 'تم التخطي'}
+              {t('captionColon', 'الكابشن: ')} {captionsEnabled ? t('ready', 'جاهز') : t('skipped', 'تم التخطي')}
             </span>
             <span className={`acp-status-chip ${coverAsset ? 'acp-status-chip--ok' : 'acp-status-chip--skip'}`}>
               <span className="material-symbols-outlined">{coverAsset ? 'check_circle' : 'image'}</span>
-              الغلاف: {coverAsset ? 'جاهز' : 'افتراضي'}
+              {t('coverColon', 'الغلاف: ')} {coverAsset ? t('ready', 'جاهز') : t('default', 'افتراضي')}
             </span>
             <span className={`acp-status-chip ${effectsEnabled ? 'acp-status-chip--ok' : 'acp-status-chip--skip'}`}>
               <span className="material-symbols-outlined">{effectsEnabled ? 'check_circle' : 'skip_next'}</span>
-              المؤثرات: {effectsEnabled
+              {t('effectsColon', 'المؤثرات: ')} {effectsEnabled
                 ? (effectsMode === 'preset' && selectedPresetId
-                    ? AUDIO_PRESETS.find(p => p.id === selectedPresetId)?.label ?? 'إعداد مسبق'
+                    ? AUDIO_PRESETS.find(p => p.id === selectedPresetId)?.label ?? t('preset', 'إعداد مسبق')
                     : effectsMode === 'manual'
-                      ? `${manualFilters.filter(f => f.enabled).length} فلاتر`
-                      : 'مفعّل')
-                : 'تم التخطي'}
+                      ? t('filtersCount', '{{count}} فلاتر', { count: manualFilters.filter(f => f.enabled).length })
+                      : t('enabled', 'مفعّل'))
+                : t('skipped', 'تم التخطي')}
             </span>
             <span className={`acp-status-chip ${mixingEnabled ? 'acp-status-chip--done' : 'acp-status-chip--skip'}`}>
               <span className="material-symbols-outlined">{mixingEnabled ? 'graphic_eq' : 'skip_next'}</span>
-              {mixingEnabled
-                ? `المكساج: ${selectedMixPresetId
-                    ? MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId)?.label || 'مخصص'
-                    : 'ضبط يدوي'}`
-                : 'المكساج: تم التخطي'}
+              {t('mixingColon', 'المكساج: ')} {mixingEnabled
+                ? (selectedMixPresetId
+                    ? MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId)?.label || t('custom', 'مخصص')
+                    : t('manualAdjustment', 'ضبط يدوي'))
+                : t('skipped', 'تم التخطي')}
             </span>
             <span className={`acp-status-chip ${editEnabled ? 'acp-status-chip--done' : 'acp-status-chip--skip'}`}>
               <span className="material-symbols-outlined">{editEnabled ? 'content_cut' : 'skip_next'}</span>
-              {editEnabled
-                ? `القص: ${formatDuration(editedDurationMs)}`
-                : 'القص: تم التخطي'}
+              {t('trimColon', 'القص: ')} {editEnabled
+                ? formatDuration(editedDurationMs)
+                : t('skipped', 'تم التخطي')}
             </span>
           </div>
 
           {/* Safety / review checklist */}
           <div className="acp-safety-list">
-            <h3 className="acp-safety-list__title">قائمة التحقق</h3>
+            <h3 className="acp-safety-list__title">{t('checklist', 'قائمة التحقق')}</h3>
             <div className="acp-safety-item">
               <span className="material-symbols-outlined">check</span>
-              المحتوى يتوافق مع سياسة الاستخدام
+              {t('contentCompliesWithPolicy', 'المحتوى يتوافق مع سياسة الاستخدام')}
             </div>
             <div className="acp-safety-item">
               <span className="material-symbols-outlined">check</span>
-              لا يحتوي على مواد محمية بحقوق ملكية
+              {t('noCopyrightedMaterials', 'لا يحتوي على مواد محمية بحقوق ملكية')}
             </div>
             <div className="acp-safety-item">
               <span className="material-symbols-outlined">check</span>
-              الفئة العمرية مناسبة للمحتوى
+              {t('ageSuitabilityAppropriate', 'الفئة العمرية مناسبة للمحتوى')}
             </div>
           </div>
 
           {/* Edit-back links */}
           <div className="acp-editback">
-            <h3 className="acp-editback__title">تعديل الأقسام</h3>
+            <h3 className="acp-editback__title">{t('editSections', 'تعديل الأقسام')}</h3>
             <div className="acp-editback__links">
-              <button className="acp-editback__link" onClick={() => setStep(1)}><span className="material-symbols-outlined">edit_note</span> المعلومات</button>
-              <button className="acp-editback__link" onClick={() => setStep(2)}><span className="material-symbols-outlined">tune</span> تفاصيل النشر</button>
-              <button className="acp-editback__link" onClick={() => setStep(3)}><span className="material-symbols-outlined">image</span> الغلاف</button>
-              <button className="acp-editback__link" onClick={() => setStep(4)}><span className="material-symbols-outlined">subtitles</span> الترجمة</button>
-              <button className="acp-editback__link" onClick={() => setStep(5)}><span className="material-symbols-outlined">teleprompter</span> الملقن</button>
-              <button className="acp-editback__link" onClick={() => { setAudioAsset(null); uploader.reset(); recorder.reset(); setStep(6); }}><span className="material-symbols-outlined">mic</span> التسجيل</button>
+              <button className="acp-editback__link" onClick={() => setStep(1)}><span className="material-symbols-outlined">edit_note</span> {t('info', 'المعلومات')}</button>
+              <button className="acp-editback__link" onClick={() => setStep(2)}><span className="material-symbols-outlined">tune</span> {t('publishDetails', 'تفاصيل النشر')}</button>
+              <button className="acp-editback__link" onClick={() => setStep(3)}><span className="material-symbols-outlined">image</span> {t('cover', 'الغلاف')}</button>
+              <button className="acp-editback__link" onClick={() => setStep(4)}><span className="material-symbols-outlined">subtitles</span> {t('subtitles', 'الترجمة')}</button>
+              <button className="acp-editback__link" onClick={() => setStep(5)}><span className="material-symbols-outlined">teleprompter</span> {t('teleprompter', 'الملقن')}</button>
+              <button className="acp-editback__link" onClick={() => { setAudioAsset(null); uploader.reset(); recorder.reset(); setStep(6); }}><span className="material-symbols-outlined">mic</span> {t('recording', 'التسجيل')}</button>
             </div>
           </div>
 
           {/* Bottom navigation */}
           <div className="acp-nav-row">
             <button className="acp-btn acp-btn--ghost" onClick={() => setStep(9)} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+              <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
             </button>
             <button className="acp-btn acp-btn--primary" onClick={() => saveDraft(11)} disabled={saving} type="button">
-              {saving ? <><span className="acp-spinner" aria-hidden="true" /> حفظ...</> : <><span className="material-symbols-outlined" aria-hidden="true">publish</span> تأكيد النشر</>}
+              {saving ? <><span className="acp-spinner" aria-hidden="true" /> {t('savingDots', 'حفظ...')}</> : <><span className="material-symbols-outlined" aria-hidden="true">publish</span> {t('confirmPublish', 'تأكيد النشر')}</>}
             </button>
           </div>
         </section>
@@ -2987,82 +3427,82 @@ export function AudioCreatePage() {
         <section className="acp-section">
           <h1 className="acp-section__title">
             <span className="material-symbols-outlined" aria-hidden="true">fact_check</span>
-            مراجعة التفاصيل والنشر
+            {t('reviewDetailsAndPublish', 'مراجعة التفاصيل والنشر')}
           </h1>
           <div className="acp-form">
             {/* ── Readiness checklist ──────────────────────────────── */}
             <div className="acp-checklist">
               <div className={`acp-checklist__item ${title ? 'acp-checklist__item--ok' : 'acp-checklist__item--fail'}`}>
-                <span className="material-symbols-outlined">{title ? 'check_circle' : 'cancel'}</span> العنوان
+                <span className="material-symbols-outlined">{title ? 'check_circle' : 'cancel'}</span> {t('title', 'العنوان')}
               </div>
               <div className={`acp-checklist__item ${audioAsset ? 'acp-checklist__item--ok' : 'acp-checklist__item--fail'}`}>
-                <span className="material-symbols-outlined">{audioAsset ? 'check_circle' : 'cancel'}</span> الملف الصوتي
+                <span className="material-symbols-outlined">{audioAsset ? 'check_circle' : 'cancel'}</span> {t('audioFile', 'الملف الصوتي')}
               </div>
               <div className={`acp-checklist__item ${coverAsset ? 'acp-checklist__item--ok' : 'acp-checklist__item--warn'}`}>
-                <span className="material-symbols-outlined">{coverAsset ? 'check_circle' : 'info'}</span> الغلاف {!coverAsset && '(افتراضي)'}
+                <span className="material-symbols-outlined">{coverAsset ? 'check_circle' : 'info'}</span> {t('cover', 'الغلاف')} {!coverAsset && t('defaultParentheses', '(افتراضي)')}
               </div>
             </div>
 
             {/* ── Info card ────────────────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">edit_note</span> المعلومات</h3>
-              <div className="acp-rd-card__row"><span>العنوان:</span> <strong>{title || '—'}</strong></div>
-              {caption && <div className="acp-rd-card__row"><span>الوصف:</span> {caption}</div>}
-              <div className="acp-rd-card__row"><span>العالم:</span> {WORLDS.find((w) => w.key === world)?.label}</div>
-              <div className="acp-rd-card__row"><span>النوع:</span> {(KINDS_BY_WORLD[world] ?? []).find((k) => k.key === kind)?.label}</div>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">edit_note</span> {t('info', 'المعلومات')}</h3>
+              <div className="acp-rd-card__row"><span>{t('titleColon', 'العنوان:')}</span> <strong>{title || '—'}</strong></div>
+              {caption && <div className="acp-rd-card__row"><span>{t('descriptionColon', 'الوصف:')}</span> {caption}</div>}
+              <div className="acp-rd-card__row"><span>{t('worldColon', 'العالم:')}</span> {WORLDS.find((w) => w.key === world)?.label}</div>
+              <div className="acp-rd-card__row"><span>{t('kindColon', 'النوع:')}</span> {(KINDS_BY_WORLD[world] ?? []).find((k) => k.key === kind)?.label}</div>
             </div>
 
             {/* ── Publish Details card ─────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> تفاصيل النشر</h3>
-              <div className="acp-rd-card__row"><span>التصنيف:</span> {CATEGORIES.find((c) => c.id === categoryId)?.label || '— لم يُحدد —'}</div>
-              {subcategoryId && <div className="acp-rd-card__row"><span>الفرعي:</span> {SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label || '—'}</div>}
-              <div className="acp-rd-card__row"><span>الوسوم:</span> {tags || '— بدون وسوم —'}</div>
-              <div className="acp-rd-card__row"><span>اللغة:</span> {LANGUAGES.find((l) => l.code === language)?.label}</div>
-              <div className="acp-rd-card__row"><span>الدول:</span> {countryMode === 'all' ? 'جميع الدول' : countryCodes || '—'}</div>
-              <div className="acp-rd-card__row"><span>الفئة العمرية:</span> {ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13 مراهقين' : '+18 بالغين'}</div>
-              <div className="acp-rd-card__row"><span>محتوى صريح:</span> {isExplicit ? 'نعم' : 'لا'}</div>
-              <div className="acp-rd-card__row"><span>محتوى أطفال:</span> {isChildContent ? 'نعم' : 'لا'}</div>
-              <div className="acp-rd-card__row"><span>موضع النشر:</span> {placementFeed === 'main' ? 'الرئيسية' : placementFeed === 'shorts' ? 'لقطات' : 'كلاهما'}</div>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> {t('publishDetails', 'تفاصيل النشر')}</h3>
+              <div className="acp-rd-card__row"><span>{t('categoryColon', 'التصنيف:')}</span> {CATEGORIES.find((c) => c.id === categoryId)?.label || t('notSelected', '— لم يُحدد —')}</div>
+              {subcategoryId && <div className="acp-rd-card__row"><span>{t('subcategoryColon', 'الفرعي:')}</span> {SUBCATEGORIES_BY_CATEGORY[categoryId]?.find((s) => s.id === subcategoryId)?.label || '—'}</div>}
+              <div className="acp-rd-card__row"><span>{t('tagsColon', 'الوسوم:')}</span> {tags || t('noTags', '— بدون وسوم —')}</div>
+              <div className="acp-rd-card__row"><span>{t('languageColon', 'اللغة:')}</span> {LANGUAGES.find((l) => l.code === language)?.label}</div>
+              <div className="acp-rd-card__row"><span>{t('countriesColon', 'الدول:')}</span> {countryMode === 'all' ? t('allCountries', 'جميع الدول') : countryCodes || '—'}</div>
+              <div className="acp-rd-card__row"><span>{t('ageSuitabilityColon', 'الفئة العمرية:')}</span> {ageSuitability === 'everyone' ? t('everyone', 'الجميع') : ageSuitability === 'teen' ? t('teenagers13', '+13 مراهقين') : t('adults18', '+18 بالغين')}</div>
+              <div className="acp-rd-card__row"><span>{t('explicitContentColon', 'محتوى صريح:')}</span> {isExplicit ? t('yes', 'نعم') : t('no', 'لا')}</div>
+              <div className="acp-rd-card__row"><span>{t('childContentColon', 'محتوى أطفال:')}</span> {isChildContent ? t('yes', 'نعم') : t('no', 'لا')}</div>
+              <div className="acp-rd-card__row"><span>{t('publishPlacementColon', 'موضع النشر:')}</span> {placementFeed === 'main' ? t('mainFeed', 'الرئيسية') : placementFeed === 'shorts' ? t('shortsFeed', 'لقطات') : t('both', 'كلاهما')}</div>
             </div>
 
             {/* ── Audience card ────────────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">group</span> الجمهور والإعدادات</h3>
-              <div className="acp-rd-card__row"><span>الجمهور:</span> {AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}</div>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">group</span> {t('audienceAndSettings', 'الجمهور والإعدادات')}</h3>
+              <div className="acp-rd-card__row"><span>{t('audienceColon', 'الجمهور:')}</span> {AUDIENCE_OPTIONS.find((a) => a.key === audience)?.label}</div>
               <div className="acp-rd-card__row">
-                <span>التعليقات:</span>
+                <span>{t('commentsColon', 'التعليقات:')}</span>
                 <span className="material-symbols-outlined" style={{ color: commentsEnabled ? '#22c55e' : '#ef4444' }}>{commentsEnabled ? 'check_circle' : 'cancel'}</span>
-                {commentsEnabled ? 'مسموحة' : 'مغلقة'}
+                {commentsEnabled ? t('allowed', 'مسموحة') : t('closed', 'مغلقة')}
               </div>
               <div className="acp-rd-card__row">
-                <span>الهدايا:</span>
+                <span>{t('giftsColon', 'الهدايا:')}</span>
                 <span className="material-symbols-outlined" style={{ color: giftsEnabled ? '#22c55e' : '#ef4444' }}>{giftsEnabled ? 'check_circle' : 'cancel'}</span>
-                {giftsEnabled ? 'مسموحة' : 'مغلقة'}
+                {giftsEnabled ? t('allowed', 'مسموحة') : t('closed', 'مغلقة')}
               </div>
               <div className="acp-rd-card__row">
-                <span>المشاركة:</span>
+                <span>{t('sharingColon', 'المشاركة:')}</span>
                 <span className="material-symbols-outlined" style={{ color: sharingEnabled ? '#22c55e' : '#ef4444' }}>{sharingEnabled ? 'check_circle' : 'cancel'}</span>
-                {sharingEnabled ? 'مسموحة' : 'مغلقة'}
+                {sharingEnabled ? t('allowed', 'مسموحة') : t('closed', 'مغلقة')}
               </div>
             </div>
 
             {/* ── Cover card ───────────────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">image</span> الغلاف</h3>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">image</span> {t('cover', 'الغلاف')}</h3>
               <div className="acp-rd-card__row">
-                <span>الحالة:</span>
+                <span>{t('statusColon', 'الحالة:')}</span>
                 {coverAsset ? (
                   <>
                     <span className="material-symbols-outlined" style={{ color: '#22c55e' }}>
                       {coverAsset.sourceType === 'uploaded' ? 'image' : coverAsset.sourceType === 'ai' ? 'auto_awesome' : 'image'}
                     </span>
-                    {coverAsset.sourceType === 'uploaded' ? 'صورة مرفوعة' : coverAsset.sourceType === 'ai' ? 'غلاف ذكي (مقفل)' : 'مرفوع'}
+                    {coverAsset.sourceType === 'uploaded' ? t('uploadedImage', 'صورة مرفوعة') : coverAsset.sourceType === 'ai' ? t('smartCoverLocked', 'غلاف ذكي (مقفل)') : t('uploaded', 'مرفوع')}
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined">image</span>
-                    افتراضي — لم يُرفق غلاف
+                    {t('defaultNoCoverAttached', 'افتراضي — لم يُرفق غلاف')}
                   </>
                 )}
               </div>
@@ -3070,131 +3510,131 @@ export function AudioCreatePage() {
 
             {/* ── Captions card ────────────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">subtitles</span> الترجمة</h3>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">subtitles</span> {t('subtitles', 'الترجمة')}</h3>
               <div className="acp-rd-card__row">
-                <span>الحالة:</span>
+                <span>{t('statusColon', 'الحالة:')}</span>
                 <span className="material-symbols-outlined" style={{ color: captionsEnabled ? '#22c55e' : '#94a3b8' }}>
                   {captionsEnabled ? 'check_circle' : 'skip_next'}
                 </span>
-                {captionsEnabled ? 'مفعّلة' : 'تم التخطي'}
+                {captionsEnabled ? t('enabled_f', 'مفعّلة') : t('skipped', 'تم التخطي')}
               </div>
-              {captionsEnabled && <div className="acp-rd-card__row"><span>اللغة:</span> {LANGUAGES.find((l) => l.code === captionLang)?.label}</div>}
-              {captionsEnabled && <div className="acp-rd-card__row"><span>النمط:</span> {captionStyle === 'standard' ? 'عادي' : captionStyle === 'karaoke' ? 'كاريوكي' : 'ترجمة سفلية'}</div>}
+              {captionsEnabled && <div className="acp-rd-card__row"><span>{t('languageColon', 'اللغة:')}</span> {LANGUAGES.find((l) => l.code === captionLang)?.label}</div>}
+              {captionsEnabled && <div className="acp-rd-card__row"><span>{t('styleColon', 'النمط:')}</span> {captionStyle === 'standard' ? t('normal', 'عادي') : captionStyle === 'karaoke' ? t('karaoke', 'كاريوكي') : t('bottomSubtitles', 'ترجمة سفلية')}</div>}
             </div>
 
             {/* ── AutoCue card ─────────────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">teleprompter</span> الملقن</h3>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">teleprompter</span> {t('teleprompter', 'الملقن')}</h3>
               <div className="acp-rd-card__row">
-                <span>الحالة:</span>
+                <span>{t('statusColon', 'الحالة:')}</span>
                 <span className="material-symbols-outlined" style={{ color: autoCueEnabled ? '#22c55e' : '#94a3b8' }}>
                   {autoCueEnabled ? 'check_circle' : 'skip_next'}
                 </span>
-                {autoCueEnabled ? 'مفعّل' : 'تم التخطي'}
+                {autoCueEnabled ? t('enabled', 'مفعّل') : t('skipped', 'تم التخطي')}
               </div>
               {autoCueEnabled && (
                 <>
-                  <div className="acp-rd-card__row"><span>مصدر النص:</span> يدوي</div>
-                  <div className="acp-rd-card__row"><span>السرعة:</span> {scrollSpeed === 'slow' ? 'بطيء' : scrollSpeed === 'medium' ? 'متوسط' : 'سريع'}</div>
-                  <div className="acp-rd-card__row"><span>حجم الخط:</span> {fontSize === 'small' ? 'صغير' : fontSize === 'medium' ? 'متوسط' : 'كبير'}</div>
-                  <div className="acp-rd-card__row"><span>وضع القراءة:</span> {readingMode === 'lineByLine' ? 'سطر بسطر' : 'فقرة بفقرة'}</div>
-                  <div className="acp-rd-card__row"><span>تأخير البداية:</span> {startDelay} ثوان</div>
-                  <div className="acp-rd-card__row"><span>تمييز السطر:</span> {highlightLine ? 'مفعّل' : 'معطّل'}</div>
-                  {scriptText && <div className="acp-rd-card__row acp-rd-card__row--script"><span>معاينة النص:</span> <em>{scriptText.length > 120 ? scriptText.slice(0, 120) + '...' : scriptText}</em></div>}
+                  <div className="acp-rd-card__row"><span>{t('textSourceColon', 'مصدر النص:')}</span> {t('manual', 'يدوي')}</div>
+                  <div className="acp-rd-card__row"><span>{t('speedColon', 'السرعة:')}</span> {scrollSpeed === 'slow' ? t('slow', 'بطيء') : scrollSpeed === 'medium' ? t('medium', 'متوسط') : t('fast', 'سريع')}</div>
+                  <div className="acp-rd-card__row"><span>{t('fontSizeColon', 'حجم الخط:')}</span> {fontSize === 'small' ? t('small', 'صغير') : fontSize === 'medium' ? t('medium', 'متوسط') : t('large', 'كبير')}</div>
+                  <div className="acp-rd-card__row"><span>{t('readingModeColon', 'وضع القراءة:')}</span> {readingMode === 'lineByLine' ? t('lineByLine', 'سطر بسطر') : t('paragraphByParagraph', 'فقرة بفقرة')}</div>
+                  <div className="acp-rd-card__row"><span>{t('startDelayColon', 'تأخير البداية:')}</span> {startDelay}{t('seconds', ' ثوان')}</div>
+                  <div className="acp-rd-card__row"><span>{t('highlightLineColon', 'تمييز السطر:')}</span> {highlightLine ? t('enabled', 'مفعّل') : t('disabled', 'معطّل')}</div>
+                  {scriptText && <div className="acp-rd-card__row acp-rd-card__row--script"><span>{t('textPreviewColon', 'معاينة النص:')}</span> <em>{scriptText.length > 120 ? scriptText.slice(0, 120) + '...' : scriptText}</em></div>}
                 </>
               )}
             </div>
 
             {/* ── Audio card ───────────────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">mic</span> الصوت</h3>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">mic</span> {t('audio', 'الصوت')}</h3>
               {audioAsset ? (
                 <>
-                  <div className="acp-rd-card__row"><span>الملف:</span> {audioAsset.originalFileName}</div>
+                  <div className="acp-rd-card__row"><span>{t('fileColon', 'الملف:')}</span> {audioAsset.originalFileName}</div>
                   <div className="acp-rd-card__row">
-                    <span>المصدر:</span>
+                    <span>{t('sourceColon', 'المصدر:')}</span>
                     <span className="material-symbols-outlined">{audioAsset.sourceType === 'recorded' ? 'mic' : 'upload_file'}</span>
-                    {audioAsset.sourceType === 'recorded' ? 'مسجّل' : 'مرفوع'}
+                    {audioAsset.sourceType === 'recorded' ? t('recorded', 'مسجّل') : t('uploaded', 'مرفوع')}
                   </div>
-                  {audioAsset.durationMs ? <div className="acp-rd-card__row"><span>المدة:</span> {formatDuration(audioAsset.durationMs)}</div> : null}
-                  {audioAsset.sizeBytes ? <div className="acp-rd-card__row"><span>الحجم:</span> {formatFileSize(audioAsset.sizeBytes)}</div> : null}
-                  <div className="acp-rd-card__row"><span>النوع:</span> {audioAsset.mimeType}</div>
+                  {audioAsset.durationMs ? <div className="acp-rd-card__row"><span>{t('durationColon', 'المدة:')}</span> {formatDuration(audioAsset.durationMs)}</div> : null}
+                  {audioAsset.sizeBytes ? <div className="acp-rd-card__row"><span>{t('sizeColon', 'الحجم:')}</span> {formatFileSize(audioAsset.sizeBytes)}</div> : null}
+                  <div className="acp-rd-card__row"><span>{t('typeColon', 'النوع:')}</span> {audioAsset.mimeType}</div>
                 </>
               ) : (
                 <div className="acp-rd-card__row acp-rd-card__row--warn">
-                  <span className="material-symbols-outlined">cancel</span> لا يوجد ملف صوتي — لا يمكن النشر.
+                  <span className="material-symbols-outlined">cancel</span> {t('noAudioFileCannotPublish', 'لا يوجد ملف صوتي — لا يمكن النشر.')}
                 </div>
               )}
             </div>
 
             {/* ── Effects & Mixing card ────────────────────────────── */}
             <div className="acp-rd-card">
-              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> المؤثرات والمكساج</h3>
+              <h3 className="acp-rd-card__title"><span className="material-symbols-outlined">tune</span> {t('effectsAndMixing', 'المؤثرات والمكساج')}</h3>
               <div className="acp-rd-card__row">
-                <span>المؤثرات:</span>
+                <span>{t('effectsColon', 'المؤثرات:')}</span>
                 {effectsEnabled ? (
                   <>
                     <span className="material-symbols-outlined" style={{ color: 'var(--accent-teal, #2dd4bf)' }}>check_circle</span>
                     {effectsMode === 'preset' && selectedPresetId
-                      ? AUDIO_PRESETS.find(p => p.id === selectedPresetId)?.label ?? 'إعداد مسبق'
+                      ? AUDIO_PRESETS.find(p => p.id === selectedPresetId)?.label ?? t('preset', 'إعداد مسبق')
                       : effectsMode === 'manual'
-                        ? `${manualFilters.filter(f => f.enabled).length} فلاتر يدوية`
-                        : 'مفعّل'}
+                        ? t('filtersCount', '{{count}} فلاتر', { count: manualFilters.filter(f => f.enabled).length })
+                        : t('enabled', 'مفعّل')}
                     <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-                      المعاينة متاحة
+                      {t('previewAvailable', 'المعاينة متاحة')}
                     </span>
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
-                    تم التخطي — لم يتم تطبيق أي معالجة
+                    {t('skippedNoProcessingApplied', 'تم التخطي — لم يتم تطبيق أي معالجة')}
                   </>
                 )}
               </div>
               <div className="acp-rd-card__row">
-                <span>المكساج:</span>
+                <span>{t('mixingColon', 'المكساج:')}</span>
                 {mixingEnabled ? (
                   <>
                     <span className="material-symbols-outlined" style={{ color: 'var(--accent-teal, #2dd4bf)' }}>check_circle</span>
                     {selectedMixPresetId
-                      ? MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId)?.label ?? 'مخصص'
-                      : 'ضبط يدوي'}
+                      ? MIXING_PRESET_DEFS.find(p => p.id === selectedMixPresetId)?.label ?? t('custom', 'مخصص')
+                      : t('manualAdjustment', 'ضبط يدوي')}
                     <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-                      صوتك: {dbToPercent(mixTracks.find(t => t.type === 'voice')?.volumeDb ?? 0)}%
-                      {masterFadeInMs > 0 && ` · Fade In: ${(masterFadeInMs/1000).toFixed(1)}ث`}
-                      {masterFadeOutMs > 0 && ` · Fade Out: ${(masterFadeOutMs/1000).toFixed(1)}ث`}
-                      {masterGainDb !== 0 && ` · ماستر: ${masterGainDb > 0 ? '+' : ''}${masterGainDb}dB`}
-                      {autoDuckEnabled && ' · خفض تلقائي (مؤجل)'}
-                      {mixTracks.find(t => t.type === 'musicBed' && t.storagePath) && ` · موسيقى: ${mixTracks.find(t => t.type === 'musicBed')?.fileName || 'مرفوعة'}`}
-                      {sfxItems.length > 0 && ` · مؤثرات: ${sfxItems.filter(s => s.enabled).length} مؤثر`}
+                      {t('yourVoiceColon', 'صوتك:')} {dbToPercent(mixTracks.find(t => t.type === 'voice')?.volumeDb ?? 0)}%
+                      {masterFadeInMs > 0 && ` · Fade In: ${(masterFadeInMs/1000).toFixed(1)}${t('seconds', 'ث')}`}
+                      {masterFadeOutMs > 0 && ` · Fade Out: ${(masterFadeOutMs/1000).toFixed(1)}${t('seconds', 'ث')}`}
+                      {masterGainDb !== 0 && ` · ${t('masterColon', 'ماستر:')} ${masterGainDb > 0 ? '+' : ''}${masterGainDb}dB`}
+                      {autoDuckEnabled && ` · ${t('autoDuckingDelayed', 'خفض تلقائي (مؤجل)')}`}
+                      {mixTracks.find(t => t.type === 'musicBed' && t.storagePath) && ` · ${t('musicColon', 'موسيقى:')} ${mixTracks.find(t => t.type === 'musicBed')?.fileName || t('uploaded_f', 'مرفوعة')}`}
+                      {sfxItems.length > 0 && ` · ${t('effectsColon', 'مؤثرات:')} ${sfxItems.filter(s => s.enabled).length} ${t('effect', 'مؤثر')}`}
                     </span>
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
-                    تم التخطي — لم يتم تطبيق أي خلط
+                    {t('skippedNoMixingApplied', 'تم التخطي — لم يتم تطبيق أي خلط')}
                   </>
                 )}
               </div>
               <div className="acp-rd-card__row">
-                <span>القص والتعديل:</span>
+                <span>{t('trimAndEditColon', 'القص والتعديل:')}</span>
                 {editEnabled ? (
                   <>
                     <span className="material-symbols-outlined" style={{ color: 'var(--accent-teal, #2dd4bf)' }}>check_circle</span>
-                    قص مفعّل
+                    {t('trimEnabled', 'قص مفعّل')}
                     <span className="acp-hint" style={{ fontSize: '0.75rem', display: 'block', marginTop: '0.25rem' }}>
-                      {trimStartMs > 0 && `بداية: ${formatDuration(trimStartMs)}`}
+                      {trimStartMs > 0 && `${t('startColon', 'بداية:')} ${formatDuration(trimStartMs)}`}
                       {trimStartMs > 0 && (trimEndMs > 0 || editCuts.length > 0) && ' · '}
-                      {trimEndMs > 0 && trimEndMs < originalDurationMs && `نهاية: ${formatDuration(trimEndMs)}`}
+                      {trimEndMs > 0 && trimEndMs < originalDurationMs && `${t('endColon', 'نهاية:')} ${formatDuration(trimEndMs)}`}
                       {trimEndMs > 0 && editCuts.length > 0 && ' · '}
-                      {editCuts.length > 0 && `${editCuts.length} مقطع محذوف`}
-                      {` · المدة: ${formatDuration(editedDurationMs)}`}
+                      {editCuts.length > 0 && `${editCuts.length} ${t('cutSection', 'مقطع محذوف')}`}
+                      {` · ${t('durationColon', 'المدة:')} ${formatDuration(editedDurationMs)}`}
                     </span>
                   </>
                 ) : (
                   <>
                     <span className="material-symbols-outlined" style={{ color: '#94a3b8' }}>skip_next</span>
-                    لم يتم تطبيق أي قص
+                    {t('noTrimApplied', 'لم يتم تطبيق أي قص')}
                   </>
                 )}
               </div>
@@ -3203,15 +3643,15 @@ export function AudioCreatePage() {
             {/* ── Moderation notice ────────────────────────────────── */}
             <div className="acp-publish-notice">
               <span className="material-symbols-outlined" aria-hidden="true">gavel</span>
-              <p>بالنشر، أنت توافق على أن المحتوى يتوافق مع سياسة الاستخدام. المحتوى قد يخضع لمراجعة فريق الإشراف قبل الظهور العلني.</p>
+              <p>{t('publishAgreementNotice', 'بالنشر، أنت توافق على أن المحتوى يتوافق مع سياسة الاستخدام. المحتوى قد يخضع لمراجعة فريق الإشراف قبل الظهور العلني.')}</p>
             </div>
             {publishError && <p className="acp-error">{publishError}</p>}
             <div className="acp-nav-row">
               <button className="acp-btn acp-btn--ghost" onClick={() => setStep(10)} type="button">
-                <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+                <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
               </button>
               <button className="acp-btn acp-btn--primary acp-btn--lg" onClick={handlePublish} disabled={publishing || !audioAsset} type="button">
-                {publishing ? <><span className="acp-spinner" aria-hidden="true" /> جاري النشر...</> : <><span className="material-symbols-outlined" aria-hidden="true">publish</span> نشر المحتوى</>}
+                {publishing ? <><span className="acp-spinner" aria-hidden="true" /> {t('publishingDots', 'جاري النشر...')}</> : <><span className="material-symbols-outlined" aria-hidden="true">publish</span> {t('publishContent', 'نشر المحتوى')}</>}
               </button>
             </div>
           </div>
@@ -3227,38 +3667,38 @@ export function AudioCreatePage() {
               <span className="acp-publish-hero__ping" />
               <span className="material-symbols-outlined">check_circle</span>
             </div>
-            <h2>تم إرسال الصوت</h2>
-            <p className="acp-publish-hero__subtitle">سنخبرك بحالة النشر فوراً</p>
+            <h2>{t('audioSent', 'تم إرسال الصوت')}</h2>
+            <p className="acp-publish-hero__subtitle">{t('willNotifyPublishStatus', 'سنخبرك بحالة النشر فوراً')}</p>
           </div>
 
           {/* Status card */}
           <div className="acp-status-card">
             <span className="acp-status-card__badge">
               <span className="material-symbols-outlined">hourglass_empty</span>
-              قيد المراجعة
+              {t('underReview', 'قيد المراجعة')}
             </span>
             <p className="acp-status-card__desc">
-              تم استلام المحتوى بنجاح. سيتم مراجعته وفقاً لسياسة الاستخدام قبل النشر العلني.
+              {t('contentReceivedSuccessfullyReviewPolicy', 'تم استلام المحتوى بنجاح. سيتم مراجعته وفقاً لسياسة الاستخدام قبل النشر العلني.')}
             </p>
             <div className="acp-reason-chips">
               {categoryId && <span className="acp-reason-chip">{CATEGORIES.find((c) => c.id === categoryId)?.label}</span>}
-              <span className="acp-reason-chip">{ageSuitability === 'everyone' ? 'الجميع' : ageSuitability === 'teen' ? '+13' : '+18'}</span>
+              <span className="acp-reason-chip">{ageSuitability === 'everyone' ? t('everyone', 'الجميع') : ageSuitability === 'teen' ? '+13' : '+18'}</span>
               <span className="acp-reason-chip">{WORLDS.find((w) => w.key === world)?.label}</span>
-              <span className="acp-reason-chip">مراجعة تلقائية</span>
+              <span className="acp-reason-chip">{t('autoReview', 'مراجعة تلقائية')}</span>
             </div>
           </div>
 
           {/* Post summary card */}
           <div className="acp-post-summary">
             {coverPreviewUrl ? (
-              <img src={coverPreviewUrl} alt="غلاف" className="acp-post-summary__cover" />
+              <img src={coverPreviewUrl} alt={t('cover', 'غلاف')} className="acp-post-summary__cover" />
             ) : (
               <div className="acp-post-summary__cover--default">
                 <span className="material-symbols-outlined">music_note</span>
               </div>
             )}
             <div className="acp-post-summary__body">
-              <h3 className="acp-post-summary__title">{title || 'بدون عنوان'}</h3>
+              <h3 className="acp-post-summary__title">{title || t('untitled', 'بدون عنوان')}</h3>
               <div className="acp-post-summary__meta">
                 {audioAsset?.durationMs ? (
                   <span className="acp-post-summary__meta-item">
@@ -3268,7 +3708,7 @@ export function AudioCreatePage() {
                 ) : null}
                 <span className="acp-post-summary__meta-item">
                   <span className="material-symbols-outlined">{captionsEnabled ? 'subtitles' : 'subtitles_off'}</span>
-                  {captionsEnabled ? 'ترجمة' : 'بدون ترجمة'}
+                  {captionsEnabled ? t('subtitles', 'ترجمة') : t('noSubtitles', 'بدون ترجمة')}
                 </span>
                 <span className="acp-post-summary__meta-item">
                   <span className="material-symbols-outlined">{AUDIENCE_OPTIONS.find((a) => a.key === audience)?.icon || 'visibility'}</span>
@@ -3282,38 +3722,38 @@ export function AudioCreatePage() {
           <div className="acp-timeline">
             <div className="acp-timeline__step acp-timeline__step--done">
               <div className="acp-timeline__dot"><span className="material-symbols-outlined">check</span></div>
-              <div className="acp-timeline__info"><p className="acp-timeline__info-label">تم رفع الملف الصوتي</p></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">{t('audioFileUploaded', 'تم رفع الملف الصوتي')}</p></div>
             </div>
             <div className="acp-timeline__step acp-timeline__step--done">
               <div className="acp-timeline__dot"><span className="material-symbols-outlined">check</span></div>
-              <div className="acp-timeline__info"><p className="acp-timeline__info-label">تم حفظ البيانات</p></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">{t('dataSaved', 'تم حفظ البيانات')}</p></div>
             </div>
             <div className="acp-timeline__step acp-timeline__step--active">
               <div className="acp-timeline__dot"><span className="material-symbols-outlined">hourglass_empty</span></div>
-              <div className="acp-timeline__info"><p className="acp-timeline__info-label">جاري الفحص والمعالجة</p></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">{t('processingAndChecking', 'جاري الفحص والمعالجة')}</p></div>
             </div>
             <div className="acp-timeline__step acp-timeline__step--pending">
               <div className="acp-timeline__dot"><span className="material-symbols-outlined">schedule</span></div>
-              <div className="acp-timeline__info"><p className="acp-timeline__info-label">النشر العلني</p></div>
+              <div className="acp-timeline__info"><p className="acp-timeline__info-label">{t('publicPublish', 'النشر العلني')}</p></div>
             </div>
           </div>
 
           {/* Info note */}
           <div className="acp-publish-notice acp-publish-notice--info">
             <span className="material-symbols-outlined" aria-hidden="true">info</span>
-            <p>بعض الحسابات تتمتع بميزة النشر الفوري. حالة النشر يمكن متابعتها من صفحة المحتوى.</p>
+            <p>{t('someAccountsInstantPublishStatusPage', 'بعض الحسابات تتمتع بميزة النشر الفوري. حالة النشر يمكن متابعتها من صفحة المحتوى.')}</p>
           </div>
 
           {/* Action buttons */}
           <div className="acp-nav-row" style={{ justifyContent: 'center' }}>
             <button className="acp-btn acp-btn--primary" onClick={() => navigate(`/audio/${publishResult.contentId}`)} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">play_circle</span> عرض المسودة
+              <span className="material-symbols-outlined" aria-hidden="true">play_circle</span> {t('viewDraft', 'عرض المسودة')}
             </button>
             <button className="acp-btn acp-btn--ghost" onClick={() => navigate(-1)} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">arrow_forward</span> رجوع
+              <span className="material-symbols-outlined" aria-hidden="true">{iconPrev}</span> {t('back', 'رجوع')}
             </button>
             <button className="acp-btn acp-btn--ghost" onClick={() => navigate('/create/audio')} type="button">
-              <span className="material-symbols-outlined" aria-hidden="true">add</span> إنشاء محتوى جديد
+              <span className="material-symbols-outlined" aria-hidden="true">add</span> {t('createNewContent', 'إنشاء محتوى جديد')}
             </button>
           </div>
         </section>

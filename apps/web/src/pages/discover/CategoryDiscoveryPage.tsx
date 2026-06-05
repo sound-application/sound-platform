@@ -23,6 +23,10 @@
 import React, { useState } from 'react';
 import './CategoryDiscoveryPage.css';
 import { FilterDropdown, type FilterOption } from '../../components/FilterDropdown';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -89,86 +93,86 @@ interface RandomCard {
 // ─── Locked Sub-Navigation ────────────────────────────────────────────────────
 
 const DISCOVER_TABS: DiscoverTab[] = [
-  { id: 'explore',   label: 'اكتشف'    },
-  { id: 'foryou',    label: 'لك'       },
-  { id: 'following', label: 'المتابعة' },
-  { id: 'trending',  label: 'الرائج'   },
+  { id: 'explore',   label: t('categorydiscovery:findOut')    },
+  { id: 'foryou',    label: t('categorydiscovery:forYou')       },
+  { id: 'following', label: t('categorydiscovery:followUp') },
+  { id: 'trending',  label: t('categorydiscovery:trending')   },
 ];
 
 // ─── Category Chips ───────────────────────────────────────────────────────────
 
 const CATEGORY_CHIPS: CategoryChip[] = [
-  { id: 'all',       label: 'الكل'     },
-  { id: 'poetry',    label: 'شعر'      },
-  { id: 'story',     label: 'قصص'      },
-  { id: 'podcast',   label: 'بودكاست'  },
-  { id: 'quran',     label: 'تلاوة'    },
-  { id: 'comedy',    label: 'كوميديا'  },
-  { id: 'kids',      label: 'أطفال'    },
-  { id: 'meditation',label: 'تأمل'     },
+  { id: 'all',       label: t('categorydiscovery:everyone')     },
+  { id: 'poetry',    label: t('categorydiscovery:poetry')      },
+  { id: 'story',     label: t('categorydiscovery:stories')      },
+  { id: 'podcast',   label: t('categorydiscovery:itsAPodcast')  },
+  { id: 'quran',     label: t('categorydiscovery:recitation')    },
+  { id: 'comedy',    label: t('categorydiscovery:comedy')  },
+  { id: 'kids',      label: t('categorydiscovery:children')    },
+  { id: 'meditation',label: t('categorydiscovery:contemplation')     },
 ];
 
 // ─── Static Representative Data ───────────────────────────────────────────────
 
 const FEATURED: FeaturedItem = {
   id: 'feat-1',
-  title: 'حديث المساء',
-  creatorName: 'نورة منصور',
+  title: t('categorydiscovery:eveningTalk'),
+  creatorName: t('categorydiscovery:nouraMansour'),
   creatorHandle: '@noura.voice',
-  categoryLabel: 'ثقافة',
+  categoryLabel: t('categorydiscovery:culture'),
   playCount: '84K',
-  durationLabel: '38 دقيقة',
+  durationLabel: t('categorydiscovery:38Minutes'),
 };
 
 const TRENDING_CARDS: ContentCard[] = [
-  { id: 'tc1', title: 'قهوة الصباح',  meta: 'بودكاست أسبوعي', playCount: '84K',  countryFlag: '🇸🇦', tag: 'رائج' },
-  { id: 'tc2', title: 'قصص المدن',    meta: 'وثائقي صوتي',    playCount: '19K',  countryFlag: '🇦🇪', tag: 'رائج' },
-  { id: 'tc3', title: 'شعر الليل',    meta: 'قراءة شعرية',    playCount: '55K',  countryFlag: '🇸🇦' },
-  { id: 'tc4', title: 'نافذة التاريخ',meta: 'قصص تاريخية',   playCount: '31K',  countryFlag: '🇪🇬' },
+  { id: 'tc1', title: t('categorydiscovery:morningCoffee'),  meta: t('categorydiscovery:weeklyPodcast'), playCount: '84K',  countryFlag: '🇸🇦', tag: t('categorydiscovery:common') },
+  { id: 'tc2', title: t('categorydiscovery:citiesStories'),    meta: t('categorydiscovery:audioDocumentary'),    playCount: '19K',  countryFlag: '🇦🇪', tag: t('categorydiscovery:common') },
+  { id: 'tc3', title: t('categorydiscovery:nightPoetry'),    meta: t('categorydiscovery:poetryReading'),    playCount: '55K',  countryFlag: '🇸🇦' },
+  { id: 'tc4', title: t('categorydiscovery:historyWindow'),meta: t('categorydiscovery:historicalStories'),   playCount: '31K',  countryFlag: '🇪🇬' },
 ];
 
 const SUGGESTED_LIST: ListItem[] = [
-  { id: 'sl1', title: 'نقاش التقنية',   meta: 'خالد أيمن',  durationLabel: '22 دقيقة' },
-  { id: 'sl2', title: 'حكايات الطريق',  meta: 'فهد الراوي', durationLabel: '17 دقيقة' },
-  { id: 'sl3', title: 'لحظات هادئة',    meta: 'ريم الحلو',  durationLabel: '9 دقائق'  },
+  { id: 'sl1', title: t('categorydiscovery:technologyDiscussion'),   meta: t('categorydiscovery:khaledAyman'),  durationLabel: t('categorydiscovery:22Minutes') },
+  { id: 'sl2', title: t('categorydiscovery:roadTales'),  meta: t('categorydiscovery:fahdAlrawi'), durationLabel: t('categorydiscovery:17Minutes') },
+  { id: 'sl3', title: t('categorydiscovery:quietMoments'),    meta: t('categorydiscovery:reemAlhelou'),  durationLabel: t('categorydiscovery:9Minutes')  },
 ];
 
 const TOP_CREATORS: CreatorItem[] = [
-  { uid: 'dc1', displayName: 'أحمد السالمي',  handle: '@alsalmi.sound', followerLabel: '1.2M متابع',  specialty: 'ثقافة', countryFlag: '🇸🇦' },
-  { uid: 'dc2', displayName: 'عبير العلمان',  handle: '@abeer.voice',   followerLabel: '890K متابع',  specialty: 'قصص',   countryFlag: '🇰🇼' },
+  { uid: 'dc1', displayName: t('categorydiscovery:ahmedAlsalmi'),  handle: '@alsalmi.sound', followerLabel: t('categorydiscovery:12mFollowers'),  specialty: t('categorydiscovery:culture'), countryFlag: '🇸🇦' },
+  { uid: 'dc2', displayName: t('categorydiscovery:abeerAlalman'),  handle: '@abeer.voice',   followerLabel: t('categorydiscovery:890kFollowers'),  specialty: t('categorydiscovery:stories'),   countryFlag: '🇰🇼' },
 ];
 
 const PLAYLISTS: PlaylistCard[] = [
-  { id: 'dp1', title: 'مختارات الثقافة', tag: 'محررة',      trackCount: '14 قطعة' },
-  { id: 'dp2', title: 'أصوات المساء',    tag: 'مقترحة لك',  trackCount: '9 قطع'   },
+  { id: 'dp1', title: t('categorydiscovery:cultureSelections'), tag: t('categorydiscovery:edited'),      trackCount: t('categorydiscovery:14Pieces') },
+  { id: 'dp2', title: t('categorydiscovery:eveningSounds'),    tag: t('categorydiscovery:suggestedForYou1'),  trackCount: t('categorydiscovery:9Pieces')   },
 ];
 
 const RISING_CREATORS: CreatorItem[] = [
-  { uid: 'drc1', displayName: 'ريان منصور', countryFlag: '🇸🇦' },
-  { uid: 'drc2', displayName: 'لبان أحمد',  countryFlag: '🇦🇪' },
-  { uid: 'drc3', displayName: 'سند الحارثي',countryFlag: '🇸🇦' },
-  { uid: 'drc4', displayName: 'نجلاء بدر',  countryFlag: '🇪🇬' },
+  { uid: 'drc1', displayName: t('categorydiscovery:rayanMansour'), countryFlag: '🇸🇦' },
+  { uid: 'drc2', displayName: t('categorydiscovery:lubanAhmed'),  countryFlag: '🇦🇪' },
+  { uid: 'drc3', displayName: t('categorydiscovery:sanadAlharithi'),countryFlag: '🇸🇦' },
+  { uid: 'drc4', displayName: t('categorydiscovery:naglaaBadr'),  countryFlag: '🇪🇬' },
 ];
 
 const RANDOM_CARDS: RandomCard[] = [
-  { id: 'rnd1', title: 'مقهى الإبداع',   meta: 'قصص قصيرة',   accentColor: '#7c3aed' },
-  { id: 'rnd2', title: 'رحلة صوتية',     meta: 'وثائقي صوتي', accentColor: '#0e7490' },
+  { id: 'rnd1', title: t('categorydiscovery:creativityCaf'),   meta: t('categorydiscovery:shortStories'),   accentColor: '#7c3aed' },
+  { id: 'rnd2', title: t('categorydiscovery:audioJourney'),     meta: t('categorydiscovery:audioDocumentary'), accentColor: '#0e7490' },
 ];
 
 // ─── Filter Options ────────────────────────────────────────────────────────────
 
 const WORLD_OPTIONS: FilterOption[] = [
-  { value: 'general',     label: 'عام'      },
-  { value: 'plus',        label: 'بلس'      },
-  { value: 'music',       label: 'موسيقى'   },
-  { value: 'radio',       label: 'راديو'    },
+  { value: 'general',     label: t('categorydiscovery:general')      },
+  { value: 'plus',        label: t('categorydiscovery:plus')      },
+  { value: 'music',       label: t('categorydiscovery:music')   },
+  { value: 'radio',       label: t('categorydiscovery:radio')    },
 ];
 
 const SORT_OPTIONS: FilterOption[] = [
-  { value: 'popular',  label: 'الأكثر استماعاً' },
-  { value: 'latest',   label: 'الأحدث'           },
-  { value: 'rising',   label: 'الأكثر صعوداً'    },
-  { value: 'shared',   label: 'الأكثر مشاركة'    },
+  { value: 'popular',  label: t('categorydiscovery:mostListenedTo') },
+  { value: 'latest',   label: t('categorydiscovery:latest')           },
+  { value: 'rising',   label: t('categorydiscovery:theMostUp')    },
+  { value: 'shared',   label: t('categorydiscovery:mostShared')    },
 ];
 
 // ─── Micro Icons ───────────────────────────────────────────────────────────────
@@ -253,10 +257,10 @@ export function CategoryDiscoveryPage() {
   }
 
   return (
-    <main className="gdp" dir="rtl" aria-label="اكتشف — عام">
+    <main className="gdp" aria-label={t('categorydiscovery:discoverGeneral')}>
 
       {/* ── Locked Sub-Navigation: اكتشف | لك | المتابعة | الرائج ─────────── */}
-      <nav className="gdp-sub-nav" aria-label="تبويبات الاكتشاف" role="tablist">
+      <nav className="gdp-sub-nav" aria-label={t('categorydiscovery:discoveryTabs')} role="tablist">
         {DISCOVER_TABS.map(tab => (
           <button
             key={tab.id}
@@ -272,40 +276,40 @@ export function CategoryDiscoveryPage() {
       </nav>
 
       {/* ── Context Bar ─────────────────────────────────────────────────────── */}
-      <section className="gdp-context-bar" aria-label="السياق الحالي">
+      <section className="gdp-context-bar" aria-label={t('categorydiscovery:currentContext')}>
         <div className="gdp-context-bar__info">
-          <span className="gdp-context-bar__label">السياق الحالي</span>
+          <span className="gdp-context-bar__label">{t('categorydiscovery:currentContext')}</span>
           <div className="gdp-context-bar__values">
-            <span className="gdp-context-bar__chip">عام</span>
-            <span className="gdp-context-bar__chip">ثقافة</span>
-            <span className="gdp-context-bar__chip gdp-context-bar__chip--dim">السعودية</span>
+            <span className="gdp-context-bar__chip">{t('categorydiscovery:general')}</span>
+            <span className="gdp-context-bar__chip">{t('categorydiscovery:culture')}</span>
+            <span className="gdp-context-bar__chip gdp-context-bar__chip--dim">{t('categorydiscovery:saudiArabia')}</span>
           </div>
         </div>
         <div className="gdp-context-bar__filters">
           <FilterDropdown
-            label="العالم"
+            label={t('categorydiscovery:theWorld')}
             options={WORLD_OPTIONS}
             values={worlds}
             onToggle={toggleWorld}
             onClear={() => setWorlds([])}
-            defaultLabel="عام"
-            ariaLabel="تصفية حسب العالم"
+            defaultLabel={t('categorydiscovery:general')}
+            ariaLabel={t('categorydiscovery:filterByWorld')}
           />
           <FilterDropdown
-            label="الترتيب"
+            label={t('categorydiscovery:ranking')}
             options={SORT_OPTIONS}
             values={sortOrders}
             onToggle={toggleSort}
             onClear={() => setSortOrders([])}
-            defaultLabel="الأحدث"
-            ariaLabel="تصفية حسب الترتيب"
+            defaultLabel={t('categorydiscovery:latest')}
+            ariaLabel={t('categorydiscovery:filterBySort')}
           />
         </div>
       </section>
 
       {/* ── Category Chips ──────────────────────────────────────────────────── */}
-      <section aria-label="أصناف التصنيف">
-        <div className="gdp-chips-row" role="listbox" aria-label="اختر صنفاً">
+      <section aria-label={t('categorydiscovery:classificationItems')}>
+        <div className="gdp-chips-row" role="listbox" aria-label={t('categorydiscovery:chooseACategory')}>
           {CATEGORY_CHIPS.map(chip => (
             <button
               key={chip.id}
@@ -324,7 +328,7 @@ export function CategoryDiscoveryPage() {
       {/* ── Featured / Hero ──────────────────────────────────────────────────── */}
       <section aria-labelledby="gdp-featured-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-featured-heading" className="gdp-section__title">مميز في التصنيف</h2>
+          <h2 id="gdp-featured-heading" className="gdp-section__title">{t('categorydiscovery:featuredInTheClassification')}</h2>
         </div>
         <article className="gdp-hero" aria-label={FEATURED.title}>
           <div className="gdp-hero__cover">
@@ -345,7 +349,7 @@ export function CategoryDiscoveryPage() {
           </div>
           <button className="gdp-hero__cta" aria-label={`استماع — ${FEATURED.title}`}>
             <IconPlay />
-            <span>استماع</span>
+            <span>{t('categorydiscovery:toListen')}</span>
           </button>
         </article>
       </section>
@@ -353,8 +357,8 @@ export function CategoryDiscoveryPage() {
       {/* ── Trending in Category ─────────────────────────────────────────────── */}
       <section aria-labelledby="gdp-trending-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-trending-heading" className="gdp-section__title">الرائج في التصنيف</h2>
-          <button className="gdp-section__see-all" aria-label="عرض كل الرائج">عرض الكل</button>
+          <h2 id="gdp-trending-heading" className="gdp-section__title">{t('categorydiscovery:popularInTheCategory')}</h2>
+          <button className="gdp-section__see-all" aria-label={t('categorydiscovery:viewAllTrending')}>{t('categorydiscovery:viewAll')}</button>
         </div>
         <div className="gdp-card-grid">
           {TRENDING_CARDS.map(card => (
@@ -385,8 +389,8 @@ export function CategoryDiscoveryPage() {
       {/* ── Suggested for You ────────────────────────────────────────────────── */}
       <section aria-labelledby="gdp-suggested-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-suggested-heading" className="gdp-section__title">مقترح لك</h2>
-          <button className="gdp-section__see-all" aria-label="عرض كل المقترحات">عرض الكل</button>
+          <h2 id="gdp-suggested-heading" className="gdp-section__title">{t('categorydiscovery:suggestedForYou')}</h2>
+          <button className="gdp-section__see-all" aria-label={t('categorydiscovery:viewAllSuggestions')}>{t('categorydiscovery:viewAll')}</button>
         </div>
         <div className="gdp-list">
           {SUGGESTED_LIST.map(item => (
@@ -412,8 +416,8 @@ export function CategoryDiscoveryPage() {
       {/* ── Top Creators in Category ─────────────────────────────────────────── */}
       <section aria-labelledby="gdp-creators-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-creators-heading" className="gdp-section__title">أفضل المنشئين في التصنيف</h2>
-          <button className="gdp-section__see-all" aria-label="عرض كل المنشئين">عرض الكل</button>
+          <h2 id="gdp-creators-heading" className="gdp-section__title">{t('categorydiscovery:topRatedCreators')}</h2>
+          <button className="gdp-section__see-all" aria-label={t('categorydiscovery:viewAllCreators')}>{t('categorydiscovery:viewAll')}</button>
         </div>
         <div className="gdp-creator-list">
           {TOP_CREATORS.map(creator => (
@@ -432,32 +436,30 @@ export function CategoryDiscoveryPage() {
                 )}
               </div>
               <button className="gdp-creator-row__follow" aria-label={`متابعة ${creator.displayName}`}>
-                متابعة
-              </button>
+                {t('categorydiscovery:tracking')}</button>
             </article>
           ))}
         </div>
       </section>
 
       {/* ── Sponsor / Promo Banner ───────────────────────────────────────────── */}
-      <section aria-label="عرض ترويجي" className="gdp-promo-wrapper">
+      <section aria-label={t('categorydiscovery:promotion')} className="gdp-promo-wrapper">
         <div className="gdp-promo" role="complementary">
           <span className="gdp-promo__badge">SPONSOR</span>
           <div className="gdp-promo__body">
-            <p className="gdp-promo__headline">مساحة رعاية داخل التصنيف</p>
-            <p className="gdp-promo__sub">إعلان مناسب للسياق الحالي</p>
+            <p className="gdp-promo__headline">{t('categorydiscovery:careSpaceWithinTheClassification')}</p>
+            <p className="gdp-promo__sub">{t('categorydiscovery:anAdAppropriateToTheCurrentContext')}</p>
           </div>
-          <button className="gdp-promo__cta" aria-label="تفاصيل العرض الترويجي">
-            تفاصيل
-          </button>
+          <button className="gdp-promo__cta" aria-label={t('categorydiscovery:promotionDetails')}>
+            {t('categorydiscovery:details')}</button>
         </div>
       </section>
 
       {/* ── Playlists from Category ──────────────────────────────────────────── */}
       <section aria-labelledby="gdp-playlists-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-playlists-heading" className="gdp-section__title">قوائم من التصنيف</h2>
-          <button className="gdp-section__see-all" aria-label="عرض كل القوائم">عرض الكل</button>
+          <h2 id="gdp-playlists-heading" className="gdp-section__title">{t('categorydiscovery:listsOfClassification')}</h2>
+          <button className="gdp-section__see-all" aria-label={t('categorydiscovery:viewAllListings')}>{t('categorydiscovery:viewAll')}</button>
         </div>
         <div className="gdp-card-grid">
           {PLAYLISTS.map(pl => (
@@ -476,8 +478,8 @@ export function CategoryDiscoveryPage() {
       {/* ── Rising Creators ──────────────────────────────────────────────────── */}
       <section aria-labelledby="gdp-rising-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-rising-heading" className="gdp-section__title">منشئون صاعدون</h2>
-          <button className="gdp-section__see-all" aria-label="عرض كل المنشئين الصاعدين">عرض الكل</button>
+          <h2 id="gdp-rising-heading" className="gdp-section__title">{t('categorydiscovery:risingCreators')}</h2>
+          <button className="gdp-section__see-all" aria-label={t('categorydiscovery:viewAllRisingCreators')}>{t('categorydiscovery:viewAll')}</button>
         </div>
         <div className="gdp-rising-grid">
           {RISING_CREATORS.map(creator => (
@@ -500,10 +502,10 @@ export function CategoryDiscoveryPage() {
       {/* ── Random Discovery ─────────────────────────────────────────────────── */}
       <section aria-labelledby="gdp-random-heading">
         <div className="gdp-section__header">
-          <h2 id="gdp-random-heading" className="gdp-section__title">اكتشاف عشوائي</h2>
-          <button className="gdp-random-refresh" aria-label="تحديث الاكتشاف العشوائي">
+          <h2 id="gdp-random-heading" className="gdp-section__title">{t('categorydiscovery:randomDiscovery')}</h2>
+          <button className="gdp-random-refresh" aria-label={t('categorydiscovery:randomDetectionUpdate')}>
             <IconShuffle />
-            <span>تحديث</span>
+            <span>{t('categorydiscovery:toUpdate')}</span>
           </button>
         </div>
         <div className="gdp-card-grid">
@@ -523,15 +525,13 @@ export function CategoryDiscoveryPage() {
       </section>
 
       {/* ── Empty / Request Banner ───────────────────────────────────────────── */}
-      <section className="gdp-empty-request" aria-label="طلب تصنيف جديد">
+      <section className="gdp-empty-request" aria-label={t('categorydiscovery:requestANewClassification')}>
         <div className="gdp-empty-request__inner">
           <p className="gdp-empty-request__text">
-            لم تجد تصنيفاً مناسباً؟ يمكنك طلب تصنيف جديد أو اقتراح تصنيف فرعي.
-          </p>
-          <button className="gdp-empty-request__btn" aria-label="طلب تصنيف جديد">
+            {t('categorydiscovery:didntFindASuitableCategoryYouCanRequestA')}</p>
+          <button className="gdp-empty-request__btn" aria-label={t('categorydiscovery:requestANewClassification')}>
             <IconChevronLeft />
-            طلب تصنيف
-          </button>
+            {t('categorydiscovery:classificationRequest')}</button>
         </div>
       </section>
 

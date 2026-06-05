@@ -37,6 +37,10 @@ import { EmptyState } from '../../components/EmptyState';
 import { FilterDropdown, type FilterOption } from '../../components/FilterDropdown';
 import type { PublicProfileDoc } from '@sound/shared';
 import './TournamentsMePage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 type TournamentTab =
@@ -75,129 +79,129 @@ function opts(labels: string[]): FilterOption[] {
 // ─── Tab registry — 16 tabs, exact authority order ────────────────────────────
 const TOURNAMENT_TABS: TournamentTabDef[] = [
   // 1 — مسابقاتي
-  { id: 'my-competitions',      label: 'مسابقاتي',
+  { id: 'my-competitions',      label: t('tournamentsme:competitions2'),
     filters: [
-      { key:'status',  label:'الحالة',  options: opts(['نشطة','انتهت','قادمة']) },
-      { key:'role',    label:'الدور',   options: opts(['منشئ','مشارك','مراقب']) },
-      { key:'sort',    label:'الترتيب', options: opts(['الأحدث','الأقدم','الأكثر مشاركة']) },
+      { key:'status',  label:t('tournamentsme:theCondition'),  options: opts([t('tournamentsme:active'),t('tournamentsme:itsOver'),t('tournamentsme:coming')]) },
+      { key:'role',    label:t('tournamentsme:theRole'),   options: opts([t('tournamentsme:constructor1'),t('tournamentsme:participant'),t('tournamentsme:careful')]) },
+      { key:'sort',    label:t('tournamentsme:ranking'), options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest'),t('tournamentsme:mostShared')]) },
     ],
   },
   // 2 — الإدارة النشطة  (organizer/admin)
-  { id: 'active-management',    label: 'الإدارة النشطة',
+  { id: 'active-management',    label: t('tournamentsme:activeManagement'),
     role: ['organizer','admin'],
     filters: [
-      { key:'status', label:'الحالة',   options: opts(['جارية','في انتظار','مغلقة']) },
-      { key:'stage',  label:'المرحلة',  options: opts(['التسجيل','التصويت','الختام']) },
-      { key:'sort',   label:'الترتيب',  options: opts(['الأحدث','الأكثر مشاركة']) },
+      { key:'status', label:t('tournamentsme:theCondition'),   options: opts([t('tournamentsme:ongoing'),t('tournamentsme:waiting'),t('tournamentsme:closed')]) },
+      { key:'stage',  label:t('tournamentsme:stage'),  options: opts([t('tournamentsme:registration'),t('tournamentsme:vote1'),t('tournamentsme:conclusion')]) },
+      { key:'sort',   label:t('tournamentsme:ranking'),  options: opts([t('tournamentsme:latest'),t('tournamentsme:mostShared')]) },
     ],
   },
   // 3 — المشاركات المستلمة  (organizer/admin)
-  { id: 'received-submissions', label: 'المشاركات المستلمة',
+  { id: 'received-submissions', label: t('tournamentsme:postsReceived'),
     role: ['organizer','admin'],
     filters: [
-      { key:'status',   label:'الحالة',  options: opts(['قيد المراجعة','مقبولة','مرفوضة']) },
-      { key:'category', label:'الفئة',   options: opts(['صوت','موسيقى','راديو']) },
-      { key:'sort',     label:'الترتيب', options: opts(['الأحدث','الأقدم']) },
+      { key:'status',   label:t('tournamentsme:theCondition'),  options: opts([t('tournamentsme:underReview'),t('tournamentsme:acceptable'),t('tournamentsme:rejected')]) },
+      { key:'category', label:t('tournamentsme:category'),   options: opts([t('tournamentsme:voice'),t('tournamentsme:music'),t('tournamentsme:radio')]) },
+      { key:'sort',     label:t('tournamentsme:ranking'), options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 4 — التصويت والتحكيم  (jury)
-  { id: 'jury-tasks',           label: 'التصويت والتحكيم',
+  { id: 'jury-tasks',           label: t('tournamentsme:votingAndArbitration'),
     role: 'jury',
     filters: [
-      { key:'status',      label:'الحالة',    options: opts(['معلقة','مكتملة']) },
-      { key:'competition', label:'المسابقة',  options: opts(['الكل']) },
-      { key:'sort',        label:'الترتيب',   options: opts(['الأحدث','الأقدم']) },
+      { key:'status',      label:t('tournamentsme:theCondition'),    options: opts([t('tournamentsme:suspended'),t('tournamentsme:complete')]) },
+      { key:'competition', label:t('tournamentsme:contest'),  options: opts([t('tournamentsme:everyone')]) },
+      { key:'sort',        label:t('tournamentsme:ranking'),   options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 5 — النتائج / الفائزون  (organizer/admin)
-  { id: 'results',              label: 'النتائج / الفائزون',
+  { id: 'results',              label: t('tournamentsme:resultswinners'),
     role: ['organizer','admin'],
     filters: [
-      { key:'competition', label:'المسابقة', options: opts(['الكل']) },
-      { key:'category',    label:'الفئة',    options: opts(['الكل','صوت','موسيقى']) },
-      { key:'sort',        label:'الترتيب',  options: opts(['الأحدث','الأقدم']) },
+      { key:'competition', label:t('tournamentsme:contest'), options: opts([t('tournamentsme:everyone')]) },
+      { key:'category',    label:t('tournamentsme:category'),    options: opts([t('tournamentsme:everyone'),t('tournamentsme:voice'),t('tournamentsme:music')]) },
+      { key:'sort',        label:t('tournamentsme:ranking'),  options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 6 — الدعوات / المسابقات المغلقة  (organizer/admin)
-  { id: 'invitations',          label: 'الدعوات / المسابقات المغلقة',
+  { id: 'invitations',          label: t('tournamentsme:invitationsclosedContests'),
     role: ['organizer','admin'],
     filters: [
-      { key:'status', label:'الحالة',  options: opts(['جديدة','مقبولة','مرفوضة']) },
-      { key:'sort',   label:'الترتيب', options: opts(['الأحدث','الأقدم']) },
+      { key:'status', label:t('tournamentsme:theCondition'),  options: opts([t('tournamentsme:new'),t('tournamentsme:acceptable'),t('tournamentsme:rejected')]) },
+      { key:'sort',   label:t('tournamentsme:ranking'), options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 7 — المسابقات المنضم لها
-  { id: 'joined',               label: 'المسابقات المنضم لها',
+  { id: 'joined',               label: t('tournamentsme:competitionsJoined'),
     filters: [
-      { key:'status',   label:'الحالة',  options: opts(['نشطة','انتهت']) },
-      { key:'category', label:'الفئة',   options: opts(['الكل','صوت','موسيقى','راديو']) },
-      { key:'sort',     label:'الترتيب', options: opts(['الأحدث','الأقدم']) },
+      { key:'status',   label:t('tournamentsme:theCondition'),  options: opts([t('tournamentsme:active'),t('tournamentsme:itsOver')]) },
+      { key:'category', label:t('tournamentsme:category'),   options: opts([t('tournamentsme:everyone'),t('tournamentsme:voice'),t('tournamentsme:music'),t('tournamentsme:radio')]) },
+      { key:'sort',     label:t('tournamentsme:ranking'), options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 8 — مشاركاتي
-  { id: 'my-submissions',       label: 'مشاركاتي',
+  { id: 'my-submissions',       label: t('tournamentsme:myPosts'),
     filters: [
-      { key:'status',      label:'الحالة',    options: opts(['مقبولة','قيد المراجعة','مرفوضة']) },
-      { key:'competition', label:'المسابقة',  options: opts(['الكل']) },
-      { key:'sort',        label:'الترتيب',   options: opts(['الأحدث','الأقدم']) },
+      { key:'status',      label:t('tournamentsme:theCondition'),    options: opts([t('tournamentsme:acceptable'),t('tournamentsme:underReview'),t('tournamentsme:rejected')]) },
+      { key:'competition', label:t('tournamentsme:contest'),  options: opts([t('tournamentsme:everyone')]) },
+      { key:'sort',        label:t('tournamentsme:ranking'),   options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 9 — التصويت الآن
-  { id: 'vote-now',             label: 'التصويت الآن',
+  { id: 'vote-now',             label: t('tournamentsme:voteNow'),
     filters: [
-      { key:'category', label:'الفئة',    options: opts(['الكل','صوت','موسيقى']) },
-      { key:'stage',    label:'المرحلة',  options: opts(['الأولى','النهائية']) },
-      { key:'sort',     label:'الترتيب',  options: opts(['الأحدث','الأكثر تصويتاً']) },
+      { key:'category', label:t('tournamentsme:category'),    options: opts([t('tournamentsme:everyone'),t('tournamentsme:voice'),t('tournamentsme:music')]) },
+      { key:'stage',    label:t('tournamentsme:stage'),  options: opts([t('tournamentsme:theFirst'),t('tournamentsme:final')]) },
+      { key:'sort',     label:t('tournamentsme:ranking'),  options: opts([t('tournamentsme:latest'),t('tournamentsme:mostVoted')]) },
     ],
   },
   // 10 — أصواتي
-  { id: 'my-votes',             label: 'أصواتي',
+  { id: 'my-votes',             label: t('tournamentsme:myVotes'),
     filters: [
-      { key:'competition', label:'المسابقة', options: opts(['الكل']) },
-      { key:'sort',        label:'الترتيب',  options: opts(['الأحدث','الأقدم']) },
+      { key:'competition', label:t('tournamentsme:contest'), options: opts([t('tournamentsme:everyone')]) },
+      { key:'sort',        label:t('tournamentsme:ranking'),  options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 11 — الجوائز / الميداليات
-  { id: 'awards',               label: 'الجوائز / الميداليات',
+  { id: 'awards',               label: t('tournamentsme:awardsmedals'),
     filters: [
-      { key:'type',        label:'نوع الجائزة', options: opts(['ذهبية','فضية','برونزية','تقديرية']) },
-      { key:'competition', label:'المسابقة',    options: opts(['الكل']) },
-      { key:'sort',        label:'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key:'type',        label:t('tournamentsme:prizeType'), options: opts([t('tournamentsme:golden'),t('tournamentsme:silver'),t('tournamentsme:bronze'),t('tournamentsme:discretionary')]) },
+      { key:'competition', label:t('tournamentsme:contest'),    options: opts([t('tournamentsme:everyone')]) },
+      { key:'sort',        label:t('tournamentsme:ranking'),     options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 12 — المحفوظات
-  { id: 'saved',                label: 'المحفوظات',
+  { id: 'saved',                label: t('tournamentsme:archives'),
     filters: [
-      { key:'type', label:'نوع المحتوى', options: opts(['الكل','مسابقة','عمل']) },
-      { key:'sort', label:'الترتيب',    options: opts(['الأحدث','الأقدم']) },
+      { key:'type', label:t('tournamentsme:contentType'), options: opts([t('tournamentsme:everyone'),t('tournamentsme:aRace'),t('tournamentsme:theProcess')]) },
+      { key:'sort', label:t('tournamentsme:ranking'),    options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 13 — المفضلة
-  { id: 'liked',                label: 'المفضلة',
+  { id: 'liked',                label: t('tournamentsme:favorites'),
     filters: [
-      { key:'type', label:'نوع المحتوى', options: opts(['الكل','مسابقة','عمل','نتيجة']) },
-      { key:'sort', label:'الترتيب',    options: opts(['الأحدث','الأقدم']) },
+      { key:'type', label:t('tournamentsme:contentType'), options: opts([t('tournamentsme:everyone'),t('tournamentsme:aRace'),t('tournamentsme:theProcess'),t('tournamentsme:aResult')]) },
+      { key:'sort', label:t('tournamentsme:ranking'),    options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 14 — الإعادات
-  { id: 'reposts',              label: 'الإعادات',
+  { id: 'reposts',              label: t('tournamentsme:replays'),
     filters: [
-      { key:'competition', label:'المسابقة', options: opts(['الكل']) },
-      { key:'sort',        label:'الترتيب',  options: opts(['الأحدث','الأقدم']) },
+      { key:'competition', label:t('tournamentsme:contest'), options: opts([t('tournamentsme:everyone')]) },
+      { key:'sort',        label:t('tournamentsme:ranking'),  options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 15 — السجل
-  { id: 'history',              label: 'السجل',
+  { id: 'history',              label: t('tournamentsme:record'),
     filters: [
-      { key:'type', label:'نوع النشاط', options: opts(['الكل','مشاركة','تصويت','تحكيم','فوز']) },
-      { key:'sort', label:'الترتيب',   options: opts(['الأحدث','الأقدم']) },
+      { key:'type', label:t('tournamentsme:typeOfActivity'), options: opts([t('tournamentsme:everyone'),t('tournamentsme:sharing'),t('tournamentsme:vote'),t('tournamentsme:arbitration'),t('tournamentsme:victory')]) },
+      { key:'sort', label:t('tournamentsme:ranking'),   options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
   // 16 — الاشتراكات
-  { id: 'subscriptions',        label: 'الاشتراكات',
+  { id: 'subscriptions',        label: t('tournamentsme:subscriptions'),
     filters: [
-      { key:'type', label:'نوع الاشتراك', options: opts(['الكل','مسابقة','منشئ']) },
-      { key:'sort', label:'الترتيب',      options: opts(['الأحدث','الأقدم']) },
+      { key:'type', label:t('tournamentsme:subscriptionType'), options: opts([t('tournamentsme:everyone'),t('tournamentsme:aRace'),t('tournamentsme:constructor1')]) },
+      { key:'sort', label:t('tournamentsme:ranking'),      options: opts([t('tournamentsme:latest'),t('tournamentsme:oldest')]) },
     ],
   },
 ];
@@ -224,11 +228,11 @@ export function TournamentsMePage() {
   const { currentUser } = useAuth();
   const profileState = usePublicProfile(currentUser?.uid ?? null);
 
-  if (profileState.status === 'loading') return <LoadingScreen message="جاري تحميل ملفك الشخصي..." />;
-  if (profileState.status === 'error')   return <div className="tme-page"><EmptyState icon="⚠️" title="حدث خطأ" description={profileState.message} /></div>;
+  if (profileState.status === 'loading') return <LoadingScreen message={t('tournamentsme:loadingYourProfile')} />;
+  if (profileState.status === 'error')   return <div className="tme-page"><EmptyState icon="⚠️" title={t('tournamentsme:anErrorOccurred')} description={profileState.message} /></div>;
   if (profileState.status === 'not-found') return (
     <div className="tme-page">
-      <EmptyState icon="👤" title="ملفك الشخصي ليس جاهزاً بعد" description="سيتم إنشاء ملفك الشخصي العام تلقائياً" />
+      <EmptyState icon="👤" title={t('tournamentsme:yourProfileIsNotReadyYet')} description={t('tournamentsme:yourPublicProfileWillBeCreatedAutomatica')} />
     </div>
   );
   return <TournamentsMeLoaded profile={profileState.profile} />;
@@ -271,7 +275,7 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
     });
   }, [activeTab]);
 
-  const displayName = tp?.displayName ?? 'مستخدم Sound';
+  const displayName = tp?.displayName ?? t('tournamentsme:soundUser');
   const username    = tp?.username    ?? null;
   const bio         = tp?.bio         ?? null;
   const avatarUrl   = tp?.avatarUrl   ?? null;
@@ -308,22 +312,21 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
         <div className="tme-header-badges">
           {isVerified && (
             <span className="tme-badge tme-badge--verified">
-              <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>موثق
-            </span>
+              <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>{t('tournamentsme:reliable')}</span>
           )}
-          <span className="tme-badge tme-badge--world">🏆 مسابقات</span>
-          {userRoles.includes('organizer') && <span className="tme-badge tme-badge--role">منظم</span>}
-          {userRoles.includes('admin')     && <span className="tme-badge tme-badge--role">مدير</span>}
-          {userRoles.includes('jury')      && <span className="tme-badge tme-badge--role">محكّم</span>}
+          <span className="tme-badge tme-badge--world">{t('tournamentsme:competitions1')}</span>
+          {userRoles.includes('organizer') && <span className="tme-badge tme-badge--role">{t('tournamentsme:organized')}</span>}
+          {userRoles.includes('admin')     && <span className="tme-badge tme-badge--role">{t('tournamentsme:boss')}</span>}
+          {userRoles.includes('jury')      && <span className="tme-badge tme-badge--role">{t('tournamentsme:tight')}</span>}
         </div>
         <div className="tme-header-btns">
-          <button id="tme-settings-btn" className="tme-hdr-btn" aria-label="الإعدادات" type="button" onClick={() => navigate('/settings')}>
+          <button id="tme-settings-btn" className="tme-hdr-btn" aria-label={t('tournamentsme:settings')} type="button" onClick={() => navigate('/settings')}>
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">settings</span>
           </button>
-          <button id="tme-notifications-btn" className="tme-hdr-btn" aria-label="الإشعارات" type="button">
+          <button id="tme-notifications-btn" className="tme-hdr-btn" aria-label={t('tournamentsme:notifications')} type="button">
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">notifications</span>
           </button>
-          <button id="tme-inbox-btn" className="tme-hdr-btn" aria-label="الرسائل" type="button">
+          <button id="tme-inbox-btn" className="tme-hdr-btn" aria-label={t('tournamentsme:messages')} type="button">
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">mail</span>
           </button>
         </div>
@@ -343,20 +346,20 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <div className="tme-identity__name-row">
             <h1 className="tme-display-name">{displayName}</h1>
             {isVerified && (
-              <span className="tme-verified-icon" aria-label="موثق">
+              <span className="tme-verified-icon" aria-label={t('tournamentsme:reliable')}>
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
               </span>
             )}
           </div>
           {username && <p className="tme-username" dir="ltr">@{username}</p>}
           {bio && <p className="tme-bio">{bio}</p>}
-          <button id="tme-status-btn" className="tme-status-pill" type="button" aria-label="تحديث الحالة">
+          <button id="tme-status-btn" className="tme-status-pill" type="button" aria-label={t('tournamentsme:statusUpdate')}>
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit_note</span>
-            <span className="tme-status-pill__text">أضف تحديثاً للحالة…</span>
+            <span className="tme-status-pill__text">{t('tournamentsme:addAStatusUpdate')}</span>
           </button>
-          <div className="tme-listening-now" aria-label="أستمع الآن">
+          <div className="tme-listening-now" aria-label={t('tournamentsme:listenNow')}>
             <span className="tme-listening-dot" aria-hidden="true" />
-            <span className="tme-listening-label">أستمع الآن</span>
+            <span className="tme-listening-label">{t('tournamentsme:listenNow')}</span>
             <span className="tme-listening-track">—</span>
           </div>
         </div>
@@ -365,10 +368,10 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       {/* Stats */}
       <div className="tme-stats">
         {[
-          {value:followers,   label:'متابعون'},
-          {value:following,   label:'يتابع'},
-          {value:competitions,label:'مسابقات'},
-          {value:awards,      label:'جوائز'},
+          {value:followers,   label:t('tournamentsme:followers')},
+          {value:following,   label:t('tournamentsme:heContinues')},
+          {value:competitions,label:t('tournamentsme:competitions')},
+          {value:awards,      label:t('tournamentsme:awards')},
         ].map(s=>(
           <div key={s.label} className="tme-stat">
             <span className="tme-stat__value">{s.value}</span>
@@ -380,9 +383,8 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       {/* Actions */}
       <div className="tme-actions">
         <button id="tme-edit-profile-btn" className="tme-btn tme-btn--edit" type="button" onClick={() => navigate('/settings/edit-profile')}>
-          <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>تعديل الملف الشخصي
-        </button>
-        <button id="tme-share-btn" className="tme-btn tme-btn--ghost" type="button" aria-label="مشاركة الملف">
+          <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>{t('tournamentsme:editProfile')}</button>
+        <button id="tme-share-btn" className="tme-btn tme-btn--ghost" type="button" aria-label={t('tournamentsme:shareFile')}>
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
       </div>
@@ -395,11 +397,11 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">{SOCIAL_ICON[pl.toLowerCase()]??'link'}</span>
               </a>
             ))
-          : <span className="tme-social__hint">أضف روابطك في تعديل الملف الشخصي</span>}
+          : <span className="tme-social__hint">{t('tournamentsme:addYourLinksInEditProfile')}</span>}
       </div>
 
       {/* Tabs */}
-      <nav className="tme-tabs" role="tablist" aria-label="محتوى ملف مسابقات">
+      <nav className="tme-tabs" role="tablist" aria-label={t('tournamentsme:competitionFileContent')}>
         {visibleTabs.map(t => (
           <button
             key={t.id}
@@ -415,7 +417,7 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
       {/* Smart FilterDropdown controls */}
       {activeFilters.length > 0 && (
-        <div className="tme-filters" aria-label="فلاتر المحتوى">
+        <div className="tme-filters" aria-label={t('tournamentsme:contentFilters')}>
           {activeFilters.map(f => (
             <FilterDropdown
               key={`${activeTab}-${f.key}`}
@@ -441,22 +443,22 @@ function TournamentsMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 // ─── Panel ────────────────────────────────────────────────────────────────────
 function TournamentsTabPanel({ tab, navigate }: { tab: TournamentTab; navigate: ReturnType<typeof useNavigate> }) {
   const PANELS: Record<TournamentTab, React.ReactNode> = {
-    'my-competitions':      <EmptyState icon="🏆" title="لا توجد مسابقات بعد" description="المسابقات التي أنشأتها أو شاركت فيها ستظهر هنا" action={{label:'استكشف المسابقات', onClick:()=>navigate('/tournaments/home')}} />,
-    'active-management':    <EmptyState icon="⚙️" title="لا توجد مسابقات نشطة تديرها" description="المسابقات التي تديرها حالياً ستظهر هنا" />,
-    'received-submissions': <EmptyState icon="📥" title="لا توجد مشاركات مستلمة" description="مشاركات المتسابقين في مسابقاتك ستظهر هنا" />,
-    'jury-tasks':           <EmptyState icon="⚖️" title="لا توجد مهام تحكيم معلقة" description="مهامك كعضو في لجنة التحكيم ستظهر هنا" />,
-    'results':              <EmptyState icon="📊" title="لا توجد نتائج بعد" description="نتائج المسابقات ستظهر هنا" />,
-    'invitations':          <EmptyState icon="✉️" title="لا توجد دعوات" description="دعوات ومسابقات مغلقة ستظهر هنا" />,
-    'joined':               <EmptyState icon="🔗" title="لم تنضم لأي مسابقة بعد" description="المسابقات التي انضممت إليها ستظهر هنا" action={{label:'استكشف المسابقات', onClick:()=>navigate('/tournaments/home')}} />,
-    'my-submissions':       <EmptyState icon="📤" title="لم تشارك في أي مسابقة بعد" description="مشاركاتك في المسابقات ستظهر هنا" action={{label:'استكشف المسابقات', onClick:()=>navigate('/tournaments/home')}} />,
-    'vote-now':             <EmptyState icon="🗳️" title="لا توجد تصويتات نشطة الآن" description="المسابقات المفتوحة للتصويت ستظهر هنا" />,
-    'my-votes':             <EmptyState icon="✅" title="لم تصوّت بعد" description="الأعمال التي صوّتت لها ستظهر هنا" />,
-    'awards':               <EmptyState icon="🎖️" title="لا توجد جوائز بعد" description="جوائزك وميدالياتك ستظهر هنا" />,
-    'saved':                <EmptyState icon="🔖" title="لا يوجد محفوظات" description="احفظ المحتوى الذي تريد الرجوع إليه" />,
-    'liked':                <EmptyState icon="❤️" title="لا يوجد مفضلة بعد" description="المحتوى الذي أعجبك ستظهر هنا" />,
-    'reposts':              <EmptyState icon="🔄" title="لا توجد إعادات" description="المحتوى الذي تعيد نشره سيظهر هنا" />,
-    'history':              <EmptyState icon="🕐" title="سجل النشاط فارغ" description="نشاطك في المسابقات سيظهر هنا" />,
-    'subscriptions':        <EmptyState icon="🔔" title="لا توجد اشتراكات بعد" description="المسابقات والمنشئون الذين اشتركت معهم سيظهرون هنا" />,
+    'my-competitions':      <EmptyState icon="🏆" title={t('tournamentsme:thereAreNoCompetitionsYet')} description={t('tournamentsme:contestsYouCreatedOrParticipatedInWillAp')} action={{label:t('tournamentsme:exploreCompetitions'), onClick:()=>navigate('/tournaments/home')}} />,
+    'active-management':    <EmptyState icon="⚙️" title={t('tournamentsme:thereAreNoActiveContestsToRun')} description={t('tournamentsme:contestsYouAreCurrentlyRunningWillAppear')} />,
+    'received-submissions': <EmptyState icon="📥" title={t('tournamentsme:noEntriesReceived')} description={t('tournamentsme:contestantsEntriesInYourContestsWillAppe')} />,
+    'jury-tasks':           <EmptyState icon="⚖️" title={t('tournamentsme:thereAreNoPendingJudgingAssignments')} description={t('tournamentsme:yourDutiesAsAJuryMemberWillAppearHere')} />,
+    'results':              <EmptyState icon="📊" title={t('tournamentsme:noResultsYet')} description={t('tournamentsme:contestResultsWillAppearHere')} />,
+    'invitations':          <EmptyState icon="✉️" title={t('tournamentsme:noInvitations')} description={t('tournamentsme:closedInvitationsAndContestsWillAppearHe')} />,
+    'joined':               <EmptyState icon="🔗" title={t('tournamentsme:youHaveNotJoinedAnyCompetitionYet')} description={t('tournamentsme:contestsYouHaveJoinedWillAppearHere')} action={{label:t('tournamentsme:exploreCompetitions'), onClick:()=>navigate('/tournaments/home')}} />,
+    'my-submissions':       <EmptyState icon="📤" title={t('tournamentsme:sheHasNotParticipatedInAnyCompetitionYet')} description={t('tournamentsme:yourEntriesInTheCompetitionsWillAppearHe')} action={{label:t('tournamentsme:exploreCompetitions'), onClick:()=>navigate('/tournaments/home')}} />,
+    'vote-now':             <EmptyState icon="🗳️" title={t('tournamentsme:thereAreNoActiveVotesRightNow')} description={t('tournamentsme:contestsOpenForVotingWillAppearHere')} />,
+    'my-votes':             <EmptyState icon="✅" title={t('tournamentsme:youHaventVotedYet')} description={t('tournamentsme:businessesYouVotedForWillAppearHere')} />,
+    'awards':               <EmptyState icon="🎖️" title={t('tournamentsme:thereAreNoPrizesYet')} description={t('tournamentsme:yourAwardsAndMedalsWillAppearHere')} />,
+    'saved':                <EmptyState icon="🔖" title={t('tournamentsme:noHistory')} description={t('tournamentsme:saveTheContentYouWantToReturnTo')} />,
+    'liked':                <EmptyState icon="❤️" title={t('tournamentsme:thereAreNoFavoritesYet')} description={t('tournamentsme:theContentYouLikedWillAppearHere')} />,
+    'reposts':              <EmptyState icon="🔄" title={t('tournamentsme:thereAreNoReplays')} description={t('tournamentsme:theContentYouRepostWillAppearHere')} />,
+    'history':              <EmptyState icon="🕐" title={t('tournamentsme:theActivityLogIsEmpty')} description={t('tournamentsme:yourActivityInCompetitionsWillAppearHere')} />,
+    'subscriptions':        <EmptyState icon="🔔" title={t('tournamentsme:thereAreNoSubscriptionsYet')} description={t('tournamentsme:contestsAndCreatorsYouveSignedUpWithWill')} />,
   };
   return <>{PANELS[tab] ?? null}</>;
 }

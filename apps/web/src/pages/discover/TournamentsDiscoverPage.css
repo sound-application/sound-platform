@@ -54,7 +54,7 @@
   );
 
   /* Layout */
-  direction:   rtl;
+  
   font-family: 'Alexandria', 'Cairo', sans-serif;
   position:    relative;
   overflow:    hidden;
@@ -201,7 +201,7 @@
   top:             50%;
   transform:       translateY(-50%);
   /* RTL: right edge + breathing room */
-  right:           12px;
+  inset-inline-end:           12px;
   direction:       ltr;    /* isolate from RTL root */
   display:         flex;
   flex-direction:  column;
@@ -233,8 +233,7 @@
 .tdp-follow-btn {
   position:        absolute;
   bottom:          -8px;
-  left:            50%;
-  transform:       translateX(-50%);
+  left: 50%; transform: translateX(-50%);
   width:           22px;
   height:          22px;
   border-radius:   50%;
@@ -469,7 +468,7 @@
   backdrop-filter:         blur(12px);
   -webkit-backdrop-filter: blur(12px);
   transition:              all 0.2s ease;
-  direction:               rtl;
+  
   white-space:             nowrap;
   min-width:               180px;   /* ensures text is never squished */
 }
@@ -496,7 +495,7 @@
 /* ─── Feed progress dots (left edge, vertical) ──────────────────────────────── */
 .tdp-progress {
   position:       absolute;
-  left:           10px;
+  inset-inline-start:           10px;
   top:            50%;
   transform:      translateY(-50%);
   z-index:        35;
@@ -532,5 +531,5 @@
   cursor:     pointer;
 }
 
-.tdp-nav-hit--next { right: 0; }
-.tdp-nav-hit--prev { left:  0; }
+.tdp-nav-hit--next { inset-inline-end: 0; }
+.tdp-nav-hit--prev { inset-inline-start:  0; }

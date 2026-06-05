@@ -20,8 +20,8 @@
   max-width: 720px;
   margin: 0 auto;
   padding: 1.5rem 1rem 5rem;
-  direction: rtl;
-  text-align: right;
+  
+  text-align: start;
 }
 
 /* ── Header ──────────────────────────────────────────────────────────────────*/
@@ -242,7 +242,7 @@
   display: flex;
   flex-wrap: wrap;
   gap: 0.4rem;
-  padding-right: 2rem; /* indent to align with label text */
+  padding-inline-start: 2rem; /* indent to align with label text */
 }
 
 .audience-chip {
@@ -279,7 +279,7 @@
   border-radius: 50%;
   background: currentColor;
   opacity: 0.6;
-  margin-right: 0.1rem;
+  margin-inline-start: 0.1rem;
 }
 
 .audience-chip__icon { font-size: 0.8rem; }
@@ -410,7 +410,7 @@
   }
 
   .audience-chips {
-    padding-right: 0;
+    padding-inline-start: 0;
   }
 
   .privacy-settings__actions {

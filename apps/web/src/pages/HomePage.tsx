@@ -34,6 +34,10 @@ import React, { useState, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
 import './HomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../components/FilterDropdown';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 // Each type represents one future backend document shape.
@@ -73,50 +77,50 @@ interface PlaylistItem {
 // Replace with useHomeFeed() hook or similar when backend is ready.
 
 const STORY_ITEMS: StoryItem[] = [
-  { uid: 'self', displayName: 'قصتك', isSelf: true },
-  { uid: 'u1', displayName: 'لينا',  avatarUrl: '' },
-  { uid: 'u2', displayName: 'سامر', avatarUrl: '' },
-  { uid: 'u3', displayName: 'نور',  avatarUrl: '' },
-  { uid: 'u4', displayName: 'ريم',  avatarUrl: '' },
-  { uid: 'u5', displayName: 'عمر',  avatarUrl: '' },
+  { uid: 'self', displayName: t('home:yourStory'), isSelf: true },
+  { uid: 'u1', displayName: t('home:lena'),  avatarUrl: '' },
+  { uid: 'u2', displayName: t('home:samer'), avatarUrl: '' },
+  { uid: 'u3', displayName: t('home:others'),  avatarUrl: '' },
+  { uid: 'u4', displayName: t('home:reem'),  avatarUrl: '' },
+  { uid: 'u5', displayName: t('home:age'),  avatarUrl: '' },
 ];
 
 const TRENDING_ITEMS: ContentItem[] = [
-  { id: 't1', title: 'قصص ملهمة',      meta: 'بودكاست أسبوعي',      playCount: '2.4M استماع' },
-  { id: 't2', title: 'عالم المعرفة',    meta: 'مقالات صوتية',         playCount: '1.8M استماع' },
-  { id: 't3', title: 'لحظات الصمت',    meta: 'بودكاست تأمل',         playCount: '940K استماع' },
+  { id: 't1', title: t('home:inspiringStories'),      meta: t('home:weeklyPodcast'),      playCount: t('home:24mListens') },
+  { id: 't2', title: t('home:theWorldOfKnowledge'),    meta: t('home:audioArticles'),         playCount: t('home:18mListens') },
+  { id: 't3', title: t('home:momentsOfSilence'),    meta: t('home:meditationPodcast'),         playCount: t('home:940kListens') },
 ];
 
 const RECOMMENDED_ITEMS: ContentItem[] = [
-  { id: 'r1', title: 'لحظات الصمت',    meta: 'بودكاست تأمل' },
-  { id: 'r2', title: 'قصص من التاريخ', meta: 'وثائقي صوتي' },
-  { id: 'r3', title: 'عالم التقنية',   meta: 'مراجعات تقنية' },
-  { id: 'r4', title: 'الإبداع اليومي', meta: 'قصص قصيرة' },
+  { id: 'r1', title: t('home:momentsOfSilence'),    meta: t('home:meditationPodcast') },
+  { id: 'r2', title: t('home:storiesFromHistory'), meta: t('home:audioDocumentary') },
+  { id: 'r3', title: t('home:theWorldOfTechnology'),   meta: t('home:technicalReviews') },
+  { id: 'r4', title: t('home:dailyCreativity'), meta: t('home:shortStories') },
 ];
 
 const TOP_CREATORS: CreatorItem[] = [
-  { uid: 'c1', displayName: 'أحمد عادل',  followerLabel: '980K متابع' },
-  { uid: 'c2', displayName: 'سارة ملك',   followerLabel: '1.2M متابع' },
-  { uid: 'c3', displayName: 'خالد نور',   followerLabel: '650K متابع' },
-  { uid: 'c4', displayName: 'دينا علي',   followerLabel: '420K متابع' },
+  { uid: 'c1', displayName: t('home:ahmedAdel'),  followerLabel: t('home:980kFollowers') },
+  { uid: 'c2', displayName: t('home:sarahMalak'),   followerLabel: t('home:12mFollowers') },
+  { uid: 'c3', displayName: t('home:khaledNour'),   followerLabel: t('home:650kFollowers') },
+  { uid: 'c4', displayName: t('home:dinaAli'),   followerLabel: t('home:420kFollowers') },
 ];
 
 const RISING_CREATORS: CreatorItem[] = [
-  { uid: 'r1', displayName: 'ليلى'  },
-  { uid: 'r2', displayName: 'عمران' },
-  { uid: 'r3', displayName: 'مايا'  },
-  { uid: 'r4', displayName: 'ياسين' },
-  { uid: 'r5', displayName: 'دينا'  },
+  { uid: 'r1', displayName: t('home:layla')  },
+  { uid: 'r2', displayName: t('home:imran') },
+  { uid: 'r3', displayName: t('home:maya')  },
+  { uid: 'r4', displayName: t('home:yasin') },
+  { uid: 'r5', displayName: t('home:dina')  },
 ];
 
 const FOLLOWING_CREATORS: CreatorItem[] = [
-  { uid: 'f1', displayName: 'هنا إبراهيم', handle: '@hana',  followerLabel: 'محتوى حصري جديد متاح الآن' },
-  { uid: 'f2', displayName: 'فارس خليل',   handle: '@fares', followerLabel: 'آخر نشاط منذ ساعة' },
+  { uid: 'f1', displayName: t('home:hereIsIbrahim'), handle: '@hana',  followerLabel: t('home:newExclusiveContentAvailableNow') },
+  { uid: 'f2', displayName: t('home:faresKhalil'),   handle: '@fares', followerLabel: t('home:lastActivityAnHourAgo') },
 ];
 
 const PLAYLISTS: PlaylistItem[] = [
-  { id: 'p1', title: 'أفضل ما في الأسبوع',       tag: 'تم اختيارها لك'  },
-  { id: 'p2', title: 'أجواء التركيز',             tag: 'استرخاء'          },
+  { id: 'p1', title: t('home:bestOfTheWeek'),       tag: t('home:chosenForYou')  },
+  { id: 'p2', title: t('home:atmosphereOfFocus'),             tag: t('home:relaxation')          },
 ];
 
 // ─── Small SVG icons (avoids icon-system dep in Phase 5-B) ────────────────────
@@ -442,8 +446,8 @@ export function HomePage() {
       {hasPlaylists && (
         <section aria-labelledby="playlists-heading">
           <div className="home-section__header">
-            <h2 id="playlists-heading" className="home-section__title">{t('playlists.title')}</h2>
-            <button className="home-section__see-all" aria-label={t('playlists.seeAll')}>{t('viewAll')}</button>
+            <h2 id="playlists-heading" className="home-section__title">{t('playlists:title')}</h2>
+            <button className="home-section__see-all" aria-label={t('playlists:seeAll')}>{t('viewAll')}</button>
           </div>
           <div className="playlist-grid">
             {PLAYLISTS.map((pl) => (

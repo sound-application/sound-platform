@@ -8,6 +8,10 @@
 import React, { useState } from 'react';
 import './MusicHomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../../components/FilterDropdown';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -21,88 +25,88 @@ interface LabelItem   { id: string; name: string; artistCount?: string; country?
 // ─── Static Data ──────────────────────────────────────────────────────────────
 
 const STORY_ITEMS: StoryItem[] = [
-  { uid: 'self', displayName: 'قصتك', isSelf: true },
-  { uid: 'ms1',  displayName: 'ليلى'  },
-  { uid: 'ms2',  displayName: 'عمر'   },
-  { uid: 'ms3',  displayName: 'سلمى'  },
-  { uid: 'ms4',  displayName: 'تامر'  },
-  { uid: 'ms5',  displayName: 'نور'   },
+  { uid: 'self', displayName: t('musichome:yourStory'), isSelf: true },
+  { uid: 'ms1',  displayName: t('musichome:layla')  },
+  { uid: 'ms2',  displayName: t('musichome:age')   },
+  { uid: 'ms3',  displayName: t('musichome:selma')  },
+  { uid: 'ms4',  displayName: t('musichome:conspiracy')  },
+  { uid: 'ms5',  displayName: t('musichome:others')   },
 ];
 
 const TRENDING_TRACKS: TrackItem[] = [
-  { id: 'mt1', title: 'وقت الفراغ',      artist: 'محمد عبده',      album: 'ألبوم الليل',     duration: '3:42', playCount: '4.2M', countryFlag: '🇸🇦', tag: 'رائج' },
-  { id: 'mt2', title: 'يا مسافر وحدك',   artist: 'كاظم الساهر',    album: 'قصائد الحب',      duration: '4:11', playCount: '3.8M', countryFlag: '🇮🇶', tag: 'رائج' },
-  { id: 'mt3', title: 'أنا عندي حنين',   artist: 'فيروز',           album: 'كلاسيكيات فيروز', duration: '3:55', playCount: '6.1M', countryFlag: '🇱🇧', tag: 'خالد' },
-  { id: 'mt4', title: 'بعيد عنك',         artist: 'عمرو دياب',      album: 'نور العين',       duration: '4:28', playCount: '5.5M', countryFlag: '🇪🇬', tag: 'جديد' },
+  { id: 'mt1', title: t('musichome:leisure'),      artist: t('musichome:muhammadAbdo'),      album: t('musichome:nightAlbum'),     duration: '3:42', playCount: '4.2M', countryFlag: '🇸🇦', tag: t('musichome:common') },
+  { id: 'mt2', title: t('musichome:oTravelerAlone'),   artist: t('musichome:kazemAlSaher'),    album: t('musichome:lovePoems'),      duration: '4:11', playCount: '3.8M', countryFlag: '🇮🇶', tag: t('musichome:common') },
+  { id: 'mt3', title: t('musichome:iHaveNostalgia'),   artist: t('musichome:fayrouz'),           album: t('musichome:fayrouzClassics'), duration: '3:55', playCount: '6.1M', countryFlag: '🇱🇧', tag: t('musichome:immortal') },
+  { id: 'mt4', title: t('musichome:farFromYou'),         artist: t('musichome:amrDiab'),      album: t('musichome:theLightOfTheEye'),       duration: '4:28', playCount: '5.5M', countryFlag: '🇪🇬', tag: t('musichome:new') },
 ];
 
 const NEW_RELEASES: AlbumItem[] = [
-  { id: 'ma1', title: 'أصوات الليل',      artist: 'محمد عبده',   year: '2026', trackCount: '12 أغنية', countryFlag: '🇸🇦', tag: 'جديد'   },
-  { id: 'ma2', title: 'رحلة الروح',       artist: 'ماجد المهندس', year: '2026', trackCount: '10 أغاني', countryFlag: '🇰🇼', tag: 'جديد'   },
-  { id: 'ma3', title: 'ذكريات قديمة',     artist: 'نانسي عجرم',   year: '2025', trackCount: '8 أغاني',  countryFlag: '🇱🇧', tag: 'مميز'   },
+  { id: 'ma1', title: t('musichome:nightSounds'),      artist: t('musichome:muhammadAbdo'),   year: '2026', trackCount: t('musichome:12Songs'), countryFlag: '🇸🇦', tag: t('musichome:new')   },
+  { id: 'ma2', title: t('musichome:soulJourney'),       artist: t('musichome:majidAlmuhandis'), year: '2026', trackCount: t('musichome:10Songs'), countryFlag: '🇰🇼', tag: t('musichome:new')   },
+  { id: 'ma3', title: t('musichome:oldMemories'),     artist: t('musichome:nancyAjram'),   year: '2025', trackCount: t('musichome:8Songs'),  countryFlag: '🇱🇧', tag: t('musichome:distinct')   },
 ];
 
 const TOP_ARTISTS: ArtistItem[] = [
-  { id: 'ar1', displayName: 'محمد عبده',    specialty: 'موسيقى عربية',   followerLabel: '4.2M متابع', countryFlag: '🇸🇦' },
-  { id: 'ar2', displayName: 'كاظم الساهر',  specialty: 'بوب عربي',        followerLabel: '3.8M متابع', countryFlag: '🇮🇶' },
-  { id: 'ar3', displayName: 'فيروز',         specialty: 'كلاسيكيات',       followerLabel: '6.5M متابع', countryFlag: '🇱🇧' },
-  { id: 'ar4', displayName: 'عمرو دياب',    specialty: 'بوب مصري',         followerLabel: '5.1M متابع', countryFlag: '🇪🇬' },
+  { id: 'ar1', displayName: t('musichome:muhammadAbdo'),    specialty: t('musichome:arabicMusic'),   followerLabel: t('musichome:42mFollowers'), countryFlag: '🇸🇦' },
+  { id: 'ar2', displayName: t('musichome:kazemAlSaher'),  specialty: t('musichome:arabicPop'),        followerLabel: t('musichome:38mFollowers'), countryFlag: '🇮🇶' },
+  { id: 'ar3', displayName: t('musichome:fayrouz'),         specialty: t('musichome:classics'),       followerLabel: t('musichome:65mFollowers'), countryFlag: '🇱🇧' },
+  { id: 'ar4', displayName: t('musichome:amrDiab'),    specialty: t('musichome:egyptianPop'),         followerLabel: t('musichome:51mFollowers'), countryFlag: '🇪🇬' },
 ] as any;
 
 const PLAYLISTS: PlaylistItem[] = [
-  { id: 'mp1', title: 'أفضل الموسيقى هذا الأسبوع', tag: 'رائج',      trackCount: '20 أغنية', curator: 'Sound موسيقى' },
-  { id: 'mp2', title: 'أجواء الليل',                 tag: 'مزاج',      trackCount: '15 أغنية', curator: 'مقيّم الذوق' },
-  { id: 'mp3', title: 'كلاسيكيات عربية لا تُنسى',   tag: 'خالد',      trackCount: '30 أغنية', curator: 'أرشيف الطرب' },
-  { id: 'mp4', title: 'إيقاعات حديثة',               tag: 'إيقاع',     trackCount: '18 أغنية', curator: 'Sound موسيقى' },
+  { id: 'mp1', title: t('musichome:bestMusicThisWeek'), tag: t('musichome:common'),      trackCount: t('musichome:20Songs'), curator: t('musichome:soundMusic') },
+  { id: 'mp2', title: t('musichome:nightAtmosphere'),                 tag: t('musichome:mood'),      trackCount: t('musichome:15Songs'), curator: t('musichome:tasteEvaluator') },
+  { id: 'mp3', title: t('musichome:unforgettableArabicClassics'),   tag: t('musichome:immortal'),      trackCount: t('musichome:30Songs'), curator: t('musichome:tarabArchive') },
+  { id: 'mp4', title: t('musichome:modernRhythms'),               tag: t('musichome:rhythm'),     trackCount: t('musichome:18Songs'), curator: t('musichome:soundMusic') },
 ];
 
 const LABELS: LabelItem[] = [
-  { id: 'lb1', name: 'روتانا',          artistCount: '120+ فنان', country: '🇸🇦' },
-  { id: 'lb2', name: 'مزيكا',           artistCount: '80+ فنان',  country: '🇪🇬' },
-  { id: 'lb3', name: 'أبو ظبي للموسيقى', artistCount: '45+ فنان', country: '🇦🇪' },
+  { id: 'lb1', name: t('musichome:rotana'),          artistCount: t('musichome:120Artists'), country: '🇸🇦' },
+  { id: 'lb2', name: t('musichome:music'),           artistCount: t('musichome:80Artists'),  country: '🇪🇬' },
+  { id: 'lb3', name: t('musichome:abuDhabiMusic'), artistCount: t('musichome:45Artist'), country: '🇦🇪' },
 ];
 
 const RECOMMENDED: TrackItem[] = [
-  { id: 'mr1', title: 'شمس الأصيل',     artist: 'عبدالمجيد عبدالله', duration: '3:33', playCount: '1.9M', countryFlag: '🇸🇦' },
-  { id: 'mr2', title: 'قلبي معاك',       artist: 'إليسا',              duration: '4:05', playCount: '2.3M', countryFlag: '🇱🇧', tag: 'جديد' },
-  { id: 'mr3', title: 'على بابك',         artist: 'عمر خيرت',           duration: '5:12', playCount: '980K', countryFlag: '🇪🇬' },
+  { id: 'mr1', title: t('musichome:shamsAlaseel'),     artist: t('musichome:abdulMajeedAbdullah'), duration: '3:33', playCount: '1.9M', countryFlag: '🇸🇦' },
+  { id: 'mr2', title: t('musichome:myHeartIsWithYou'),       artist: t('musichome:elissa'),              duration: '4:05', playCount: '2.3M', countryFlag: '🇱🇧', tag: t('musichome:new') },
+  { id: 'mr3', title: t('musichome:atYourDoor'),         artist: t('musichome:omarKhairat'),           duration: '5:12', playCount: '980K', countryFlag: '🇪🇬' },
 ];
 
 // ─── Filter Options ───────────────────────────────────────────────────────────
 
 const STATUS_OPTIONS: FilterOption[] = [
-  { value: 'new',      label: 'جديد'      },
-  { value: 'trending', label: 'رائج'      },
-  { value: 'classic',  label: 'كلاسيكي'  },
-  { value: 'saved',    label: 'محفوظ'     },
-  { value: 'unplayed', label: 'لم يُشغَّل' },
+  { value: 'new',      label: t('musichome:new')      },
+  { value: 'trending', label: t('musichome:common')      },
+  { value: 'classic',  label: t('musichome:classic')  },
+  { value: 'saved',    label: t('musichome:safe')     },
+  { value: 'unplayed', label: t('musichome:notTurnedOn') },
 ];
 
 const CATEGORY_OPTIONS: FilterOption[] = [
-  { value: 'pop',        label: 'بوب عربي'   },
-  { value: 'classic',    label: 'كلاسيكيات'  },
-  { value: 'tarab',      label: 'طرب'         },
-  { value: 'oud',        label: 'عود'          },
-  { value: 'electronic', label: 'إلكترونية'  },
-  { value: 'jazz',       label: 'جاز عربي'   },
-  { value: 'gospel',     label: 'مدائح'       },
+  { value: 'pop',        label: t('musichome:arabicPop')   },
+  { value: 'classic',    label: t('musichome:classics')  },
+  { value: 'tarab',      label: t('musichome:rapture')         },
+  { value: 'oud',        label: t('musichome:recurrence')          },
+  { value: 'electronic', label: t('musichome:electronic')  },
+  { value: 'jazz',       label: t('musichome:arabicJazz')   },
+  { value: 'gospel',     label: t('musichome:praises')       },
 ];
 
 const COUNTRY_OPTIONS: FilterOption[] = [
-  { value: 'sa', label: '🇸🇦 السعودية' },
-  { value: 'ae', label: '🇦🇪 الإمارات' },
-  { value: 'eg', label: '🇪🇬 مصر'      },
-  { value: 'lb', label: '🇱🇧 لبنان'    },
-  { value: 'kw', label: '🇰🇼 الكويت'   },
-  { value: 'iq', label: '🇮🇶 العراق'   },
+  { value: 'sa', label: t('musichome:saudiArabia') },
+  { value: 'ae', label: t('musichome:emirates') },
+  { value: 'eg', label: t('musichome:egypt')      },
+  { value: 'lb', label: t('musichome:lebanon')    },
+  { value: 'kw', label: t('musichome:kuwait')   },
+  { value: 'iq', label: t('musichome:iraq')   },
 ];
 
 const SORT_OPTIONS: FilterOption[] = [
-  { value: 'latest',  label: 'الأحدث'          },
-  { value: 'popular', label: 'الأكثر استماعاً' },
-  { value: 'alpha',   label: 'أبجدياً'          },
-  { value: 'following', label: 'من تتابعهم'    },
-  { value: 'suggested', label: 'المقترح لك'    },
+  { value: 'latest',  label: t('musichome:latest')          },
+  { value: 'popular', label: t('musichome:mostListenedTo') },
+  { value: 'alpha',   label: t('musichome:alphabetically')          },
+  { value: 'following', label: t('musichome:whoDoYouFollow')    },
+  { value: 'suggested', label: t('musichome:suggestedForYou1')    },
 ];
 
 // ─── Icons ────────────────────────────────────────────────────────────────────
@@ -161,14 +165,14 @@ export function MusicHomePage() {
   }
 
   return (
-    <main className="mhp" aria-label="الرئيسية — موسيقى">
+    <main className="mhp" aria-label={t('musichome:homeMusic')}>
 
       {/* ── Stories ──────────────────────────────────────────────────────── */}
-      <section aria-label="القصص السريعة">
+      <section aria-label={t('musichome:quickStories')}>
         <div className="mhp-story-row">
           {STORY_ITEMS.map(item => (
             <button key={item.uid} className="mhp-story-item"
-                    aria-label={item.isSelf ? 'إضافة قصة' : `قصة ${item.displayName}`}>
+                    aria-label={item.isSelf ? t('musichome:addAStory') : `قصة ${item.displayName}`}>
               {item.isSelf ? (
                 <div className="mhp-story-ring mhp-story-ring--self">
                   <AvatarFallback name={item.displayName} size={52} />
@@ -188,27 +192,27 @@ export function MusicHomePage() {
       </section>
 
       {/* ── Search + Smart Filters ────────────────────────────────────────── */}
-      <section aria-label="بحث وتصفية">
+      <section aria-label={t('musichome:searchAndFilter')}>
         <div className="mhp-search">
           <input id="mhp-search-input" className="mhp-search__input"
-                 type="search" placeholder="ابحث عن أغنية، فنان، ألبوم..."
-                 autoComplete="off" dir="rtl" />
+                 type="search" placeholder={t('musichome:searchForASongArtistAlbum')}
+                 autoComplete="off" />
           <span className="mhp-search__icon"><IconSearch /></span>
         </div>
 
         <div className="mhp-filters" style={{ marginTop: 'var(--space-3)' }}>
-          <FilterDropdown label="الحالة"   options={STATUS_OPTIONS}   values={statuses}
+          <FilterDropdown label={t('musichome:theCondition')}   options={STATUS_OPTIONS}   values={statuses}
             onToggle={toggle(setStatuses)}   onClear={() => setStatuses([])}
-            defaultLabel="الكل" ariaLabel="تصفية حسب الحالة" />
-          <FilterDropdown label="التصنيف"  options={CATEGORY_OPTIONS} values={categories}
+            defaultLabel={t('musichome:everyone')} ariaLabel={t('musichome:filterByStatus')} />
+          <FilterDropdown label={t('musichome:classification')}  options={CATEGORY_OPTIONS} values={categories}
             onToggle={toggle(setCategories)} onClear={() => setCategories([])}
-            defaultLabel="الكل" ariaLabel="تصفية حسب التصنيف" />
-          <FilterDropdown label="البلد"    options={COUNTRY_OPTIONS}  values={countries}
+            defaultLabel={t('musichome:everyone')} ariaLabel={t('musichome:filterByCategory')} />
+          <FilterDropdown label={t('musichome:country')}    options={COUNTRY_OPTIONS}  values={countries}
             onToggle={toggle(setCountries)}  onClear={() => setCountries([])}
-            defaultLabel="الكل" ariaLabel="تصفية حسب البلد" />
-          <FilterDropdown label="الترتيب" options={SORT_OPTIONS}     values={sortOrders}
+            defaultLabel={t('musichome:everyone')} ariaLabel={t('musichome:filterByCountry')} />
+          <FilterDropdown label={t('musichome:ranking')} options={SORT_OPTIONS}     values={sortOrders}
             onToggle={toggle(setSortOrders)} onClear={() => setSortOrders([])}
-            defaultLabel="الأحدث" ariaLabel="تصفية حسب الترتيب" />
+            defaultLabel={t('musichome:latest')} ariaLabel={t('musichome:filterBySort')} />
         </div>
 
         <SelectedChips groups={[
@@ -218,8 +222,8 @@ export function MusicHomePage() {
           { filterId: 'sortOrder', options: SORT_OPTIONS,     values: sortOrders, onRemove: toggle(setSortOrders) },
         ]} />
 
-        <button className="mhp-subpage-btn" type="button" aria-label="استعراض أصناف الموسيقى">
-          <span>استعراض الأصناف</span>
+        <button className="mhp-subpage-btn" type="button" aria-label={t('musichome:browseMusicGenres')}>
+          <span>{t('musichome:browseItems')}</span>
           <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
             <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V10M10 2h4m0 0v4m0-4L7 9"
                   stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -230,8 +234,8 @@ export function MusicHomePage() {
       {/* ── Trending Tracks ───────────────────────────────────────────────── */}
       <section aria-labelledby="mhp-trending-heading">
         <div className="mhp-section__header">
-          <h2 id="mhp-trending-heading" className="mhp-section__title">الرائج الآن</h2>
-          <button className="mhp-section__see-all" aria-label="عرض كل الأغاني الرائجة">عرض الكل</button>
+          <h2 id="mhp-trending-heading" className="mhp-section__title">{t('musichome:popularNow')}</h2>
+          <button className="mhp-section__see-all" aria-label={t('musichome:viewAllPopularSongs')}>{t('musichome:viewAll')}</button>
         </div>
         <div className="mhp-track-list">
           {TRENDING_TRACKS.map((track, i) => (
@@ -265,8 +269,8 @@ export function MusicHomePage() {
       {/* ── New Releases (Albums) ─────────────────────────────────────────── */}
       <section aria-labelledby="mhp-releases-heading">
         <div className="mhp-section__header">
-          <h2 id="mhp-releases-heading" className="mhp-section__title">إصدارات جديدة</h2>
-          <button className="mhp-section__see-all" aria-label="عرض كل الإصدارات">عرض الكل</button>
+          <h2 id="mhp-releases-heading" className="mhp-section__title">{t('musichome:newReleases')}</h2>
+          <button className="mhp-section__see-all" aria-label={t('musichome:viewAllVersions')}>{t('musichome:viewAll')}</button>
         </div>
         <div className="mhp-h-scroll">
           {NEW_RELEASES.map(album => (
@@ -289,8 +293,8 @@ export function MusicHomePage() {
       {/* ── Top Artists ───────────────────────────────────────────────────── */}
       <section aria-labelledby="mhp-artists-heading">
         <div className="mhp-section__header">
-          <h2 id="mhp-artists-heading" className="mhp-section__title">أبرز الفنانين</h2>
-          <button className="mhp-section__see-all" aria-label="عرض كل الفنانين">عرض الكل</button>
+          <h2 id="mhp-artists-heading" className="mhp-section__title">{t('musichome:mostProminentArtists')}</h2>
+          <button className="mhp-section__see-all" aria-label={t('musichome:viewAllArtists')}>{t('musichome:viewAll')}</button>
         </div>
         <div className="mhp-artist-grid">
           {TOP_ARTISTS.map((artist: any) => (
@@ -309,31 +313,30 @@ export function MusicHomePage() {
                 </div>
               </div>
               <button className="mhp-artist-card__follow" aria-label={`متابعة ${artist.displayName}`}>
-                متابعة
-              </button>
+                {t('musichome:tracking')}</button>
             </article>
           ))}
         </div>
       </section>
 
       {/* ── Sponsor / Ad Block ───────────────────────────────────────────── */}
-      <section aria-label="إعلان">
+      <section aria-label={t('musichome:advertisement')}>
         <div className="mhp-sponsor">
-          <span className="mhp-sponsor__label">إعلان</span>
+          <span className="mhp-sponsor__label">{t('musichome:advertisement')}</span>
           <div className="mhp-sponsor__logo" aria-hidden="true">🎵</div>
           <div className="mhp-sponsor__body">
-            <p className="mhp-sponsor__name">روتانا ميوزيك</p>
-            <p className="mhp-sponsor__tagline">استمع لأكبر مكتبة موسيقى عربية — بدون انقطاع</p>
+            <p className="mhp-sponsor__name">{t('musichome:rotanaMusic')}</p>
+            <p className="mhp-sponsor__tagline">{t('musichome:listenToTheLargestArabicMusicLibraryWith')}</p>
           </div>
-          <button className="mhp-sponsor__cta" aria-label="اكتشف روتانا">اكتشف الآن</button>
+          <button className="mhp-sponsor__cta" aria-label={t('musichome:discoverRotana')}>{t('musichome:findOutNow')}</button>
         </div>
       </section>
 
       {/* ── Playlists ─────────────────────────────────────────────────────── */}
       <section aria-labelledby="mhp-playlists-heading">
         <div className="mhp-section__header">
-          <h2 id="mhp-playlists-heading" className="mhp-section__title">قوائم التشغيل</h2>
-          <button className="mhp-section__see-all" aria-label="عرض كل القوائم">عرض الكل</button>
+          <h2 id="mhp-playlists-heading" className="mhp-section__title">{t('musichome:playlists')}</h2>
+          <button className="mhp-section__see-all" aria-label={t('musichome:viewAllListings')}>{t('musichome:viewAll')}</button>
         </div>
         <div className="mhp-playlist-grid">
           {PLAYLISTS.map(pl => (
@@ -354,8 +357,8 @@ export function MusicHomePage() {
       {/* ── Production Companies / Labels ─────────────────────────────────── */}
       <section aria-labelledby="mhp-labels-heading">
         <div className="mhp-section__header">
-          <h2 id="mhp-labels-heading" className="mhp-section__title">شركات الإنتاج</h2>
-          <button className="mhp-section__see-all" aria-label="عرض كل شركات الإنتاج">عرض الكل</button>
+          <h2 id="mhp-labels-heading" className="mhp-section__title">{t('musichome:productionCompanies')}</h2>
+          <button className="mhp-section__see-all" aria-label={t('musichome:viewAllProductionCompanies')}>{t('musichome:viewAll')}</button>
         </div>
         <div className="mhp-h-scroll">
           {LABELS.map(label => (
@@ -371,8 +374,8 @@ export function MusicHomePage() {
       {/* ── Recommended ───────────────────────────────────────────────────── */}
       <section aria-labelledby="mhp-recommended-heading">
         <div className="mhp-section__header">
-          <h2 id="mhp-recommended-heading" className="mhp-section__title">مقترح لك</h2>
-          <button className="mhp-section__see-all" aria-label="عرض كل المقترحات">عرض الكل</button>
+          <h2 id="mhp-recommended-heading" className="mhp-section__title">{t('musichome:suggestedForYou')}</h2>
+          <button className="mhp-section__see-all" aria-label={t('musichome:viewAllSuggestions')}>{t('musichome:viewAll')}</button>
         </div>
         <div className="mhp-track-list">
           {RECOMMENDED.map((track, i) => (

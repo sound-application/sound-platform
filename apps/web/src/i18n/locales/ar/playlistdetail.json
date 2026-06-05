@@ -1,0 +1,16 @@
+{
+  "thereAreNoClipsInThisListYet": "لا توجد مقاطع في هذه القائمة بعد.",
+  "clips": "المقاطع",
+  "user": "مستخدم",
+  "minute": "دقيقة",
+  "section": "مقطع",
+  "especially": "خاصة",
+  "friends": "الأصدقاء",
+  "followers": "المتابعين",
+  "general": "عامة",
+  "reference": "رجوع",
+  "listNotAvailable": "القائمة غير متاحة.",
+  "loadingList": "جارٍ تحميل القائمة...",
+  "theListCouldNotBeLoaded": "تعذر تحميل القائمة.",
+  "theListDoesNotExistOrHasBeenDeleted": "القائمة غير موجودة أو تم حذفها."
+}

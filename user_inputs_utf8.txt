@@ -1,0 +1,1928 @@
+
+
+=== USER (2026-05-30T14:53:24Z) ===
+We need Phase 8-L.1: Pre-Publish Audio Preview + Timeline Editing Fix.
+
+Problem:
+The current trim/cut/effects/mixing pipeline applies mostly at publish time. That is not logical for an audio editor. The creator must be able to see/hear the edited result BEFORE publishing.
+
+Current bugs/issues:
+1. Step 7 trim/cut is blind — user cannot see the audio waveform/timeline.
+2. Trim/cut is not previewed before publish; it only applies after publishing.
+3. Mixing title/subtitle spacing is broken:
+   "تفعيل المكساجاضبط طبقات الصوت..."
+4. Music background upload is shown but inactive.
+5. Sound effect upload is shown but inactive.
+6. Sound effects must support multiple SFX items, each placed at an accurate second/millisecond.
+7. Final Preview must preview the edited/mixed draft result, not just theoretical settings.
+
+Repo:
+C:\Users\akram\Downloads\Sound\sound-platform
+
+Safe start:
+1. Confirm git status is clean.
+2. Confirm latest deployed commit is Phase 8-L (`84ceb5d`) or newer.
+3. Confirm branch.
+4. Confirm `.firebaserc` default is `sound-platform-dev`.
+5. Do not deploy unless approved after commit.
+
+Before coding, read:
+- C:\Users\akram\Downloads\Sound\project files\02_SRS.md
+- C:\Users\akram\Downloads\Sound\project files\03_INFRASTRUCTURE.md
+- C:\Users\akram\Downloads\Sound\project files\05_WORKING_RULES_AND_KB.md
+- C:\Users\akram\Downloads\Sound\project files\19_AUDIO_MODULE_CANONICAL_FLOW_AND_ROADMAP.md
+- docs\AUDIO_MODULE_AUTHORITY.md
+- packages\shared\src\content.ts
+- packages\shared\src\mixingPresets.ts
+- functions\src\processing\audioProcessor.ts
+- functions\src\triggers\onAudioContentPublished.ts
+- functions\src\callables\updateAudioDraft.ts
+- apps\web\src\pages\create\AudioCreatePage.tsx
+- apps\web\src\pages\create\AudioCreatePage.css
+- apps\web\src\pages\AudioDetailPage.tsx
+- firebase\rules\firestore.rules
+- firebase\rules\storage.rules
+
+Also inspect approved Sound Screens:
+C:\Users\akram\Downloads\Sound\Sound Screens\Sound Screens\
+Look especially for:
+- review recordi
+<truncated 3468 bytes>
+filters where feasible.
+- Respect exact `startMs` for SFX using delay.
+- If track mixing fails:
+  - mark mixingConfig.renderStatus = failed
+  - do not claim full mix applied
+  - choose safe behavior and document it
+
+If only metadata upload is implemented and actual mixing is deferred, UI must clearly say "will be rendered in processing" and the backend must not claim applied.
+
+8. Schema
+Extend/reuse existing mixingConfig and AudioMixTrack.
+Add fields if missing:
+- storagePath
+- fileName
+- mimeType
+- sizeBytes
+- durationMs
+- startMs
+- label
+- sfxId?
+- sourceType: uploaded | library | generated | none
+- previewStatus?
+- previewUrl/path if using draft preview
+
+Add draft preview fields if needed:
+- previewRenderStatus: idle | dirty | rendering | ready | failed
+- previewAsset?
+- previewGeneratedAt?
+- previewError?
+
+Do not duplicate fields.
+
+9. Storage rules
+Add secure paths if needed:
+- `audioPreviews/{uid}/{draftId}/preview/...`
+- `audioMixAssets/{uid}/{draftId}/music/...`
+- `audioMixAssets/{uid}/{draftId}/sfx/...`
+
+Rules:
+- owner write only
+- audio MIME only
+- direct public read false
+- playback via signed URL/callable if needed
+
+10. Status honesty
+Never claim:
+- cut applied
+- effects applied
+- mixing applied
+- SFX rendered
+unless the user can preview it or the backend actually rendered it.
+
+11. Build and commit
+Run:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Commit:
+fix(phase-8L.1): add pre-publish audio preview and timeline editing
+
+Final report must include:
+- root cause summary
+- approved screens inspected
+- timeline/waveform implementation
+- preview behavior
+- whether server preview callable was added or client preview only
+- music upload behavior
+- SFX upload behavior
+- multiple SFX placement behavior
+- backend mixing/rendering changes
+- storage/rules changes
+- build results
+- confirm no deploy
+
+=== USER (2026-05-30T15:04:15Z) ===
+Approved with corrections.
+
+1. Client-side preview is acceptable for trim/cut now.
+   It must let the user hear:
+   - trim start
+   - trim end
+   - one middle cut skip
+   before publishing.
+
+2. Do not imply effects/mixing are included in the local preview unless they actually are.
+   If effects/mixing are not preview-rendered before publish, label clearly:
+   - trim/cut preview only
+   - effects/mixing will be rendered during processing after publish
+
+3. Music bed upload and SFX upload should be real if the buttons are active.
+   If a button is not implemented, it must be disabled visibly.
+   No fake active upload controls.
+
+4. Multiple SFX:
+   - up to 3 SFX items is acceptable for this phase
+   - each must have exact startMs
+   - each has enabled, label, volume, file metadata
+   - save to draft/content
+
+5. Backend:
+   - if music/SFX upload is implemented, processing should attempt to mix them using FFmpeg.
+   - If track mixing fails, do not claim full mix applied.
+   - Preserve voice-only processed master if safe, but mark mixing failed/deferred honestly.
+
+6. Fix the spacing bug:
+   “تفعيل المكساج” and subtitle must be separate lines with proper spacing.
+
+7. No deploy after commit unless approved.
+
+Proceed with Phase 8-L.1.
+
+=== USER (2026-05-30T15:51:21Z) ===
+Stop. Phase 8-L.1 as implemented is NOT acceptable.
+
+The product rule is:
+
+The user must hear the actual edited audio BEFORE publishing.
+
+Do not say:
+"effects/mixing after publish"
+Do not build a theoretical preview.
+
+Correct audio creation pipeline:
+
+1. Original upload/record
+2. Trim/cut render preview
+   - user hears trimmed/cut version
+   - output becomes the working draft audio for next stage
+3. Effects render preview
+   - effects apply to the trimmed/cut version
+   - user hears effected version
+   - output becomes the working draft audio for next stage
+4. Mixing/SFX render preview
+   - music/SFX/mixing applies to the effected version
+   - user hears final mixed version
+   - output becomes the final draft preview
+5. Final Preview
+   - plays the actual final rendered draft audio
+   - user can go back and edit any stage
+6. Publish
+   - publishes/finalizes the already-approved final preview
+   - does NOT surprise the user with new audio after publish
+
+We need Phase 8-L.1 correction: Draft Render Pipeline.
+
+Repo:
+C:\Users\akram\Downloads\Sound\sound-platform
+
+Safe start:
+1. Confirm git status.
+2. Confirm latest commit is `b5ec8c5` or newer.
+3. Confirm branch.
+4. Confirm `.firebaserc` default is `sound-platform-dev`.
+5. Do not deploy unless explicitly approved.
+
+Important:
+The previous implementation may have useful pieces:
+- waveform UI
+- trim/cut controls
+- music upload
+- SFX upload
+- storage rules
+- mixMultiTrack
+But the preview model is wrong. Fix the model.
+
+Implement:
+
+1. Shared draft preview schema
+Add/reuse fields for draft preview assets:
+
+AudioDraftPreviewAsset:
+- stage: 'edit' | 'effects' | 'mixing' | 'final'
+- storagePath
+- playbackUrl? (client-only if needed)
+- durationMs
+- mimeType
+- sizeBytes
+- generatedAt
+- sourceHash or settingsHash
+- status: 'idle' | 'dirty' | 'rendering' | 'ready' | 'failed'
+- error?
+
+AudioDraftDoc should support:
+- previewAssets?: {
+    edit?: AudioDraftPreviewAsset
+    effects?: AudioDraftPreviewAsset
+    mixing?: AudioDraftPreviewAsset
+    final?: AudioDraftPre
+<truncated 3137 bytes>
+e user with audio different from final preview.
+- If final preview missing/dirty when required, reject publish with a clear error.
+
+6. Processing pipeline
+onAudioContentPublished can still do final validation/metadata/waveform/upload, but it should not produce a different audible result from the approved final preview.
+
+Preferred:
+- If final preview exists, use it as input/source for final processed master.
+- Generate waveform/duration from final preview.
+- Keep original upload preserved.
+
+7. Storage rules
+Use secure paths:
+- `audioPreviews/{uid}/{draftId}/{stage}/...`
+
+Rules:
+- owner write if client uploads only where needed
+- server writes preferred
+- direct read false
+- preview playback via callable/signed URL
+- audio files remain private
+
+8. UI copy
+Remove all wording like:
+- "effects/mixing after publish"
+- "will be applied after publish"
+
+Replace with:
+- "Render preview"
+- "Preview ready"
+- "Preview needs update"
+- "This stage must be previewed before publishing"
+
+9. Status honesty
+- Do not claim a stage is ready unless the rendered preview exists.
+- Do not claim applied unless FFmpeg actually rendered it.
+- If a render fails, show failure and block publish until fixed or disabled.
+
+10. Preserve useful previous work
+Keep:
+- waveform UI
+- trim/cut controls
+- music upload
+- SFX upload
+- exact SFX startMs
+- mixMultiTrack backend where useful
+But rewire them into the draft render pipeline.
+
+11. Build and commit
+Run:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Commit:
+fix(phase-8L.1): implement pre-publish draft render pipeline
+
+Final report must include:
+- root cause of wrong preview model
+- render callable behavior
+- stage input/output flow
+- storage paths
+- preview invalidation behavior
+- Step 7/8/9/10 behavior
+- publish behavior
+- what still remains deferred
+- build results
+- confirm no deploy
+
+=== USER (2026-05-30T15:59:54Z) ===
+Approved direction, but add this correction before implementation:
+
+This product is mobile-first / React Native target. Do NOT build the real audio editor around browser-only Web Audio APIs.
+
+Required architecture:
+- The source of truth for preview audio must be backend-rendered draft preview assets.
+- Web can use client-side waveform/visualization only as an optional helper, but the actual preview audio that the user approves must come from backend FFmpeg rendering.
+- The same callable must be usable later from React Native.
+- Do not make a web-only editing pipeline.
+
+Therefore:
+1. `renderAudioDraftPreview` is required, not optional.
+2. Step 7/8/9/10 must use rendered preview URLs from the backend for actual listening.
+3. Client-side preview may be used only for instant visual/temporary helper, not as the final approved preview.
+4. Publish must use the approved backend-rendered preview.
+5. Store stage preview metadata on the draft so mobile can resume the same state.
+6. All preview playback URLs must come from signed URL/callable logic, not public Storage reads.
+7. No “after publish” wording.
+8. No deploy after commit unless approved.
+
+Proceed with Phase 8-L.1 as a backend draft render pipeline.
+
+=== USER (2026-05-30T16:47:16Z) ===
+Before deploying Phase 8-L.1 Draft Render Pipeline, run final safety checks:
+
+1. Mobile-first architecture
+- Confirm actual preview audio comes from backend `renderAudioDraftPreview`.
+- Confirm Web Audio/client preview is not the source of truth.
+- Confirm the callable can be used later by React Native.
+
+2. Preview stages
+Verify:
+- edit preview renders from original audio
+- effects preview renders from edit preview when edit is enabled
+- mixing preview renders from effects preview when effects enabled
+- final preview uses the latest required stage output
+- each preview file is stored in `audioPreviews/{uid}/{draftId}/{stage}/...`
+
+3. Preview invalidation
+Confirm:
+- editConfig changes dirty edit/effects/mixing/final previews
+- effectsConfig changes dirty effects/mixing/final previews
+- mixingConfig changes dirty mixing/final previews
+- audioAsset changes dirty all previews
+
+4. Publish gating
+Confirm:
+- publish is blocked if required preview is missing/dirty/failed
+- publish succeeds if required preview is ready
+- publish attaches `finalPreviewStoragePath`
+- publish does not surprise user with different audio
+
+5. Post-publish pipeline
+Confirm:
+- if `finalPreviewStoragePath` exists, `onAudioContentPublished` uses that approved preview as source
+- it does not rerender different edit/effects/mixing audio
+- it still generates waveform/metadata/final processed master
+- original upload remains untouched
+
+6. Storage/security
+Confirm:
+- preview files are private direct-read
+- playback uses signed URL/callable
+- storage rules for `audioPreviews` are safe
+- no public audio reads opened
+
+7. UI
+Confirm:
+- no “after publish” wording remains
+- Step 7/8/9 have render preview buttons/status
+- Step 10 plays actual backend preview URL
+- if preview is dirty/missing, UI says render is needed
+- no emoji UI
+- no raw native select
+
+8. Existing flows
+Confirm these still work:
+- no edit/no effects/no mixing publish
+- edit only
+- effects only
+- mixing only
+- edit + effects + mixing
+- captions
+- playlists
+- cover
+
+9. Builds
+Run:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+10. Confirm no deploy has run.
+
+If all pass, deploy:
+functions + firestore rules + storage rules + hosting.
+
+=== USER (2026-05-30T17:12:07Z) ===
+Before deploying Phase 8-L.1 Draft Render Pipeline, run final safety checks:
+
+1. Mobile-first architecture
+- Confirm actual preview audio comes from backend `renderAudioDraftPreview`.
+- Confirm Web Audio/client preview is not the source of truth.
+- Confirm the callable can be used later by React Native.
+
+2. Preview stages
+Verify:
+- edit preview renders from original audio
+- effects preview renders from edit preview when edit is enabled
+- mixing preview renders from effects preview when effects enabled
+- final preview uses the latest required stage output
+- each preview file is stored in `audioPreviews/{uid}/{draftId}/{stage}/...`
+
+3. Preview invalidation
+Confirm:
+- editConfig changes dirty edit/effects/mixing/final previews
+- effectsConfig changes dirty effects/mixing/final previews
+- mixingConfig changes dirty mixing/final previews
+- audioAsset changes dirty all previews
+
+4. Publish gating
+Confirm:
+- publish is blocked if required preview is missing/dirty/failed
+- publish succeeds if required preview is ready
+- publish attaches `finalPreviewStoragePath`
+- publish does not surprise user with different audio
+
+5. Post-publish pipeline
+Confirm:
+- if `finalPreviewStoragePath` exists, `onAudioContentPublished` uses that approved preview as source
+- it does not rerender different edit/effects/mixing audio
+- it still generates waveform/metadata/final processed master
+- original upload remains untouched
+
+6. Storage/security
+Confirm:
+- preview files are private direct-read
+- playback uses signed URL/callable
+- storage rules for `audioPreviews` are safe
+- no public audio reads opened
+
+7. UI
+Confirm:
+- no “after publish” wording remains
+- Step 7/8/9 have render preview buttons/status
+- Step 10 plays actual backend preview URL
+- if preview is dirty/missing, UI says render is needed
+- no emoji UI
+- no raw native select
+
+8. Existing flows
+Confirm these still work:
+- no edit/no effects/no mixing publish
+- edit only
+- effects only
+- mixing only
+- edit + effects + mixing
+- captions
+- playlists
+- cover
+
+9. Builds
+Run:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+10. Confirm no deploy has run.
+
+If all pass, deploy:
+functions + firestore rules + storage rules + hosting.
+
+=== USER (2026-05-30T17:50:50Z) ===
+Phase 8-L.2: Fix Audio Editor Preview UX / Stage Logic / SFX Controls.
+
+Do not add a new feature before fixing this. The current draft render pipeline exists, but the UX/state machine is wrong.
+
+Repo:
+C:\Users\akram\Downloads\Sound\sound-platform
+
+Safe start:
+1. Confirm git status is clean.
+2. Confirm latest deployed commit is `112c294` or newer.
+3. Confirm branch.
+4. Confirm `.firebaserc` default is `sound-platform-dev`.
+5. Do not deploy unless approved after commit.
+
+Read first:
+- packages\shared\src\content.ts
+- functions\src\callables\renderAudioDraftPreview.ts
+- functions\src\callables\publishAudioContent.ts
+- functions\src\callables\updateAudioDraft.ts
+- functions\src\processing\audioProcessor.ts
+- apps\web\src\pages\create\AudioCreatePage.tsx
+- apps\web\src\pages\create\AudioCreatePage.css
+- firebase\rules\firestore.rules
+- firebase\rules\storage.rules
+
+Also re-check:
+- docs\AUDIO_MODULE_AUTHORITY.md
+- C:\Users\akram\Downloads\Sound\project files\02_SRS.md
+- C:\Users\akram\Downloads\Sound\project files\03_INFRASTRUCTURE.md
+
+Problems to fix:
+
+1. Wrong effects preview blocking
+Current UI says:
+"معاينة المؤثرات — يجب معاينة القص أولاً"
+
+This is wrong when trim/cut is disabled.
+
+Correct logic:
+- If editConfig.enabled === true, effects preview should use edit preview and require edit preview ready.
+- If editConfig.enabled !== true, effects preview should render from original audio.
+- Do not require edit preview when no edit is active.
+
+2. Wrong mixing preview blocking
+Current UI says:
+"معاينة المكساج — يجب معاينة المؤثرات أولاً"
+
+This is wrong when effects are disabled.
+
+Correct logic:
+Mixing preview source should be:
+- effects preview if effectsConfig.enabled === true
+- else edit preview if editConfig.enabled === true
+- else original audio
+
+Only require previous preview if that previous stage is enabled and dirty/missing.
+
+3. Publish gate is too rigid / stale
+Current error:
+"يجب معاينة القص قبل النشر"
+
+Th
+<truncated 2025 bytes>
+ند — قريباً"
+Do not show it as active.
+
+9. SFX timing input
+Current timing input:
+"دقيقة:ثانية.جزء" with value like `01:01.0`
+is not usable enough.
+
+Replace with accurate timing controls:
+- minutes
+- seconds
+- milliseconds
+OR a robust `mm:ss.mmm` input that actually parses correctly.
+
+Store exact `startMs`.
+
+Validation:
+- minutes >= 0
+- seconds 0-59
+- milliseconds 0-999
+- convert to startMs exactly
+- UI should display exact start time.
+
+10. Remove wrong wording
+Remove wording like:
+- "سيتم تطبيق ... أثناء المعالجة"
+- "بعد النشر"
+- anything implying the user cannot preview before publish
+
+Replace with:
+- "Render preview"
+- "Preview ready"
+- "Preview needs update"
+- "This preview is the audio that will be published"
+
+11. Backend source selection
+Update `renderAudioDraftPreview` if needed:
+- effects stage can use original when edit disabled
+- mixing stage can use original/edit/effects depending on enabled stages
+- final stage can resolve best source and/or render all enabled stages in order
+- do not force disabled stages.
+
+12. Backend publish gate
+Update `publishAudioContent` if needed:
+- publish readiness must match stage-enabled logic
+- no required edit preview when edit disabled
+- no required effects preview when effects disabled
+- no required mixing preview when mixing disabled
+- exact error code/message per missing stage
+
+13. Build and commit
+Run:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Commit:
+fix(phase-8L.2): repair audio editor preview state machine
+
+Final report must include:
+- root causes
+- stage dependency logic before/after
+- publish gate logic before/after
+- final preview source logic
+- timeline scrub behavior
+- SFX limit/source/timing changes
+- wrong labels fixed
+- wording removed
+- files changed
+- build results
+- confirm no deploy
+
+=== USER (2026-05-30T17:57:30Z) ===
+Approved to proceed, but with corrections.
+
+The plan can treat this as frontend-first, but do NOT declare backend fully correct until runtime QA proves the preview/render/publish path works after the UI fixes.
+
+Implement the 8 frontend fixes now:
+
+1. Fix wrong SFX label
+- SFX source "none" must say:
+  "بدون مؤثرات"
+  or
+  "لا توجد مؤثرات صوتية"
+- Do not reuse "بدون موسيقى" for SFX.
+
+2. Remove hardcoded SFX limit of 3
+- Replace with configurable max.
+- Set safe default to at least 50.
+- Update frontend and backend validation consistently if backend has a max.
+- UI should show count like `(1/50)` or avoid showing a hard product limit if not needed.
+
+3. Fix SFX source options
+- SFX should show:
+  - upload from device: active
+  - Sound library: visible but clearly disabled/coming soon if no backend
+- Do not show fake active library controls.
+
+4. Fix SFX timing input
+- Replace weak `mm:ss.x` input with accurate controls:
+  - minutes
+  - seconds
+  - milliseconds
+- Store exact `startMs`.
+- Validate:
+  - minutes >= 0
+  - seconds 0-59
+  - milliseconds 0-999
+- Display exact time clearly.
+
+5. Waveform tracker/scrubbing
+- Add drag support, not just click.
+- User must be able to drag/move playhead on waveform and hear from that point.
+- Trim/cut preview must respect the selected playhead.
+- Middle cut playback must skip removed segment correctly.
+
+6. Remove bad wording
+Remove/replace all wording like:
+- "أثناء المعالجة"
+- "بعد النشر"
+- anything implying effects/mixing happen only later
+
+Use wording like:
+- "المعاينة جاهزة"
+- "تحتاج المعاينة إلى تحديث"
+- "هذه المعاينة هي الصوت الذي سيتم نشره"
+
+7. Fix stale stage state
+If user disables edit/effects/mixing, do not keep stale required-preview errors.
+Examples:
+- effects preview must not require edit preview if edit is disabled
+- mixing preview must not require effects preview if effects is disabled
+- publish must not require disabled stages
+
+8. Final Preview source
+Final Preview must use the best backend-rendered preview URL:
+- final preview if ready
+- else mixing preview if enabled/ready
+- else effects preview if enabled/ready
+- else edit preview if enabled/ready
+- else original audio
+If a required stage is dirty/missing, show exact stage that needs render.
+
+Important:
+- Do not make backend changes unless frontend fixes expose a real backend mismatch.
+- But after frontend fixes, verify backend/runtime behavior with one actual render path.
+- No deploy after commit unless approved.
+
+Run builds:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Commit:
+fix(phase-8L.2): repair audio editor preview UX
+
+Final report must include:
+- exact frontend fixes
+- whether backend was changed or not
+- SFX limit/source/timing behavior
+- waveform drag behavior
+- all removed bad wording
+- stage dependency logic after fix
+- build results
+- confirm no deploy
+
+=== USER (2026-05-30T18:12:48Z) ===
+Approved to proceed, but with corrections.
+
+The plan can treat this as frontend-first, but do NOT declare backend fully correct until runtime QA proves the preview/render/publish path works after the UI fixes.
+
+Implement the 8 frontend fixes now:
+
+1. Fix wrong SFX label
+- SFX source "none" must say:
+  "بدون مؤثرات"
+  or
+  "لا توجد مؤثرات صوتية"
+- Do not reuse "بدون موسيقى" for SFX.
+
+2. Remove hardcoded SFX limit of 3
+- Replace with configurable max.
+- Set safe default to at least 50.
+- Update frontend and backend validation consistently if backend has a max.
+- UI should show count like `(1/50)` or avoid showing a hard product limit if not needed.
+
+3. Fix SFX source options
+- SFX should show:
+  - upload from device: active
+  - Sound library: visible but clearly disabled/coming soon if no backend
+- Do not show fake active library controls.
+
+4. Fix SFX timing input
+- Replace weak `mm:ss.x` input with accurate controls:
+  - minutes
+  - seconds
+  - milliseconds
+- Store exact `startMs`.
+- Validate:
+  - minutes >= 0
+  - seconds 0-59
+  - milliseconds 0-999
+- Display exact time clearly.
+
+5. Waveform tracker/scrubbing
+- Add drag support, not just click.
+- User must be able to drag/move playhead on waveform and hear from that point.
+- Trim/cut preview must respect the selected playhead.
+- Middle cut playback must skip removed segment correctly.
+
+6. Remove bad wording
+Remove/replace all wording like:
+- "أثناء المعالجة"
+- "بعد النشر"
+- anything implying effects/mixing happen only later
+
+Use wording like:
+- "المعاينة جاهزة"
+- "تحتاج المعاينة إلى تحديث"
+- "هذه المعاينة هي الصوت الذي سيتم نشره"
+
+7. Fix stale stage state
+If user disables edit/effects/mixing, do not keep stale required-preview errors.
+Examples:
+- effects preview must not require edit preview if edit is disabled
+- mixing preview must not require effects preview if effects is disabled
+- publish must not require disabled stages
+
+8. Final Preview source
+Final Preview must use the best backend-rendered preview URL:
+- final preview if ready
+- else mixing preview if enabled/ready
+- else effects preview if enabled/ready
+- else edit preview if enabled/ready
+- else original audio
+If a required stage is dirty/missing, show exact stage that needs render.
+
+Important:
+- Do not make backend changes unless frontend fixes expose a real backend mismatch.
+- But after frontend fixes, verify backend/runtime behavior with one actual render path.
+- No deploy after commit unless approved.
+
+Run builds:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Commit:
+fix(phase-8L.2): repair audio editor preview UX
+
+Final report must include:
+- exact frontend fixes
+- whether backend was changed or not
+- SFX limit/source/timing behavior
+- waveform drag behavior
+- all removed bad wording
+- stage dependency logic after fix
+- build results
+- confirm no deploy
+
+=== USER (2026-05-30T18:23:15Z) ===
+Do not deploy.
+
+You did not answer the two blockers.
+
+Blocker 1 — SFX max mismatch:
+You changed frontend max SFX to 50, but backend changed: NO.
+That is suspicious.
+
+Check and report exact backend validation in:
+functions\src\callables\updateAudioDraft.ts
+
+Question:
+Does backend allow 50 SFX items?
+- If yes, show the exact line.
+- If no, fix backend to allow/safely validate max 50.
+- If backend has no validation, add max 50 validation.
+
+Frontend and backend must match.
+
+Blocker 2 — Final Preview fallback:
+You wrote "Final preview falls back to original audio when no renders exist."
+
+That is only allowed if:
+- edit disabled
+- effects disabled
+- mixing disabled
+
+If any enabled stage exists and preview is missing/dirty/failed, Final Preview must NOT play original. It must show render required and publish must be blocked.
+
+Check and report exact logic in:
+apps\web\src\pages\create\AudioCreatePage.tsx
+functions\src\callables\publishAudioContent.ts
+
+Questions:
+1. If edit enabled and edit preview missing, can Final Preview play original? It must not.
+2. If effects enabled and effects preview missing, can Final Preview play original? It must not.
+3. If mixing enabled and mixing preview missing, can Final Preview play original? It must not.
+4. Does publishAudioContent enforce the same logic?
+
+If any answer is wrong, fix it.
+
+After fixes/checks run:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Commit:
+fix(phase-8L.2): align SFX limits and final preview gating
+
+Final report must specifically answer:
+- backend SFX max exact line
+- frontend/backend SFX max alignment
+- final preview fallback exact behavior
+- publish gate exact behavior
+- build results
+- confirm no deploy
+
+=== USER (2026-05-30T18:31:48Z) ===
+Approved to deploy Phase 8-L.2 blocker fixes.
+
+Safe start:
+1. Confirm git status is clean.
+2. Confirm latest commit is `c1cdb6c`.
+3. Confirm `.firebaserc` default is `sound-platform-dev`.
+
+Build:
+- npm.cmd run build --workspace=packages/shared
+- node scripts/vendor-shared.js
+- npm run functions:build
+- npm.cmd run build --workspace=apps/web
+
+Deploy:
+- npx firebase deploy --only functions:updateAudioDraft,hosting --project sound-platform-dev
+
+Final report:
+- build results
+- updateAudioDraft deployed
+- hosting deployed
+- confirm Firestore rules not deployed
+- confirm Storage rules not deployed
+- hosting URL
+
+=== USER (2026-05-30T20:37:50Z) ===
+do you know that this application is multilangual and have more than 8+ languages to be implemented 
+
+Arabic, English, French, Deutsh, Spanish, Portouges, italian, turkish ?!
+
+so we should not hardcode any arabic text in the app ?!
+
+=== USER (2026-05-30T20:39:30Z) ===
+Should I plan a dedicated internationalization phase?
+
+i think you should do that now also understand the languages direction per language
+
+=== USER (2026-05-30T20:47:44Z) ===
+now build infrastructure + extract Arabic + add English now 
+Language switcher location — settings only
+Translation source — i think you should translate now as long as you are native english speaked + if you check srs you found the every system written word in the app i should have control over it in any lanuage through backend 
+Fonts per language — different fonts for Arabic vs Latin scripts? yes but keep arabic fonts as it is 
+also i have another question in srs through admin panel i can disable any world at any time
+
+=== USER (2026-05-30T21:03:44Z) ===
+complete what u was doing 
+
+
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from Claude Opus 4.6 (Thinking) to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+
+=== USER (2026-05-30T21:30:47Z) ===
+do it
+
+=== USER (2026-05-31T00:10:23Z) ===
+what is this implementation plan for exactly !!
+
+=== USER (2026-05-31T00:13:30Z) ===
+and what about the hardcoded arabic ?
+
+=== USER (2026-05-31T00:29:41Z) ===
+so what the fuck you burned my firebase prepaid credits in ?!
+
+=== USER (2026-05-31T00:35:54Z) ===
+complete your fucken freakin pending work and no fucken sub agents you do your fucken job
+
+=== USER (2026-05-31T00:47:43Z) ===
+you have two tasks going, world toggle , arabic hardcoded and translation
+
+which one you are working on ?!
+
+=== USER (2026-05-31T00:56:22Z) ===
+yes please start
+
+=== USER (2026-05-31T01:37:16Z) ===
+so now all arabic words in the system are not hardcoded ?!
+
+=== USER (2026-05-31T01:43:59Z) ===
+does the user now can change from arabic language to english language and see the app in ltr ?!
+
+=== USER (2026-05-31T01:50:08Z) ===
+there are nothing in setting that can do that, are you playing me !!
+
+=== USER (2026-05-31T01:55:14Z) ===
+it's not fucken active !!
+
+=== USER (2026-05-31T02:02:01Z) ===
+its not fucken active, what the fuck !!
+
+=== USER (2026-05-31T02:08:07Z) ===
+why you are talking about local while i'm talking about cloud, this project have nothing to do in local environemnt !!
+
+=== USER (2026-05-31T02:11:30Z) ===
+we have alot of fixing to do tomorrow you have broken arabic language and english language in the same time even the logo in the app shell is not centered any more
+
+=== USER (2026-05-31T02:13:28Z) ===
+even arabic freakin language have english wording now
+
+=== USER (2026-05-31T10:56:31Z) ===
+good morning can we start ?
+
+=== USER (2026-05-31T11:22:02Z) ===
+what the fuck is this, all arabic in the fucken global freakin app is freakin destroyed !!
+
+=== USER (2026-05-31T11:31:04Z) ===
+so now every thing fixed and we have two implemented languages and no hardcoded text ?!
+
+=== USER (2026-05-31T11:34:03Z) ===
+every 2 hours you tell me finished and fixed and when i ask you the same question you say not yet, so when we will end this story for good !
+
+=== USER (2026-05-31T12:04:21Z) ===
+radio world in english is not ltr 
+home
+discover
+create
+live
+me
+tournament world in english is not ltr 
+home
+discover
+create
+live
+me
+music world in english not ltr
+discover
+create
+live
+me
+general world in english not ltr
+discover
+create
+live
+me
+
+=== USER (2026-05-31T12:04:50Z) ===
+user profile in english not ltr
+
+=== USER (2026-05-31T12:05:45Z) ===
+create page in arabic is not arabic any more
+
+=== USER (2026-05-31T12:06:22Z) ===
+profile in arabic the drop down menu is not rtl
+
+=== USER (2026-05-31T12:33:13Z) ===
+really !!
+
+=== USER (2026-05-31T12:33:38Z) ===
+really ?!
+
+=== USER (2026-05-31T14:29:00Z) ===
+why the fuck they look like that in  arabic but your fixes in your ass and analyze the fucken problem and tell me what is happening exactly and report to me and give me a fixing plan, don't edit or deploy any fuck
+
+=== USER (2026-05-31T14:32:03Z) ===
+i think i make it clear yesterday that there are no fucken local for this project, also if you freakin check the screen shot browser links you will see i'm fucken using the freakin cloud so why i will check the local freakin server !!
+
+=== USER (2026-05-31T14:33:28Z) ===
+deploy them
+
+=== USER (2026-05-31T14:36:17Z) ===
+text still in ltr !! 
+
+why every thing have to had 5 or 6 steps to got done !!
+
+=== USER (2026-06-01T08:31:46Z) ===
+categories name in arabic is english, while we should have category names arabic ( in arabic ) english in ( english) so in the backend when i create or edit a category i have to have the option to write its name in all avaliable languages categories and sub categories
+
+=== USER (2026-06-01T08:33:22Z) ===
+also audio creation arabic flow in english 
+
+checkPublication details
+checkCover
+checkTranslation
+5prompter
+6Registration
+7Review
+8Influences
+9Mixing
+10Preview
+11confirmation
+12Result
+teleprompterالملقن (AutoCue)اختياري
+workspace_premiumميزة مدفوعة — متاحة لمشتركي الحزم المتقدمة أو بتفعيل إداري.
+تفعيل الملقن أثناء التسجيل
+
+=== USER (2026-06-01T08:48:40Z) ===
+toggle button in sound قص وتعديل الصوت the toggle dot is out the button add its fixing to the plan too
+
+in sound edit and cut there are no button to apply the cut
+
+t_cutحذف مقطع من المنتصف(حد أقصى: 1)
+من:01:38
+إلى:01:50
+
+what i should do if i want to cut another cut in the audio !! 
+
+toggle button in all creation flow the dot is out of its button
+
+تفعيل المكساج button  doesn't look like other toggels !
+
+مؤثرات صوتيه 01:02.000 i can't write the righ timing, because the timer doen't allow me to edit the first 0 so i can right 01 i can't right 12 or 11  or 45 
+
+ingخفض الموسيقى
+تلقائياً أثناء الكلام
+scheduleمؤجل — يتطلب مسار موسيقى
+
+why مؤجل and the toggle button is diffrent !! 
+
+اضغط معاينة المكساج لسماع النتيجة قبل النشر. الملف الأصلي يبقى محفوظاً.
+
+where to fucken press where is the fucken preview and apply button !! 
+
+يجب معاينة المؤثرات أولاً
+
+why there are no freakin preview !!
+
+there is nothing applied from previous steps, in the final preview before publish what the fuck is this 
+
+also why i can't move the player so i can check the parts of audio file i really edited instead of listening to the full file !!
+
+and i can't fucken publish !!
+
+يجب معاينة القص قبل النشر (Edit preview must be ready before publishing).
+
+because there no fucken apply button in the audio edit step 
+
+i want the audio file when it move from step to step it have to move with applied steps not the original audio and to have a real preview for every thing i do
+
+no give me full implementation plan for all the freakin problems i need them all fixed asap !!
+
+=== USER (2026-06-01T08:53:18Z) ===
+are those included in the plan ?
+
+The Audio Creation Bug: The translations for the steps and the options were defined outside of the main component. Because of this, they were translated exactly once when the app first loaded. If you opened it in English, those steps locked in as English permanently, even if you switched to Arabic later. Also, there are missing spaces in the code between the icons and the text, which is why words like (AutoCue)اختياري are glued together.
+The Categories Issue: Currently, all the categories (Culture, Music, Sports, etc.) are entirely hardcoded in the frontend files. If you want to manage them from the backend and provide multi-language names for each category, we need to move them to your Firestore database.
+
+=== USER (2026-06-01T09:01:50Z) ===
+3. Support Multiple Cuts
+Problem: The code currently enforces a strict limit of 1 cut (if (editCuts.length >= 1) return;).
+Fix: I will raise this limit (e.g., up to 5 cuts) so you can trim multiple sections of the audio 
+
+why limited with numbers if i record a long audio may be i need a hunderad cuts every cut from an exact time to another exact time to be written
+
+=== USER (2026-06-01T09:02:49Z) ===
+proceed and i hope it fixed this time because we are two months behind the schedule
+
+=== USER (2026-06-01T09:52:37Z) ===
+Please deploy to your dev server, check the UI flow, and let me know if we are completely caught up with the schedule!
+what the fuck, who do the freakin deployment every time !!
+
+=== USER (2026-06-01T19:47:51Z) ===
+nothing is done, no thing is good, don't implement don't edit don't deploy discussion mode only
+
+=== USER (2026-06-01T19:58:40Z) ===
+do you want to do the fixing for language because its still broken
+and for audio workflow page by page ?!
+
+=== USER (2026-06-02T14:57:53Z) ===
+fix the arabic in the page and deploy
+
+=== USER (2026-06-02T15:08:54Z) ===
+stop writing scripts and do your fucken job by your fucken hand 
+
+https://sound-platform-dev.web.app/general/home
+
+=== USER (2026-06-02T15:11:10Z) ===
+why description in freakin search bar is ltr !!
+
+=== USER (2026-06-02T15:26:48Z) ===
+fliters are left while they are supposed 
+https://sound-platform-dev.web.app/music/me
+
+=== USER (2026-06-02T15:30:46Z) ===
+https://sound-platform-dev.web.app/radio/live
+https://sound-platform-dev.web.app/general/live
+check arabic !!
+
+=== USER (2026-06-02T15:38:03Z) ===
+https://sound-platform-dev.web.app/settings
+
+text wrong alignemnt, arabic language, , null text
+
+=== USER (2026-06-02T15:43:26Z) ===
+user name in english is not ltr !!
+
+=== USER (2026-06-02T15:56:16Z) ===
+in arabic there are no spacing between @ and user name
+
+=== USER (2026-06-02T16:04:11Z) ===
+https://sound-platform-dev.web.app/plus/home
+
+check the hardcoded arabic 
+
+drop down inheirts general world colors and this is a global problem !!
+
+=== USER (2026-06-03T08:52:31Z) ===
+اختر التصنيف 
+doesn't display categories !!
+
+=== USER (2026-06-03T09:01:20Z) ===
+the toggle button beside the قص و تعديل
+and there are no save cut button before moving to the next step 
+add cut only add 1 cut i need to add more cuts as we agreed unlimited cuts just as i like
+
+=== USER (2026-06-03T09:09:38Z) ===
+the cut isn't logical  i want to add the exact cut time manualy by hand because the cut faders doesn't exactly go where i want
+
+=== USER (2026-06-03T09:14:25Z) ===
+also تاكيد و متابعة Button after saving it's not clickable it doesn't take me to the next step !!
+
+=== USER (2026-06-03T09:31:23Z) ===
+المعاينة 
+bringed the file back with no cuts !!
+
+also after moving to the next step when i pressed on 
+
+معاينة المؤثرات 
+
+يجب معاينة القص أولاً (Render edit preview first)
+
+and for sure thats because the cut and trim step didn't really apply  or actually saved on the file or even created anew file with the cuts on it !!
+
+=== USER (2026-06-03T09:49:52Z) ===
+don't edit , don't deploy, don't execute just give me a plan
+
+and absloutly i can't publish because the freakin same error 
+
+cut edit preview still get the original file !! 
+
+the next step add effects 
+
+يجب معاينة القص أولاً (Render edit preview first)
+
+يجب معاينة القص قبل النشر (Edit preview must be ready before publishing).
+
+even content puplish said that !!
+
+=== USER (2026-06-03T10:03:14Z) ===
+are we staying for ever or you have used sub agents again and he got stuck !!
+
+=== USER (2026-06-03T10:03:50Z) ===
+and why editing and creating i said it loud and clear 
+
+don't edit , don't deploy, don't execute just give me a plan
+
+=== USER (2026-06-03T10:20:35Z) ===
+don't edit, don't modify, don't run, don't deploy just answer me and give me a plan
+
+
+المعاينه still get the full file 
+
+but under the cuts there are 
+
+duleالمدة الأصلية:
+05:37
+timerالمدة بعد التعديل:
+04:01
+
+so simply المعاينه is above iot get the raw files without the cutting applied 
+but if it moved down there it will be in the second screen getting the info from the real cut that supposed to make it work
+
+=== USER (2026-06-03T10:23:47Z) ===
+no its not working because i tried after your deployment, and thats what gave me the freakin conclusion
+
+=== USER (2026-06-03T10:26:31Z) ===
+who the fuck supposed to freakin deploy me or fucken you
+
+=== USER (2026-06-03T10:54:29Z) ===
+المؤثرات الصوتيه toggle buttons
+
+=== USER (2026-06-03T10:59:26Z) ===
+update kb, srs, structure, infra structrure, roadmap, with the new knoweldge 
+
+audio flow problems and how we fixed it
+
+translation problems and how we did it
+
+and all other new knoweldge
+
+=== USER (2026-06-03T11:11:11Z) ===
+did you add the  world disabler that we built ?!
+
+=== USER (2026-06-03T11:16:03Z) ===
+check our chat and see any thing is not recorded and record it
+
+=== USER (2026-06-04T08:42:50Z) ===
+so what should be our next safe step ?!
+
+=== USER (2026-06-04T08:45:11Z) ===
+do you have phases till finishing the project or you generate projects phases depending on my requests
+
+=== USER (2026-06-04T08:46:43Z) ===
+in which phase we will build stories ?!
+
+=== USER (2026-06-04T08:47:56Z) ===
+Another question when we will create the backend ?!
+
+=== USER (2026-06-04T08:48:46Z) ===
+yea when i will have an admin and login link to control every thing in the app in which phase ?!
+
+=== USER (2026-06-04T08:52:09Z) ===
+Discussion mode only 
+Don't edit, don't deploy, don't modify, don't change any thing
+i want  a clean, user-friendly login link to control every thing, how i supposed to change the app style, colors, fonts, world colors, control user content, aprrove user content , change categories, add categories, change user passwords or email, change system name or icon or app icon change languages, edit words for an exact language with out a back end ?!
+
+=== USER (2026-06-04T08:56:09Z) ===
+Put the admin dashboard in a phase and i want the admin to be able to do anything and every thing, even if the admin want to disable an account or edit user profile or change his password, even control the other admins information i want the super admin to over sea and control every every every thing in the app and i understand that he can't change the architucture with out a code or change the app icon which is already hardened in the mobile app build
+
+=== USER (2026-06-04T08:58:51Z) ===
+add this phase to our road map i approve the plan but don't start any development yet
+
+=== USER (2026-06-04T09:12:22Z) ===
+now i have another question one we will create the on road module if you still remember it because you didn't mention that in phases
+
+=== USER (2026-06-04T09:13:55Z) ===
+wait tell me what the user can do with sessions exactly tell me every thing you know
+
+=== USER (2026-06-04T09:15:47Z) ===
+how it work with worlds ?!
+
+=== USER (2026-06-04T09:16:47Z) ===
+Okay update road map with the new knoweldge we have more clarification to be done
+
+=== USER (2026-06-04T09:17:28Z) ===
+i can't see you add admin dashborad to phase 9-b as u said
+
+=== USER (2026-06-04T09:20:01Z) ===
+how you gonna build the live and does google servers will be able to handle long streams that are longer than 60 minutes ?!
+
+=== USER (2026-06-04T09:22:06Z) ===
+how much time will take from you to develop the live module ?
+
+=== USER (2026-06-04T09:23:18Z) ===
+how much sessions it would take to get this application on google and apple store
+
+=== USER (2026-06-04T09:33:26Z) ===
+how much days left to have the full app in hand
+
+=== USER (2026-06-04T09:37:49Z) ===
+i want you to update the kb, srs, infra structure, project road map with the new knoweldge and our discussion
+
+=== USER (2026-06-04T10:06:59Z) ===
+Okay, now tell me about stories what do you know about it and how you will program it
+
+=== USER (2026-06-04T10:11:06Z) ===
+1. The Database & The "24-Hour" Deletion (Firestore) it can be also 48 hours or 1 wekk story 
+and the user should have stories archive some where and be able to reuse it or reshare it any time 
+
+does that will cost much ?!
+
+=== USER (2026-06-04T10:12:15Z) ===
+Okay does stories are worlds scoped or user profile scopped ?! does user can have multiple stories or only one active story ?
+
+=== USER (2026-06-04T10:13:20Z) ===
+i totaly agree and thats the right decision and totaly comply to our project structure and project infra structure
+
+=== USER (2026-06-04T10:14:34Z) ===
+i see you are in hurry for building something
+
+=== USER (2026-06-04T10:16:44Z) ===
+now give me a plan for this ( phases ) to finish that today 
+
+1. (Recommended) Pay Off the Audio UI Technical Debt
+Since we just recorded the missing product decisions for the Audio flow, the most logical and safe step is to actually implement them while the context is fresh:
+
+Connect Categories and Subcategories to pull dynamically from Firestore.
+Refactor the editor to support Unlimited Cuts.
+Add the Manual Time Input fields for precise cutting.
+Add the Step Validation Guard to lock the "Confirm" button until edits are actively saved.
+
+=== USER (2026-06-04T10:23:17Z) ===
+successfully rendering the audio preview enough to unlock the button
+do your magic and let's start, and after you finish tell me what you want me exactly to test
+
+=== USER (2026-06-04T10:29:35Z) ===
+no local dev server , and you are the one who fire this things up, we agreed before hundrad of times there are no local every thing should happen on the cloud
+
+=== USER (2026-06-04T12:14:10Z) ===
+don't edit, don't run , don't deploy, don't edit, discussion mode only
+
+
+tell me what do you understand from the following and how we can fix that 
+
+
+why save steps even for simple text input takes too much time !! 
+
+loading in total is so slow and i have a very good hundrad 100 mega per second connection 
+
+when i add more cuts scroll bar is ugly not our sound design 
+
+when i add extra cut it got effected by the previous cut so the track after it was 5 minuts, it became 3 minutes for example so the 6 cut it doesn't allow me to cut from the whole 5 minuts it want me to cut from the remaining 3 minutes 
+
+also in the preview track not final preview the normal preview track when i move the crusor to a point in time line its doesn't tell me where i'm exactly so i can put that timing in the cut which is weird right 
+
+for background music if the voice is longer than the back ground shall repeat not the half audio with background and the other half without 
+
+تفعيل المكساجاضبط طبقات الصوت والموسيقى قبل الحفظ
+
+the toggle button beside it is not the normal toggle button we use for every other toggles !
+
+=== USER (2026-06-04T12:24:21Z) ===
+Why it's happening: It seems the developer used a standard checkbox or a different CSS class for that specific step instead of the global .acp-toggle class. 
+
+you are the one and the only developer !!
+
+analyse all problems and give me implementation plan that makes us sure we are not going to break any working thing and just fix whats broken
+
+=== USER (2026-06-04T12:31:13Z) ===
+Regarding Issue #3: The fundamental challenge with non-destructive editing is that you are listening to a Preview 9 this problem happend before even generating the preview it happend while i still adding the cuts and didn't press save and preview ).
+
+so your options are not applicable  so give me the right options to choose from
+
+=== USER (2026-06-04T12:34:50Z) ===
+execute the plan but issue by issue which mean when you fix any thing you tell and tell me how to test the fix if its fixed we move to the next issue and don't use subagents you work by your hand
+
+=== USER (2026-06-04T12:38:28Z) ===
+perfectly done, go with next issue
+
+=== USER (2026-06-04T12:43:47Z) ===
+the same scroll bar nothing changed !
+
+no the same toggle why don't u just copy any other toggle from the previous step css ! instead of creating it all over again check screens
+
+=== USER (2026-06-04T12:50:08Z) ===
+Okay next issue
+
+=== USER (2026-06-04T13:24:59Z) ===
+okay what to fix next ?!
+
+=== USER (2026-06-04T13:28:53Z) ===
+Okay next fix
+
+=== USER (2026-06-04T13:33:22Z) ===
+Okay so now phase 8 is finished ?!
+
+=== USER (2026-06-04T13:35:09Z) ===
+before that what are percentage we are @ from the full project
+
+=== USER (2026-06-04T13:45:32Z) ===
+Phase 8-D (Audio Detail Player & Playback): Viewing the published audio item, authorized playback, and the global audio player. 
+
+Okay and give me test instruction after you finish
+
+=== USER (2026-06-04T13:52:38Z) ===
+Should the global player auto-hide if a track finishes playing, or stay visible until manually closed?
+visible until manually closed or play another audio file
+Do you want the global player to support a "queue" (next/previous tracks) in this phase, or just a single track for now?
+ (next/previous tracks) in this phase
+
+The plan covers migrating this into a persistent global mini-player that docks at the bottom of the screen, allowing you to listen to tracks while browsing other parts of the platform!
+
+when this migration will happen in which phase also we said its not a bottom player we said  a half cd playing on the left screen side without covering any other visible element 
+
+do that correction and get back to me
+
+=== USER (2026-06-04T13:56:47Z) ===
+The UI will be a Half-CD on the left side of the screen. this should happen when i move a way from the main player !!
+
+=== USER (2026-06-04T13:57:11Z) ===
+and when i click on the cd player it comes back again to the full player
+
+=== USER (2026-06-04T14:10:19Z) ===
+the cd is moving the full design while it supposed to flow over it, its full cd while i asked for half cd 
+
+there are a step you skipped the official main player page ! its still the draft page not final page
+
+=== USER (2026-06-04T14:15:44Z) ===
+okay let's proceed and be sure when i click on the main player it brings the full player back
+also where the previous and next will came from ?!
+
+=== USER (2026-06-04T14:26:47Z) ===
+what the fuck you have did first its the wrong screen, second you simply used the screen background which we said we use our main app shell not screen shell, also the download button its supposed to be a offline download so you can play that track again when u have no connection, all buttons are not clickable, where are the favorite icon, where are the gift button, where are the save button, why the fuck كلمات الاغنية while we are in the freakin general world that have audios 
+
+المحتوى الموسيقي منشور من حساب مصرح له ومرتبط بحقوق موسيقية
+lightbulb
+يمكنك إرسال الأغنية لصديق داخل Sound أو مشاركتها خارج التطبيق
+
+why the fuck those appear here !! we are in general or fucken plus world 
+
+where are the freakin comments 
+
+where the freakin report button or icon !
+
+why the next and previous buttons are the opposit !
+
+and why the fuck is the player is not in the side of the screen !!
+
+=== USER (2026-06-04T14:31:21Z) ===
+and the add to playlist button is missing too ( my mood ) 
+and there should be a place to preview the captions i can't see it too
+
+=== USER (2026-06-04T14:32:38Z) ===
+also the moving waves it have to inheirt the world colors not random yellow and baby blue colors which is not from our sound design world audio player have to inheirt the world colors not random colors
+
+=== USER (2026-06-04T14:44:47Z) ===
+give me a fixing plan in phases to test it a thing by a thing no massive fixing any more 
+
+don't edit, don't deploy, don't run, don't delete, don't modify
+
+Discussion mode only
+
+tell me what do you understand\
+
+instead of قائمتي  it have to be مزاجي because those playlist belong to the مزاجي tab in me page 
+there are no favorite button and its fucken diffrent from like button because the freakin favorite button add this audio to the freakin favorites tab in me world page 
+there are no freakin repost button which will share this freakin audio to the repost tab in the freakin me page !! 
+
+and instead of the minimized circle audio cover it supposed to be like the preview you made that the cover appears from the world navigator to the end of audio player !! with a bit fade from above and from down
+
+also where are the captions will appear while the audio playing aren't they supposed to be synced with the audio and appearing on the cover
+
+also the wave i need it real dynamic waves for the track not just a gif going up and down even if the sound is silence 
+
+this is a mega project, and this app will change the audio in the whole world for ever we are building something global, professional that will work world wide, no mistakes are accepted here no half solutions no we will fix it later !!
+
+and the final screen you gave me belive me the preview screen you made your self was freakin much better than that fuck i see now 
+
+and the freakin player still the same so what the fuck is that
+
+=== USER (2026-06-04T14:47:17Z) ===
+phase 1
+
+=== USER (2026-06-04T14:53:45Z) ===
+same stupid issue !!  you see the scroll 3 bars in the right?! why not give the fucken cd the same position but in the freakin left !!
+
+=== USER (2026-06-04T14:59:19Z) ===
+still not to the edge !!
+
+=== USER (2026-06-04T15:01:42Z) ===
+what the fuck its still the same !!
+
+=== USER (2026-06-04T15:13:48Z) ===
+worked perfectly
+
+=== USER (2026-06-04T15:22:10Z) ===
+why back button is a drop down !! 
+
+the back ground i said it have to end and fade by the end of the player not the page 
+the buttons instead of right and left scrolling
+make them in two lines every line has 4 icons because they are 8 icons !!
+
+where are the fuck like button
+
+instead of تنزل للعرض دون انترنت  it must be دون انترنت with the same icon
+
+=== USER (2026-06-04T15:23:31Z) ===
+instead of الشرح التوضيحي متوقف it should be لم يتم اضافة الكابشنز and it should really check if there are caption or lyrics if its a song or not
+
+=== USER (2026-06-04T15:25:55Z) ===
+the gradient fade is fucken ugly 
+
+instead of الشرح التوضيحي متوقف it should be لم يتم اضافة الكابشنز and it should really check if there are caption or lyrics if its a song or not and don't make it so freakin fucken bold !!
+
+=== USER (2026-06-04T15:29:44Z) ===
+then where are the full audio info and statics  audio description audio type audio category audio sub category audio description author user name where the user verification badge beside his name  where are the audio length and why title is so freakin bold where are the discription where are the listens count where are the comments count where are the likes count
+
+=== USER (2026-06-04T15:37:02Z) ===
+what صوت means is it full audio is it a podcast is it a shout audio what the fuck really is صوت definition for you 
+the @ mark is not at the right side 
+the verified badge is not with the world color and its so freakin poor un clear icon
+why the fuck there are a bold text saying يتم التشغيل الان what the fuck is this seriously !! 
+also the background have to start from behind the world navigator not under it  and all stuff have to be not hardcoded it should check for the user info and audio file meta data and reply back on the player
+
+=== USER (2026-06-04T15:38:54Z) ===
+Continue
+
+=== USER (2026-06-04T15:43:56Z) ===
+why in the mini player the play, pause button color is blue its supposed to take the audio world color also the cd have to have a glass modern transpearnt stroke with the world color, don't forget we are premium please forget win98 style 
+
+i can't move back or forward on the audio by my mouse cursor or by my finger while in touch screen
+
+=== USER (2026-06-04T15:54:06Z) ===
+make the cd player a little bit slower , ensure that لم يتم اضافة كابشنز really check for captions and if there are no captions it display that, but if there are captions it have to preview them in the same way the user choosed his captions to appear
+
+=== USER (2026-06-04T15:57:57Z) ===
+In which phase those icons will be actually do something
+
+=== USER (2026-06-04T16:02:15Z) ===
+there are still two simple tweaks to be done 
+
+first i'm not sure if you really displaying audio description as i can't see it in the final player 
+
+when i choose انشاء قائمة جديدة in audio creation flow there are no submit button to quickly save it and there are no privacy option for it while creating it 
+
+also after creating it it's drop down looks horribly ugly
+
+=== USER (2026-06-04T16:07:42Z) ===
+now i have a real big problem with you, do i have to say to you that any new page have to use the multi language system because the final audio player when i switched language the english all words are fucken arabic hardcoded and the freakin direction is freakin rtl
+
+=== USER (2026-06-04T16:15:30Z) ===
+create playlist while audio creation sucks and ugly why the fuck you don't give me the freakin full privacy list to check from it !! why the privacy drop down is so cheap 
+
+why freakin save are just حفظ مبدئي and why the pop up message is freakin cheap, and why its not add the playlist once created to my lists 
+
+even audio creation follow its all hardcoded in arabic !!  why seriously i have to tell you to translate every thing you supposed to know that now we have two active languages so we have to create every freakin thing not hardcoded and not in arabic only mode !!
+
+=== USER (2026-06-04T16:23:48Z) ===
+and why there are still data in the wrong direction and why are categories name in arabic while i said that categories names have to be translated through admin panel for how ever how much languages we have ??!! 
+
+how many fucken times i told you i don't like script writers because the fuck up the app and subagent
+
+how many times i told you do the job by your hand even if its going to take what ever time i got bored of you seriously !! 
+
+and the fucken audio creation flow is still in arabic so put the script writer in your god damn ass 
+
+or as usual you forgot to fucken deploy
+
+=== USER (2026-06-04T16:36:32Z) ===
+are you still there or your subagent hanged
+
+=== USER (2026-06-04T16:39:36Z) ===
+and why there are still data in the wrong direction and why are categories name in arabic while i said that categories names have to be translated through admin panel for how ever how much languages we have ??!! 
+
+how many fucken times i told you i don't like script writers because the fuck up the app and subagent
+
+how many times i told you do the job by your hand even if its going to take what ever time i got bored of you seriously !! 
+
+and the fucken audio creation flow is still in arabic so put the script writer in your god damn ass 
+
+or as usual you forgot to fucken deploy
+
+=== USER (2026-06-04T19:21:21Z) ===
+then send me your previous chat because i can't see it ! in the chat
+
+=== USER (2026-06-04T19:28:01Z) ===
+https://sound-platform-dev.web.app/audio/pAgzvxhJ7bzeFacdYIzI
+
+ node script you see scripts and fucken subagents !! 
+i said it thousands of fucken time 
+you breaked the audio player fucken page 
+
+fuck you seriously no the full details audio player page is broken in arabic and fucken english 
+
+because you mother fucker use fucken agents and sub agents 
+
+audio creation flow is still rtl in arabic and still full of arabic hardcoded words
+
+=== USER (2026-06-04T19:33:09Z) ===
+working till when i see you are idle !!
+
+=== USER (2026-06-04T19:33:55Z) ===
+and i freakin see huge lines of code it cutting out from audio create so are you destroying it too now ?!
+
+=== USER (2026-06-04T19:42:50Z) ===
+Brief description...
+World
+عام
+بلس
+Content Type
+صوت طويل
+بودكاست
+مقطع قصير
+المعلومات
+2
+تفاصيل النشر
+3
+الغلاف
+4
+الترجمة
+5
+الملقن
+6
+التسجيل
+7
+المراجعة
+8
+المؤثرات
+9
+المكساج
+10
+المعاينة
+11
+التأكيد
+12
+النتيجة
+edit_note
+
+the freakin next and previous arrows 
+
+saving process still takes time in english and arabic 
+
+visibility
+عام - للجميع
+
+group
+المتابعين فقط
+
+person_add
+من أتابعهم فقط
+
+why preivousy is fucken minimied and have fucken arabic while i'm in freakin english !!
+إضافة لقائمة موجودة
+
+queue_music
+إنشاء قائمة جديدة
+إعدادات النشر
+السماح بالتعليقات
+السماح بالهدايا
+السماح بالمشاركة
+schedule_send
+جدولة النشر
+حسب الباقة
+
+
+arrow_forward
+رجوع
+
+arrow_back
+التالي
+image
+غلاف المحتوى
+اختياري
+
+upload
+رفع صورة
+
+photo_camera
+كاميرا
+قريباً
+
+auto_awesome
+غلاف ذكي (AI)
+مدفوع
+سيتم استخدام غلاف افتراضي إذا تخطيت هذه الخطوة.
+
+
+arrow_forward
+رجوع
+تخطي
+التالي
+
+المعلومات
+check
+تفاصيل النشر
+check
+الغلاف
+4
+الترجمة
+5
+الملقن
+6
+التسجيل
+7
+المراجعة
+8
+المؤثرات
+9
+المكساج
+10
+المعاينة
+11
+التأكيد
+12
+النتيجة
+subtitles
+إعداد الترجمة والنصوص
+اختياري
+
+تفعيل النصوص / الترجمة
+
+arrow_forward
+رجوع
+تخطي
+التالي
+
+i will not keep going you translated fucken nothing didn't even make the button and arrows direction in the right 
+
+no freakin su agents or auto translators or scripts you are wasting me freakin time
+
+=== USER (2026-06-04T19:47:01Z) ===
+are you there ?!
+
+=== USER (2026-06-04T19:48:23Z) ===
+you seem hanging to me you don't do any thing actually antigravity crashed and i restarted it
+
+=== USER (2026-06-04T20:01:40Z) ===
+a TypeScript fuck the script and fuck you, check them manualy again!! i said no fucken scripts or fucken subagents
+
+
+<USER_SETTINGS_CHANGE>
+The user changed setting `Model Selection` from None to Gemini 3.1 Pro (High). No need to comment on this change if the user doesn't ask about it. If reporting what model you are, please use a human readable name instead of the exact string.
+</USER_SETTINGS_CHANGE>
+
+=== USER (2026-06-04T20:03:52Z) ===
+a TypeScript fuck the script and fuck you, check them manualy again!! i said no fucken scripts or fucken subagents
+
+
+and for sure you didn't fucken deploy a thing to the server
+
+=== USER (2026-06-04T20:09:19Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+a TypeScript fuck the script and fuck you, check them manualy again!! i said no fucken scripts or fucken subagents
+
+
+and for sure you didn't fucken deploy a thing to the server
+
+=== USER (2026-06-04T20:14:45Z) ===
+No, not now i want you to check this chat and tell me how much times you used a written script or a sub agents  and how much they did the required in a right way and how much time they did it the wrong way and i have yeild at you
+
+=== USER (2026-06-04T20:18:00Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+no update the kb with this knoweldge there are no scripts or subagents to this project and you are lieing because every time you used subagent or script the work never have been done and we have to edit it again and again and again so do your work by your hand.
+
+update kb
+
+=== USER (2026-06-04T20:21:15Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+add also that every arabic page we create or activate it have immediatly to be in english too or any active other language, i don't have to tell you every time to create the english language file and check for the direction you have to freakin do that automaticly
+
+=== USER (2026-06-04T20:22:15Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+now did you finished the player and audio creation follow and deployed to the server or not yet
+
+=== USER (2026-06-04T20:23:22Z) ===
+2. The Audio Player: The core audio player was built during an earlier phase, but in this most recent session, I only focused on cleaning up and fixing the massive Audio Creation page as you requested.
+what about audio final page translation ?!
+
+=== USER (2026-06-04T20:24:18Z) ===
+don't tell me about today work finish the audio final player page translation and ping me before deploying for what all you did to fix the audio creation flow and the player page
+
+=== USER (2026-06-04T20:27:27Z) ===
+deploy, and give me qa instructions
+
+=== USER (2026-06-04T20:38:10Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+المعرفة
+الترفيه
+الرياضة
+الروحانيات
+الأخبار
+
+what the fuck are those world are you fucken serious !! 
+
+the next and previous arrrows you bitch 
+
+read the screens you mother fucker
+why the fuck arabic audio desription writing long audio !!
+
+even arabic creation follow got fucked 
+
+answer the fuck and be honest and freakin clear what really happend ?!
+
+=== USER (2026-06-04T20:40:16Z) ===
+you do one freakin job only a time with out fucken script and with out fucken sub freakin agents i'm diabtic person and you gonna kill me. stop the stupidity
+
+now fix the arabic workflow as it was fucken before, you freakin destroy it
+
+=== USER (2026-06-04T20:45:57Z) ===
+why you are checking player details page i didn't say any fucken thing about it !!, and i said fix arabic only , i didn't said any thing about the fucken english ?! 
+
+does fucken مسابقات world have audio upload from here !! does we have any world called نخبة !!
+
+=== USER (2026-06-04T20:49:02Z) ===
+now to load my freakin playlists from database it took so fucken long time 
+and it look fucken ugly appearing above another items
+
+we are only arabic scopped now
+
+=== USER (2026-06-04T20:54:49Z) ===
+and destroyed the categories and subcategories, 
+
+and now there are missing arabic words like addtoexistingplaylist
+create new playlist
+
+=== USER (2026-06-04T20:59:24Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+tell me what the last thing we did for playlist creation or selection in the audio creation flow ?!
+
+=== USER (2026-06-04T21:00:48Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+not the fix the other fix we did today earlier read the chat and answer me
+
+=== USER (2026-06-04T21:03:32Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+your answer is wrong and that didn't happen today
+
+what we did today is making create new play list have a save button, have a privacy select the includes all privacy types we have, and when i save the playlist its automaticly in the same second appears in my lists to choose it
+
+so read the freakin chat and answer me with what we actually did
+
+=== USER (2026-06-04T21:08:02Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+However, I need to be completely honest with you i know you weren't honest and thats why i asked but i wanna know what the fuck else we fixed , and lost as the playlist losing !!
+
+=== USER (2026-06-04T21:11:53Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+check the freakin kb of what we accomplished today and yesterday and what the fuck have dissappeared from the code
+
+=== USER (2026-06-04T21:13:08Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+answe me about the mixing and triming fixes are they still there or lost ?!
+
+=== USER (2026-06-04T21:15:11Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+no no no thats a freakin life time work and i will accept it to be lost because simply they where made before the full player page so as long as the full player page is there they have to be freakin there, so you are not honest and you are lieing again !!
+
+=== USER (2026-06-04T21:17:39Z) ===
+so fix the playlist creation model only now and get back to me
+
+=== USER (2026-06-04T21:19:08Z) ===
+deployed ?
+
+=== USER (2026-06-04T21:20:35Z) ===
+fucken deploy \
+
+=== USER (2026-06-04T21:28:39Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+
+
+yeah you fucked up all my fixes to the audio creation flow and i will get a heart attack right now you reverted to an old file which is not related to today or even yesterday
+
+=== USER (2026-06-04T21:30:07Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+are you fucken stupid you r the freakin one who created and coded every thing !!
+
+=== USER (2026-06-04T21:34:03Z) ===
+Discussion mode only, no implementation, no edit, no deploy, no subagents or running scripts
+the last safe code before starting the talk about translation is it there yes or no and check the chat to know the exact time we started implementing translation anfd get back to me
+
+=== USER (2026-06-04T21:36:28Z) ===
+yes pull it and when u r sure its safe deploy it
+
+=== USER (2026-06-04T21:44:35Z) ===
+No i don't no i can't you are the one doing every thing and refucken inject the code again or check the vps if it half that file backup and i think i pretty cleared before that i don't fucken want long freakin files i set a rule of the maximun 300 line per file !!
+
+=== USER (2026-06-04T21:51:45Z) ===
+no its not !! because this screen which is live and deployes is so fucken old, it has only 1 cut, there are no preview problem so seriously 4 days work is just thrown to the basket
+
+so check the fucken code we fixed fucken today and by your hand no script no subagents, read the kb and check what we have done for the last 3 days and how we did it and reinject your memory code if you really have it and you are not playing me !
+
+=== USER (2026-06-04T21:56:57Z) ===
+you created a script to the job again ?!
+
+=== USER (2026-06-04T22:01:44Z) ===
+make an audit from the code and an audit to the kb and run an audit to the chat from 30/5 to right now and rewrite what was lost and readin the chat is important because simply it will tell you what was the problem and how did we fixed it
+
+=== USER (2026-06-04T22:04:57Z) ===
+no no no no not the cuts only i want a check, audit, review from 30/5 till that moment what we accomplished and missing in the code not only the cuts
+
+so read the kb from that exact data and all other elements , stucture, srs, roadmap, working rules, phases, every thing and compare it to the chat from the same data and with the code and give me a report before implementing any thing

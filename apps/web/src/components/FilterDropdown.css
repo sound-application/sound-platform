@@ -33,19 +33,19 @@
   flex: 1 1 auto;
   min-width: 72px;
   max-width: 160px;
-  text-align: right;
-  direction: rtl;
+  text-align: start;
+  
   white-space: nowrap;
   transition: background 0.15s, border-color 0.15s;
   font-family: var(--font-sans);
 }
 .fd-trigger:hover,
 .fd-trigger.is-open {
-  background: rgba(124, 58, 237, 0.12);
-  border-color: rgba(124, 58, 237, 0.45);
+  background: var(--color-brand-dim);
+  border-color: var(--color-brand);
 }
 .fd-trigger.has-value {
-  border-color: rgba(124, 58, 237, 0.30);
+  border-color: var(--color-brand);
 }
 
 .fd-trigger__text {
@@ -54,7 +54,7 @@
   gap: 2px;
   flex: 1;
   overflow: hidden;
-  text-align: right;
+  text-align: start;
 }
 
 .fd-trigger__label {
@@ -76,7 +76,7 @@
   text-overflow: ellipsis;
 }
 .fd-trigger.has-value .fd-trigger__value {
-  color: #a78bfa;
+  color: var(--color-brand-light);
 }
 
 .fd-trigger__chevron {
@@ -94,7 +94,7 @@
   order: 2;
 }
 .fd-trigger.is-open .fd-trigger__chevron {
-  color: #a78bfa;
+  color: var(--color-brand-light);
 }
 
 /* ── Panel (fixed position injected inline by portal) ──────────────────────
@@ -104,7 +104,7 @@
 .fd-panel {
   /* position, top, left, width, z-index come from inline style */
   background: rgba(12, 10, 20, 0.97);
-  border: 1px solid rgba(124, 58, 237, 0.28);
+  border: 1px solid var(--color-brand-dim);
   border-radius: 3px;
   box-shadow:
     0 8px 32px rgba(0, 0, 0, 0.65),
@@ -139,14 +139,14 @@
   font-size: 12px;
   font-family: var(--font-sans);
   color: #fff;
-  direction: rtl;
+  
   outline: none;
   box-sizing: border-box;
   transition: border-color 0.12s, background 0.12s;
 }
 .fd-panel__search::placeholder { color: rgba(255, 255, 255, 0.28); }
 .fd-panel__search:focus {
-  border-color: rgba(124, 58, 237, 0.55);
+  border-color: var(--color-brand);
   background: rgba(255, 255, 255, 0.09);
 }
 /* hide browser X on search input */
@@ -164,19 +164,19 @@
   display: block;
   width: 100%;
   padding: 5px 12px;
-  text-align: right;
-  direction: rtl;
+  text-align: start;
+  
   font-size: 11px;
   font-family: var(--font-sans);
   font-weight: 500;
-  color: rgba(167, 139, 250, 0.70);
+  color: var(--color-brand-light);
   background: none;
   border: none;
   cursor: pointer;
   flex-shrink: 0;
   transition: color 0.12s;
 }
-.fd-panel__clear:hover { color: #a78bfa; }
+.fd-panel__clear:hover { color: var(--color-brand); }
 
 /* ── Options ──────────────────────────────────────────────────────────────── */
 .fd-panel__options {
@@ -185,11 +185,11 @@
   overflow-y: auto;
   overscroll-behavior: contain;
   scrollbar-width: thin;
-  scrollbar-color: rgba(124, 58, 237, 0.22) transparent;
+  scrollbar-color: var(--color-brand-dim) transparent;
 }
 .fd-panel__options::-webkit-scrollbar       { width: 4px; }
 .fd-panel__options::-webkit-scrollbar-thumb {
-  background: rgba(124, 58, 237, 0.22);
+  background: var(--color-brand-dim);
   border-radius: 2px;
 }
 
@@ -199,7 +199,7 @@
   font-size: 12px;
   font-style: italic;
   color: rgba(255, 255, 255, 0.35);
-  direction: rtl;
+  
   margin: 0;
   letter-spacing: 0.02em;
 }
@@ -222,28 +222,28 @@
   background: none;
   border: none;
   cursor: pointer;
-  direction: rtl;               /* text starts from right */
-  text-align: right;
+                 /* text starts from right */
+  text-align: start;
   font-size: 13px;
   font-family: var(--font-sans);
   color: rgba(255, 255, 255, 0.72);
   transition: background 0.08s, color 0.08s;
 }
 .fd-panel__option:hover {
-  background: rgba(124, 58, 237, 0.10);
+  background: var(--color-brand-dim);
   color: #fff;
 }
 .fd-panel__option.is-selected {
-  color: #c4b5fd;
-  background: rgba(124, 58, 237, 0.06);
+  color: var(--color-brand-light);
+  background: var(--color-brand-dim);
 }
 .fd-panel__option.is-selected:hover {
-  background: rgba(124, 58, 237, 0.16);
+  background: var(--color-brand-dim);
 }
 
 .fd-panel__option-label {
   flex: 1;
-  text-align: right;
+  text-align: start;
 }
 
 /* ── Checkbox indicator (right-to-left trailing) ─────────────────────────── */
@@ -260,8 +260,8 @@
   transition: border-color 0.12s, background 0.12s;
 }
 .fd-checkbox--checked {
-  background: #7c3aed;
-  border-color: #7c3aed;
+  background: var(--color-brand);
+  border-color: var(--color-brand);
 }
 
 /* ── Selected Chips — rendered by parent BELOW filter row ────────────────── */
@@ -270,7 +270,7 @@
   flex-wrap: wrap;
   gap: 6px;
   padding: 6px 0 0;
-  direction: rtl;
+  
   justify-content: flex-start;       /* start from right in RTL */
 }
 
@@ -279,8 +279,8 @@
   align-items: center;
   gap: 4px;
   padding: 3px 8px 3px 4px;
-  background: rgba(124, 58, 237, 0.14);
-  border: 1px solid rgba(124, 58, 237, 0.28);
+  background: var(--color-brand-dim);
+  border: 1px solid var(--color-brand-dim);
   border-radius: 3px;
   animation: chip-pop 0.13s ease both;
 }
@@ -294,8 +294,8 @@
   font-size: 11px;
   font-family: var(--font-sans);
   font-weight: 500;
-  color: #c4b5fd;
-  direction: rtl;
+  color: var(--color-brand-light);
+  
 }
 
 .fd-chip__x {
@@ -330,18 +330,18 @@
   gap: 6px;
   margin-top: 6px;
   padding: 6px 12px;
-  background: rgba(124, 58, 237, 0.08);
-  border: 1px solid rgba(124, 58, 237, 0.22);
+  background: var(--color-brand-dim);
+  border: 1px solid var(--color-brand-dim);
   border-radius: 3px;
   font-size: 12px;
   font-family: var(--font-sans);
   font-weight: 600;
-  color: #a78bfa;
+  color: var(--color-brand-light);
   cursor: pointer;
-  direction: rtl;
+  
   transition: background 0.12s, border-color 0.12s;
 }
 .fd-subpage-btn:hover {
-  background: rgba(124, 58, 237, 0.15);
-  border-color: rgba(124, 58, 237, 0.40);
+  background: var(--color-brand-dim);
+  border-color: var(--color-brand);
 }

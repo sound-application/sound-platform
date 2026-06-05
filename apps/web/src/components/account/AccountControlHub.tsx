@@ -485,7 +485,7 @@ export function AccountControlHub({ onClose }: AccountControlHubProps) {
           icon: 'language',
           label: t('sections.account.language.label'),
           desc: t('sections.account.language.desc'),
-          soon: true,
+          route: '/settings',
         },
         {
           icon: 'accessibility',

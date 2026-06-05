@@ -35,7 +35,7 @@
   min-height: 100dvh;
   color: #ffffff;
   font-family: 'Alexandria', 'Cairo', sans-serif;
-  direction: rtl;
+  
   /* Clear bottom nav */
   padding-bottom: 112px;
 }
@@ -58,8 +58,8 @@
 .mme-cover {
   position: absolute;
   top: 0;
-  left: 0;
-  right: 0;
+  inset-inline-start: 0;
+  inset-inline-end: 0;
   /* Pull the cover UP behind the fixed header+world-strip (104px total) */
   margin-top: calc(-1 * (var(--header-height) + var(--world-strip-height)));
   /* Extra height = 104px offset + 340px visible = 444px total */
@@ -109,7 +109,7 @@
   justify-content: space-between;
   /* 8px breathing room below where the world strip ends */
   padding: 8px 16px 0;
-  direction: rtl;
+  
 }
 
 /* Badges — right (RTL start) */
@@ -279,7 +279,7 @@
   color: var(--mme-accent-light);
   margin: 0 0 8px;
   direction: ltr;
-  text-align: right;
+  text-align: end;
 }
 
 .mme-bio {
@@ -522,13 +522,12 @@
   position: relative;
   z-index: 5;
   display: flex;
-  flex-direction: row-reverse;   /* RTL: start from right */
   align-items: center;
   gap: 8px;
   overflow-x: auto;
   scrollbar-width: none;
   padding: 10px 16px 0;
-  direction: rtl;
+  
 }
 .mme-filters::-webkit-scrollbar { display: none; }
 
@@ -548,7 +547,7 @@
   cursor: pointer;
   white-space: nowrap;
   transition: background 0.15s ease, border-color 0.15s ease, color 0.15s ease;
-  direction: rtl;
+  
 }
 .mme-filter-chip:hover {
   background: rgba(var(--mme-accent-rgb), 0.10);

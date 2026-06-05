@@ -16,8 +16,8 @@
 .bottom-nav {
   position: fixed;
   bottom: 0;
-  left: 0;
-  right: 0;
+  inset-inline-end: 0;
+  inset-inline-start: 0;
   z-index: 100;
   /* No padding at all — pills go edge to edge */
   padding: 0;
@@ -32,7 +32,7 @@
   align-items: flex-end;   /* pills bottom-align to screen bottom */
   justify-content: stretch;
   gap: 4px;
-  direction: rtl;
+  
   /* Small horizontal padding so pills don't bleed into screen corners */
   padding: 0 6px;
 }

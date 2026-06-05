@@ -31,6 +31,10 @@ import React, {
 import { createPortal } from 'react-dom';
 import { useTranslation } from 'react-i18next';
 import './FilterDropdown.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 export interface FilterOption {
@@ -91,7 +95,7 @@ export function FilterDropdown({
   ariaLabel,
 }: FilterDropdownProps) {
   const { t, i18n } = useTranslation('common');
-  const actualDefaultLabel = defaultLabel ?? t('filters.all', 'الكل'); // fallback if not provided
+  const actualDefaultLabel = defaultLabel ?? t('filters.all', t('filterdropdown:everyone')); // fallback if not provided
 
   const [open,  setOpen]  = useState(false);
   const [query, setQuery] = useState('');
@@ -201,6 +205,7 @@ export function FilterDropdown({
       aria-modal="false"
       aria-label={label}
       className="fd-panel"
+      dir={i18n.dir()}
       style={{
         position: 'fixed',
         top:      rect.top,

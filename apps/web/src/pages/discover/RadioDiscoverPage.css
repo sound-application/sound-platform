@@ -36,7 +36,7 @@
     rgba(26,10,10,0.8) 100%
   );
 
-  direction:   rtl;
+  
   font-family: 'Alexandria', 'Cairo', sans-serif;
   position:    relative;
   overflow:    hidden;
@@ -110,7 +110,7 @@
 /* ─── Side action rail ────────────────────────────────────────────────────────── */
 .rdp-rail {
   position: absolute; top: 50%; transform: translateY(-50%);
-  right: 12px; direction: ltr;
+  inset-inline-end: 12px; direction: ltr;
   display: flex; flex-direction: column; align-items: center;
   gap: 16px; width: 56px; z-index: 30; padding: 12px 0;
 }
@@ -220,7 +220,7 @@
   color: var(--rdp-on-primary); cursor: pointer;
   box-shadow: 0 0 20px rgba(229,57,53,0.35);
   backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
-  transition: all 0.2s ease; direction: rtl; white-space: nowrap;
+  transition: all 0.2s ease;  white-space: nowrap;
   min-width: 160px; font-weight: 700;
 }
 .rdp-cta-btn:hover  { background: #ef5350; box-shadow: 0 0 32px rgba(229,57,53,0.55); }
@@ -236,7 +236,7 @@
 
 /* ─── Feed progress dots ─────────────────────────────────────────────────────── */
 .rdp-progress {
-  position: absolute; left: 10px; top: 50%; transform: translateY(-50%);
+  position: absolute; inset-inline-start: 10px; top: 50%; transform: translateY(-50%);
   z-index: 35; display: flex; flex-direction: column; gap: 6px; pointer-events: none;
 }
 .rdp-dot {
@@ -250,5 +250,5 @@
   position: absolute; top: 30%; bottom: 20%; width: 44px;
   z-index: 50; opacity: 0; background: transparent; border: none; cursor: pointer;
 }
-.rdp-nav-hit--next { right: 0; }
-.rdp-nav-hit--prev { left:  0; }
+.rdp-nav-hit--next { inset-inline-end: 0; }
+.rdp-nav-hit--prev { inset-inline-start:  0; }

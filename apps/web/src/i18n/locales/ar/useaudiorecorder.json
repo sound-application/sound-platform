@@ -1,0 +1,6 @@
+{
+  "yourBrowserDoesNot": "متصفحك لا يدعم تسجيل الصوت. جرّب Chrome أو Firefox.",
+  "microphonePermissionDeniedPlease": "تم رفض إذن الميكروفون. يرجى السماح بالوصول من إعدادات المتصفح.",
+  "noMicrophoneFoundMake": "لم يتم العثور على ميكروفون. تأكد من توصيل جهاز صوت.",
+  "anErrorOccurredWhile": "حدث خطأ أثناء بدء التسجيل."
+}

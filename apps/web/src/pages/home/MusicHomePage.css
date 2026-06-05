@@ -69,14 +69,14 @@
   border: 1px solid rgba(110, 231, 183, 0.25);
   border-radius: 3px;
   padding: 1px 5px;
-  margin-right: var(--space-1);
+  margin-inline-end: var(--space-1);
   vertical-align: middle;
 }
 
 .mhp-tag--overlay {
   position: absolute;
   top: var(--space-2);
-  right: var(--space-2);
+  inset-inline-end: var(--space-2);
 }
 
 /* ── Avatar ───────────────────────────────────────────────────────────────── */
@@ -170,7 +170,7 @@
 .mhp-story-ring__add {
   position: absolute;
   bottom: 0;
-  left: 0;
+  inset-inline-start: 0;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -219,7 +219,7 @@
 
 .mhp-search__icon {
   position: absolute;
-  left: var(--space-3);
+  inset-inline-start: var(--space-3);
   top: 50%;
   transform: translateY(-50%);
   color: var(--color-text-muted);
@@ -474,7 +474,7 @@
 .mhp-sponsor__label {
   position: absolute;
   top: var(--space-2);
-  left: var(--space-2);
+  inset-inline-start: var(--space-2);
   font-size: 9px;
   color: var(--color-text-muted);
   letter-spacing: 0.06em;

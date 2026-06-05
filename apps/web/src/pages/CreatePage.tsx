@@ -22,6 +22,11 @@ import React from 'react';
 import { EmptyState } from '../components/EmptyState';
 import './Page.css';
 import './CreatePage.css';
+import { useTranslation } from 'react-i18next';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Create Option ────────────────────────────────────────────────────────────
 type CreateOption = {
@@ -34,74 +39,74 @@ type CreateOption = {
   disabledReason: string;
 };
 
-const CREATE_OPTIONS: CreateOption[] = [
+const getCREATE_OPTIONS = (t: any): CreateOption[]  => [
   {
     icon: '✍️',
-    title: 'منشور عام',
-    description: 'شارك فكرة أو تجربة في العالم العام',
-    world: 'عام',
+    title: t('create:publicPost'),
+    description: t('create:shareAnIdeaOrExperienceInThePublicWorld'),
+    world: t('profile.tabs.general'),
     worldColor: 'var(--color-world-general)',
     disabled: true,
-    disabledReason: 'قريباً — يتطلب تفعيل الخدمات',
+    disabledReason: t('create:comingSoonRequiresActivationOfServices'),
   },
   {
     icon: '⭐',
-    title: 'محتوى Plus',
-    description: 'أنشئ محتوى Plus حصرياً',
+    title: t('profile.emptyStates.plusTitle'),
+    description: t('create:createExclusivePlusContent'),
     world: 'Plus',
     worldColor: 'var(--color-world-plus)',
     disabled: true,
-    disabledReason: 'يتطلب صلاحية Plus — قريباً',
+    disabledReason: t('profile.emptyStates.requiresPlus'),
   },
   {
     icon: '🎸',
-    title: 'محتوى موسيقي',
-    description: 'انشر موسيقاك أو تسجيلاتك',
-    world: 'موسيقى',
+    title: t('create:musicContent'),
+    description: t('create:publishYourMusicOrRecordings'),
+    world: t('profile.tabs.music'),
     worldColor: 'var(--color-world-music)',
     disabled: true,
-    disabledReason: 'يتطلب صلاحية موسيقى — قريباً',
+    disabledReason: t('create:requiresMusicValidityComingSoon'),
   },
   {
     icon: '📻',
-    title: 'إذاعة',
-    description: 'أنشئ محطة راديو خاصة بك',
-    world: 'راديو',
+    title: t('create:broadcast'),
+    description: t('create:createYourOwnRadioStation'),
+    world: t('profile.tabs.radio'),
     worldColor: 'var(--color-world-radio)',
     disabled: true,
-    disabledReason: 'يتطلب صلاحية راديو — قريباً',
+    disabledReason: t('profile.emptyStates.requiresRadio'),
   },
   {
     icon: '📡',
-    title: 'جلسة لايف',
+    title: t('create:liveSession'),
     // Live is a tab, not a world. Creation is world-scoped by destination.
     // لايف is the correct locked bottom tab label. مباشر is forbidden as a world label.
-    description: 'ابدأ جلسة لايف — يتحدد النوع حسب العالم المختار',
-    world: 'لايف',
+    description: t('create:startALiveSessionTypeIsDeterminedByTheCh'),
+    world: t('create:live'),
     worldColor: 'var(--color-accent)',
     disabled: true,
-    disabledReason: 'قريباً',
+    disabledReason: t('profile.emptyStates.soon'),
   },
   {
     icon: '🏆',
-    title: 'بطولة',
-    description: 'أنشئ بطولة صوتية أو أدر تجربة تصويت وفوز',
-    world: 'مسابقات',
+    title: t('create:championship'),
+    description: t('create:createAVocalTournamentOrRunAVoteandwinEx'),
+    world: t('profile.tabs.tournaments'),
     worldColor: 'var(--color-world-tournaments, var(--color-accent))',
     disabled: true,
-    disabledReason: 'يتطلب صلاحية منظم بطولات — قريباً',
+    disabledReason: t('create:requiresTournamentOrganizerAuthorization'),
   },
 ];
 
 export function CreatePage() {
+  const { t } = useTranslation('home');
   return (
     <div className="page">
-      <h1 className="page__title">إنشاء</h1>
+      <h1 className="page__title">{t('create:construction')}</h1>
       <p className="create-page__note text-secondary">
-        خيارات الإنشاء ستُفعَّل بعد نشر خدمات التحقق من الصلاحيات
-      </p>
+        {t('create:creationOptionsWillBeActivatedAfterVerif')}</p>
       <div className="create-page__options">
-        {CREATE_OPTIONS.map((opt) => (
+        {getCREATE_OPTIONS(t).map((opt) => (
           <button
             key={opt.title}
             className="create-option"

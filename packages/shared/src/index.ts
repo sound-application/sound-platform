@@ -12,6 +12,8 @@ export * from './audioHelpers';
 export * from './social';
 export * from './resolver';
 export * from './username';
+export * from './appConfig';
+
 export * from './providers';
 export * from './playlists';
 export * from './effectsPresets';

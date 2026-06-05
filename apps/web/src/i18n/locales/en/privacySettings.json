@@ -93,5 +93,7 @@
     "viewPublic": "View Public Profile",
     "saving": "Saving...",
     "saveChanges": "Save Changes"
-  }
+  },
+  "audienceChoice": "Audience choice",
+  "clarifyingAudienceChoices": "Clarifying audience choices"
 }

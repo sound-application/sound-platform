@@ -143,6 +143,21 @@ export const getAudioPlaybackUrl = functions
         targetDurationMs = processedAudio.durationMs;
         source = 'processed';
       } else if (audioAsset?.storagePath) {
+        // Block fallback to original if edits exist and content is still processing
+        const isProcessing = ['uploaded', 'processing'].includes(content.contentProcessingStatus || '');
+        const hasEdits = content.editConfig?.enabled || content.effectsConfig?.enabled || content.mixingConfig?.enabled;
+        
+        if (isProcessing && hasEdits) {
+          return {
+            contentId: data.contentId,
+            source: 'none',
+            processingStatus: content.contentProcessingStatus || 'uploaded',
+            waveform: content.waveform,
+            captionsStatus: content.captionsProcessing?.status,
+            sourceType: audioAsset?.sourceType,
+          } as GetAudioPlaybackUrlResponse;
+        }
+
         targetPath = audioAsset.storagePath;
         targetMime = audioAsset.mimeType;
         targetDurationMs = audioAsset.durationMs;

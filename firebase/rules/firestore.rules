@@ -680,6 +680,14 @@ service cloud.firestore {
       allow write: if false; // Cloud Function / Admin SDK only
     }
 
+    // categories/{categoryId} — Content category catalog
+    // Read: authenticated users.
+    // Write: Cloud Function / Admin SDK only.
+    match /categories/{categoryId} {
+      allow read: if isAuth();
+      allow write: if false; // Cloud Function / Admin SDK only
+    }
+
     // worlds/{worldId} — World configuration definitions
     // Read: authenticated users (needed to render world tabs and navigation).
     // Write: Cloud Function / Admin SDK only.

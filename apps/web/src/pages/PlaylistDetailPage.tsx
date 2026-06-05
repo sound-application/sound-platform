@@ -24,6 +24,10 @@ import type { PlaylistDoc, PlaylistItemDoc } from '@sound/shared';
 import app from '../lib/firebase';
 import './Page.css';
 import './PlaylistDetailPage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 const db = getFirestore(app);
 
@@ -48,7 +52,7 @@ export function PlaylistDetailPage() {
         // Load playlist doc
         const plSnap = await getDoc(doc(db, 'playlists', playlistId!));
         if (!plSnap.exists()) {
-          setError('القائمة غير موجودة أو تم حذفها.');
+          setError(t('playlistdetail:theListDoesNotExistOrHasBeenDeleted'));
           setLoading(false);
           return;
         }
@@ -69,7 +73,7 @@ export function PlaylistDetailPage() {
         setItems(loadedItems);
       } catch (err) {
         console.error('[PlaylistDetailPage] Error loading playlist:', err);
-        setError('تعذر تحميل القائمة.');
+        setError(t('playlistdetail:theListCouldNotBeLoaded'));
       } finally {
         setLoading(false);
       }
@@ -78,12 +82,22 @@ export function PlaylistDetailPage() {
     loadPlaylist();
   }, [playlistId, authState.status]);
 
+  const backIcon = i18n.dir() === 'rtl' ? 'arrow_forward' : 'arrow_back';
+
+  const kindLabels: Record<string, string> = {
+    shortAudio: t('playlistdetail:kind_shortAudio', 'مقطع قصير'),
+    longAudio: t('playlistdetail:kind_longAudio', 'صوت طويل'),
+    podcast: t('playlistdetail:kind_podcast', 'بودكاست'),
+    song: t('playlistdetail:kind_song', 'أغنية'),
+    albumTrack: t('playlistdetail:kind_albumTrack', 'مقطع ألبوم')
+  };
+
   // ── Loading state ──────────────────────────────────────────────────────────
   if (loading) {
     return (
       <div className="pldp-loading">
         <span className="material-symbols-outlined pldp-loading__icon">progress_activity</span>
-        <span>جارٍ تحميل القائمة...</span>
+        <span>{t('playlistdetail:loadingList')}</span>
       </div>
     );
   }
@@ -93,37 +107,36 @@ export function PlaylistDetailPage() {
     return (
       <div className="pldp-error">
         <span className="material-symbols-outlined">error_outline</span>
-        <p>{error || 'القائمة غير متاحة.'}</p>
+        <p>{error || t('playlistdetail:listNotAvailable')}</p>
         <button className="pldp-back-btn" onClick={() => navigate(-1)} type="button">
-          <span className="material-symbols-outlined">arrow_forward</span>
-          رجوع
-        </button>
+          <span className="material-symbols-outlined">{backIcon}</span>
+          {t('playlistdetail:reference')}</button>
       </div>
     );
   }
 
   // ── Visibility label ───────────────────────────────────────────────────────
   const visLabel = {
-    public: 'عامة',
-    followers: 'المتابعين',
-    friends: 'الأصدقاء',
-    onlyMe: 'خاصة',
-  }[playlist.visibility] || 'خاصة';
+    public: t('playlistdetail:general'),
+    followers: t('playlistdetail:followers'),
+    friends: t('playlistdetail:friends'),
+    onlyMe: t('playlistdetail:especially'),
+  }[playlist.visibility] || t('playlistdetail:especially');
 
   return (
     <div className="pldp">
       {/* ── Header ────────────────────────────────────────────────────────── */}
       <div className="pldp-header">
         <button className="pldp-header__back" onClick={() => navigate(-1)} type="button">
-          <span className="material-symbols-outlined">arrow_forward</span>
+          <span className="material-symbols-outlined">{backIcon}</span>
         </button>
         <div className="pldp-header__info">
           <h1 className="pldp-header__title">{playlist.title}</h1>
           <div className="pldp-header__meta">
             <span className="pldp-vis-badge">{visLabel}</span>
-            <span>{playlist.itemCount} مقطع</span>
+            <span>{playlist.itemCount} {t('playlistdetail:section')}</span>
             {playlist.totalDurationMs && (
-              <span>{Math.round(playlist.totalDurationMs / 60000)} دقيقة</span>
+              <span>{Math.round(playlist.totalDurationMs / 60000)} {t('playlistdetail:minute')}</span>
             )}
           </div>
         </div>
@@ -140,17 +153,17 @@ export function PlaylistDetailPage() {
       <div className="pldp-glass-card pldp-owner">
         <span className="material-symbols-outlined pldp-owner__icon">person</span>
         <span className="pldp-owner__name">
-          {playlist.ownerSnapshot?.ownerDisplayName || 'مستخدم'}
+          {playlist.ownerSnapshot?.ownerDisplayName || t('playlistdetail:user')}
         </span>
       </div>
 
       {/* ── Items list ────────────────────────────────────────────────────── */}
       <div className="pldp-items">
-        <h2 className="pldp-items__title">المقاطع</h2>
+        <h2 className="pldp-items__title">{t('playlistdetail:clips')}</h2>
         {items.length === 0 ? (
           <div className="pldp-items__empty">
             <span className="material-symbols-outlined">queue_music</span>
-            <span>لا توجد مقاطع في هذه القائمة بعد.</span>
+            <span>{t('playlistdetail:thereAreNoClipsInThisListYet')}</span>
           </div>
         ) : (
           <div className="pldp-items__list">
@@ -172,7 +185,7 @@ export function PlaylistDetailPage() {
                       <span>{Math.floor(item.contentSnapshot.durationMs / 60000)}:{String(Math.floor((item.contentSnapshot.durationMs % 60000) / 1000)).padStart(2, '0')}</span>
                     )}
                     {item.contentSnapshot.kind && (
-                      <span className="pldp-item__kind">{item.contentSnapshot.kind}</span>
+                      <span className="pldp-item__kind">{kindLabels[item.contentSnapshot.kind] || item.contentSnapshot.kind}</span>
                     )}
                   </span>
                 </div>

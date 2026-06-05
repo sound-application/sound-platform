@@ -66,13 +66,19 @@ import { SignUpPage }         from '../pages/SignUpPage';
 import { AudioCreatePage }    from '../pages/create/AudioCreatePage';
 import { AudioDetailPage }    from '../pages/AudioDetailPage';
 import { PlaylistDetailPage } from '../pages/PlaylistDetailPage';
+import { LiveWorldSelectorPage } from '../pages/live/LiveWorldSelectorPage';
+import { useTranslation } from 'react-i18next';
+import i18n from '../i18n';
+
+const tWrapper = (key: any, options?: any) => i18n.t(key, options) as any as string;
 
 // ─── Protected Route ─────────────────────────────────────────────────────────
 
 function RequireAuth({ children }: { children: React.ReactNode }) {
   const { authState } = useAuth();
   const location = useLocation();
-  if (authState.status === 'loading') return <LoadingScreen message="جاري التحقق من الجلسة..." />;
+  // ── 1) Global Loading States ─────────────────────────────────────────────
+  if (authState.status === 'loading') return <LoadingScreen message={tWrapper('approuter:loadingSession', { defaultValue: 'جاري التحقق من الجلسة...' })} />;
   // Pass the requested location in state so LoginPage can redirect back after sign-in.
   if (authState.status === 'signed-out')
     return <Navigate to="/login" state={{ from: location }} replace />;
@@ -82,6 +88,7 @@ function RequireAuth({ children }: { children: React.ReactNode }) {
 // ─── Router ──────────────────────────────────────────────────────────────────
 
 export function AppRouter() {
+  const { t } = useTranslation('profile');
   const { authState } = useAuth();
 
   if (authState.status === 'loading') {
@@ -89,7 +96,7 @@ export function AppRouter() {
   }
 
   return (
-    <Suspense fallback={<LoadingScreen message="جاري التحميل..." />}>
+    <Suspense fallback={<LoadingScreen message={t('profile.drawer.loading')} />}>
       <Routes>
         {/* ── Public auth routes ──────────────────────────────────────── */}
         <Route path="/login"  element={<LoginPage />} />
@@ -109,6 +116,9 @@ export function AppRouter() {
 
           {/* ── Audio creation flow (Phase 8-C) ────────────────────── */}
           <Route path="create/audio" element={<AudioCreatePage />} />
+
+          {/* ── Live World Selector (Phase 2F) ──────────────────────── */}
+          <Route path="create/live" element={<LiveWorldSelectorPage />} />
 
           {/* ── Audio Detail Player (Phase 8-C) ──────────────────────── */}
           <Route path="audio/:contentId" element={<AudioDetailPage />} />

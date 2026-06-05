@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+const tWrapper = (key: any, options?: any) => i18n.t(key, options) as any as string;
 /**
  * Sound Platform — useViewerProfile hook
  * ==========================================
@@ -115,7 +117,7 @@ export function useViewerProfile(
       .catch((err: unknown) => {
         if (cancelled) return;
         const code    = (err as { code?: string }).code;
-        const message = (err as { message?: string }).message ?? 'حدث خطأ غير متوقع';
+        const message = (err as { message?: string }).message ?? tWrapper('useviewerprofile:anUnexpectedErrorOccurred');
 
         if (code === 'functions/not-found') {
           setState({ status: 'not-found' });

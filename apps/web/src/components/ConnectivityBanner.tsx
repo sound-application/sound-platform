@@ -7,6 +7,10 @@ import React from 'react';
 import { useTranslation } from 'react-i18next';
 import { useFirebaseConnectivity } from '../hooks/useFirebaseConnectivity';
 import './ConnectivityBanner.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 export function ConnectivityBanner() {
   const { t } = useTranslation('common');
@@ -17,7 +21,7 @@ export function ConnectivityBanner() {
   return (
     <div className="connectivity-banner" role="alert" aria-live="assertive">
       <span className="connectivity-banner__icon" aria-hidden="true">⚠️</span>
-      <span>{t('connectivity.offlineDetail', 'لا يوجد اتصال بالإنترنت — بعض المحتوى قد لا يكون متاحاً الآن')}</span>
+      <span>{t('connectivity.offlineDetail', t('connectivitybanner:noInternetConnectionSomeContentMayNotBeA'))}</span>
     </div>
   );
 }

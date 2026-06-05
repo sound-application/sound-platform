@@ -34,6 +34,9 @@ import { LOCKED_WORLDS, type LockedWorldKey } from '../../constants/lockedLabels
 import '../Page.css';
 import './GlobalCreateHubPage.css';
 
+import i18n from '../../i18n';
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 // ─── Types ─────────────────────────────────────────────────────────────────
 
 type CreateTypeId =
@@ -335,7 +338,7 @@ function ActionPanel({ type, onNavigate, t, sessionWorlds }: { type: CreateType;
               {step.note && <span className="gch-step__note">{step.note}</span>}
             </span>
             {step.gated && (
-              <span className="material-symbols-outlined gch-step__lock" aria-label="يتطلب صلاحية">
+              <span className="material-symbols-outlined gch-step__lock" aria-label={t('globalcreatehub:requiresValidity')}>
                 lock
               </span>
             )}
@@ -439,7 +442,7 @@ export function GlobalCreateHubPage() {
   const typeMap = Object.fromEntries(createTypes.map((tItem) => [tItem.id, tItem])) as Record<CreateTypeId, CreateType>;
 
   return (
-    <main className="page gch-page" dir="rtl">
+    <main className="page gch-page">
 
       <header className="gch-header">
         <h1 className="gch-header__title">{t('header.title')}</h1>

@@ -17,6 +17,7 @@ import { useNavigate } from 'react-router-dom';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../contexts/AuthContext';
 import { useWorldNav } from '../contexts/WorldNavContext';
+import { useAppConfig } from '../contexts/ConfigContext';
 import { WORLD_ORDER } from '../constants/lockedLabels';
 import { AccountControlHub } from './account/AccountControlHub';
 import './AppHeader.css';
@@ -37,15 +38,18 @@ export function AppHeader() {
   const { currentUser } = useAuth();
   const navigate = useNavigate();
   const { world: activeWorld, switchWorld } = useWorldNav();
+  const { isWorldEnabled } = useAppConfig();
   const [hubOpen, setHubOpen] = useState(false);
   const openHub  = () => setHubOpen(true);
   const closeHub = () => setHubOpen(false);
 
-  const WORLDS = WORLD_ORDER.map((id) => ({
-    id,
-    label: t(`worlds.${id}`),
-    color: WORLD_COLOR[id],
-  }));
+  const WORLDS = WORLD_ORDER
+    .filter(id => isWorldEnabled(id))
+    .map((id) => ({
+      id,
+      label: t(`worlds.${id}`),
+      color: WORLD_COLOR[id],
+    }));
 
   return (
     <>

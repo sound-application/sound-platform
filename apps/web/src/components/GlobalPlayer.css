@@ -1,0 +1,199 @@
+.global-player-container {
+  position: fixed !important;
+  left: 0 !important;
+  top: 50% !important;
+  transform: translateY(-50%) !important;
+  z-index: 9000 !important;
+  display: flex !important;
+  align-items: center !important;
+  gap: 16px !important;
+  pointer-events: none !important;
+  direction: ltr !important;
+}
+
+/* The CD graphic sticking out of the left edge */
+.global-player-cd-wrapper {
+  pointer-events: auto !important;
+  position: relative !important;
+  width: 140px !important;
+  height: 140px !important;
+  margin-left: -70px !important; /* Force half of it off-screen physically */
+  transform: none !important; /* Strip transforms to prevent any override */
+  transition: transform 0.3s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+  cursor: pointer !important;
+}
+
+.global-player-cd-wrapper:hover {
+  transform: scale(1.05) !important; /* Grow slightly from its anchored position */
+}
+
+.global-player-cd {
+  width: 140px;
+  height: 140px;
+  border-radius: 50%;
+  background-color: #050505;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  position: relative;
+  /* Glass modern transparent stroke with world color glow */
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  box-shadow: 0 0 20px var(--color-brand, rgba(0,0,0,0.6)), inset 0 0 0 2px rgba(255,255,255,0.1);
+}
+
+.global-player-cd.spinning {
+  animation: global-cd-spin 20s linear infinite;
+}
+
+/* Vinyl grooves effect */
+.global-player-cd::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: 
+    repeating-radial-gradient(
+      transparent, 
+      transparent 3px, 
+      rgba(255,255,255,0.03) 4px, 
+      rgba(255,255,255,0.03) 5px
+    );
+  pointer-events: none;
+}
+
+.cd-art {
+  width: 100%;
+  height: 100%;
+  background-size: cover;
+  background-position: center;
+  opacity: 0.8;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.cd-hole {
+  width: 24px;
+  height: 24px;
+  background-color: var(--bg-main, #0f0f13);
+  border-radius: 50%;
+  box-shadow: inset 0 2px 4px rgba(0,0,0,0.8), 0 0 0 2px rgba(255,255,255,0.2);
+  position: relative;
+  z-index: 2;
+}
+
+@keyframes global-cd-spin {
+  from { transform: rotate(0deg); }
+  to { transform: rotate(360deg); }
+}
+
+/* Vertical controls */
+.global-player-controls {
+  pointer-events: auto;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  background: rgba(30, 30, 36, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  padding: 12px 8px;
+  border-radius: 24px;
+  border: 1px solid rgba(255,255,255,0.05);
+  transform: translateX(-20px);
+  opacity: 0;
+  transition: all 0.3s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+.global-player-container:hover .global-player-controls {
+  transform: translateX(0);
+  opacity: 1;
+}
+
+.gpc-btn {
+  background: none;
+  border: none;
+  color: var(--text-secondary, #a1a1a6);
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.gpc-btn:hover {
+  background: rgba(255,255,255,0.1);
+  color: white;
+}
+
+.gpc-btn .material-symbols-outlined {
+  font-size: 24px;
+}
+
+.gpc-btn.gpc-play {
+  background-color: var(--color-brand, #d2bbff);
+  color: #111;
+  box-shadow: 0 4px 12px var(--color-brand, rgba(0, 122, 255, 0.4));
+}
+
+.gpc-btn.gpc-play:hover {
+  background-color: var(--color-brand-light, #e4d5ff);
+  transform: scale(1.05);
+}
+
+.gpc-btn.gpc-close {
+  margin-top: 8px;
+}
+
+.gpc-btn.gpc-close .material-symbols-outlined {
+  font-size: 20px;
+}
+
+.gpc-spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid rgba(255,255,255,0.3);
+  border-top-color: white;
+  border-radius: 50%;
+  animation: global-spinner-spin 1s linear infinite;
+}
+
+@keyframes global-spinner-spin {
+  to { transform: rotate(360deg); }
+}
+
+/* Tooltip for track name */
+.gpc-track-info {
+  position: absolute;
+  left: 100%;
+  top: -30px;
+  margin-left: 20px;
+  background: rgba(0,0,0,0.8);
+  padding: 6px 12px;
+  border-radius: 8px;
+  white-space: nowrap;
+  font-size: 0.85rem;
+  color: white;
+  pointer-events: none;
+  opacity: 0;
+  transform: translateY(10px);
+  transition: all 0.3s;
+}
+
+.global-player-container:hover .gpc-track-info {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+.gpc-track-title {
+  font-weight: 600;
+}
+
+.gpc-track-author {
+  color: var(--text-secondary, #a1a1a6);
+  font-size: 0.75rem;
+  margin-top: 2px;
+}

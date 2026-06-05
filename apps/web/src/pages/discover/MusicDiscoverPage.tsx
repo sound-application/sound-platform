@@ -19,6 +19,10 @@
 
 import React, { useState, useCallback } from 'react';
 import './MusicDiscoverPage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -46,62 +50,62 @@ const FEED_ITEMS: FeedItem[] = [
     id: 'm1',
     bgImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCS9to8gno-KMZxuSeaS_k8y_7LJtdbmqhPIorbh-0dwOcUtpvUJRZpAViIpXYx-6Zs_QVmjGSGJwX2d9GX0mggXxmcX2R5jXMD6FuoOfNqNOM83YACmVlgKKO7f-L_vuAbDqOCytVkDgaLcIOds2yd9HbzNWewiU4a9HUnBLA2fq6IOMOUc9K3rI5nJB2846GFiERAtxdaW2ODqNIBk67HmuHAtL388gEfdLUVOhtPDk9O0EH0zTFQeUwna1NqkIj_iNE6jI039YKX',
-    bgAlt: 'استوديو تسجيل موسيقي مع إضاءة خضراء داكنة',
-    category: 'موسيقى',
-    title: 'عزف بلا حدود',
-    description: 'ألبوم موسيقي جديد يمزج بين أصوات العود والإلكترونيات الحديثة',
-    creatorName: 'ليلى نجم',
+    bgAlt: t('musicdiscover:musicRecordingStudioWithDarkGreenLightin'),
+    category: t('musicdiscover:music'),
+    title: t('musicdiscover:playWithoutLimits'),
+    description: t('musicdiscover:aNewMusicAlbumThatMixesTheSoundsOfTheOud'),
+    creatorName: t('musicdiscover:lailaNajm'),
     creatorHandle: '@layla.najm',
-    listens: '٣١٢ ألف استماع',
-    duration: 'مدة ٣:٢٨',
-    likes: '١٨ك',
-    comments: '٦٧٢',
+    listens: t('musicdiscover:312ThousandListens'),
+    duration: t('musicdiscover:duration328'),
+    likes: t('musicdiscover:key8104'),
+    comments: t('musicdiscover:key2391'),
     avatarImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA2qHr5C5QGp0Q3uUeRhbgB0lejCNaO4UegUWuNgX2I20h5AgZZsGf2Be0pPxuewxjLmgdTwCJ75tQHfP93LMCgPErSmgAJdUtZzdVPkfFy_x4S84ZuoYMRFBZ9YOLsjiqD2z9DHdU7F2oO94psoCMMas9exXCB4qznISuwGGTjgKX-GradVYn6yHbMHgVPNIDV9Z99OCroyuA5SfN3v5IfoUxXUiqmasiLVw4qW1QewpJYLAnP_1fLeRp_4W6k4eiRYNySPTBGvX2n',
-    avatarAlt: 'صورة الفنانة ليلى نجم',
+    avatarAlt: t('musicdiscover:pictureOfArtistLailaNajm'),
   },
   {
     id: 'm2',
     bgImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuBNK3ytSH36YPuK5Y5uGUD1hNKqL885wssu5FS0uMxxunZi9NEUjnw9yXKcR3o3Cz8dmHiZOkToVNYvbAW-cXuUWhrIPcbLZVBE0Ahx1xzkUJZbCI7NlCCSdAaEBnLXSUKbKqeJ8URgfMjCbQbchqdlRy02ePlq3MK6eFSvjWaEOvomD3nbRcesyvbMkMe3fIicMwvqvdW3Jht44wZAzUkMXJUHttoqhpY0LiGco-L9U81UZBZfR_LSI3rn08Ad9pT1I3x5I3KP8umF',
-    bgAlt: 'خلفية موسيقية داكنة مع أضواء خضراء',
-    category: 'أغاني',
-    title: 'صوت الروح',
-    description: 'أغنية تجريبية تُعيد تفسير الموسيقى الشعبية بأسلوب معاصر',
-    creatorName: 'خالد الطيب',
+    bgAlt: t('musicdiscover:darkMusicBackgroundWithGreenLights'),
+    category: t('musicdiscover:songs'),
+    title: t('musicdiscover:theVoiceOfTheSoul'),
+    description: t('musicdiscover:anExperimentalSongThatReinterpretsPopula'),
+    creatorName: t('musicdiscover:khaledAltayeb'),
     creatorHandle: '@khaled.tayyib',
-    listens: '٢٢٤ ألف استماع',
-    duration: 'مدة ٤:١٥',
-    likes: '١١ك',
-    comments: '٤٩٠',
+    listens: t('musicdiscover:224ThousandListens'),
+    duration: t('musicdiscover:duration415'),
+    likes: t('musicdiscover:key8959'),
+    comments: t('musicdiscover:key4503'),
     avatarImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuBNK3ytSH36YPuK5Y5uGUD1hNKqL885wssu5FS0uMxxunZi9NEUjnw9yXKcR3o3Cz8dmHiZOkToVNYvbAW-cXuUWhrIPcbLZVBE0Ahx1xzkUJZbCI7NlCCSdAaEBnLXSUKbKqeJ8URgfMjCbQbchqdlRy02ePlq3MK6eFSvjWaEOvomD3nbRcesyvbMkMe3fIicMwvqvdW3Jht44wZAzUkMXJUHttoqhpY0LiGco-L9U81UZBZfR_LSI3rn08Ad9pT1I3x5I3KP8umF',
-    avatarAlt: 'صورة الفنان خالد الطيب',
+    avatarAlt: t('musicdiscover:pictureOfTheArtistKhaledAltayeb'),
   },
   {
     id: 'm3',
     bgImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCS9to8gno-KMZxuSeaS_k8y_7LJtdbmqhPIorbh-0dwOcUtpvUJRZpAViIpXYx-6Zs_QVmjGSGJwX2d9GX0mggXxmcX2R5jXMD6FuoOfNqNOM83YACmVlgKKO7f-L_vuAbDqOCytVkDgaLcIOds2yd9HbzNWewiU4a9HUnBLA2fq6IOMOUc9K3rI5nJB2846GFiERAtxdaW2ODqNIBk67HmuHAtL388gEfdLUVOhtPDk9O0EH0zTFQeUwna1NqkIj_iNE6jI039YKX',
-    bgAlt: 'أدوات موسيقية في استوديو فني',
-    category: 'فيوجن',
-    title: 'جسر الأصوات',
-    description: 'تجربة صوتية تجمع بين الموسيقى الكلاسيكية والبيت العربي',
-    creatorName: 'منى الشمري',
+    bgAlt: t('musicdiscover:musicalInstrumentsInAnArtStudio'),
+    category: t('musicdiscover:fusion'),
+    title: t('musicdiscover:bridgeOfVoices'),
+    description: t('musicdiscover:anAudioExperienceThatCombinesClassicalMu'),
+    creatorName: t('musicdiscover:monaAlshammari'),
     creatorHandle: '@mona.shammari',
-    listens: '١٣٥ ألف استماع',
-    duration: 'مدة ٥:٠٢',
-    likes: '٧.٤ك',
-    comments: '٣١٨',
+    listens: t('musicdiscover:135ThousandListens'),
+    duration: t('musicdiscover:duration502'),
+    likes: t('musicdiscover:key9022'),
+    comments: t('musicdiscover:key9308'),
     avatarImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA2qHr5C5QGp0Q3uUeRhbgB0lejCNaO4UegUWuNgX2I20h5AgZZsGf2Be0pPxuewxjLmgdTwCJ75tQHfP93LMCgPErSmgAJdUtZzdVPkfFy_x4S84ZuoYMRFBZ9YOLsjiqD2z9DHdU7F2oO94psoCMMas9exXCB4qznISuwGGTjgKX-GradVYn6yHbMHgVPNIDV9Z99OCroyuA5SfN3v5IfoUxXUiqmasiLVw4qW1QewpJYLAnP_1fLeRp_4W6k4eiRYNySPTBGvX2n',
-    avatarAlt: 'صورة الفنانة منى الشمري',
+    avatarAlt: t('musicdiscover:pictureOfTheArtistMonaAlshammari'),
   },
 ];
 
 // ─── Sub-nav ───────────────────────────────────────────────────────────────────
 // Required visual order:  اكتشف | لك | المتابعة | الرائج
 // Rendered in natural order; mdp-glass-pill uses direction:ltr so DOM=visual order.
-const SUB_NAV_LABELS = ['اكتشف', 'لك', 'المتابعة', 'الرائج'] as const;
+const SUB_NAV_LABELS = [t('musicdiscover:findOut'), t('musicdiscover:forYou'), t('musicdiscover:followUp'), t('musicdiscover:trending')] as const;
 type SubNavItem = (typeof SUB_NAV_LABELS)[number];
 
 // ─── Progress dots ──────────────────────────────────────────────────────────────
@@ -137,7 +141,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
       <img src={item.avatarImage} alt={item.avatarAlt} className="mdp-avatar" />
       <button
         className={`mdp-follow-btn${followed ? ' mdp-follow-btn--following' : ''}`}
-        aria-label={followed ? 'إلغاء المتابعة' : 'متابعة الفنان'}
+        aria-label={followed ? t('musicdiscover:unfollow') : t('musicdiscover:followTheArtist')}
         aria-pressed={followed}
         onClick={onFollow}
       >
@@ -152,7 +156,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
     {/* Like */}
     <button
       className="mdp-action-btn"
-      aria-label={liked ? 'إلغاء الإعجاب' : 'إعجاب'}
+      aria-label={liked ? t('musicdiscover:unlike') : t('musicdiscover:wonder')}
       aria-pressed={liked}
       onClick={onLike}
     >
@@ -165,7 +169,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
     </button>
 
     {/* Comments */}
-    <button className="mdp-action-btn" aria-label="التعليقات">
+    <button className="mdp-action-btn" aria-label={t('musicdiscover:comments')}>
       <span className="mdp-action-icon-box">
         <span className="material-symbols-outlined mdp-action-icon">chat_bubble</span>
       </span>
@@ -175,7 +179,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
     {/* Save */}
     <button
       className="mdp-action-btn"
-      aria-label={saved ? 'إلغاء الحفظ' : 'حفظ'}
+      aria-label={saved ? t('musicdiscover:cancelSaving') : t('musicdiscover:keep')}
       aria-pressed={saved}
       onClick={onSave}
     >
@@ -184,31 +188,31 @@ const ActionRail: React.FC<ActionRailProps> = ({
           bookmark
         </span>
       </span>
-      <span className="mdp-action-label">حفظ</span>
+      <span className="mdp-action-label">{t('musicdiscover:keep')}</span>
     </button>
 
     {/* Repost */}
-    <button className="mdp-action-btn" aria-label="إعادة نشر">
+    <button className="mdp-action-btn" aria-label={t('musicdiscover:repost')}>
       <span className="mdp-action-icon-box">
         <span className="material-symbols-outlined mdp-action-icon">repeat</span>
       </span>
-      <span className="mdp-action-label">إعادة</span>
+      <span className="mdp-action-label">{t('musicdiscover:re')}</span>
     </button>
 
     {/* Share */}
-    <button className="mdp-action-btn" aria-label="مشاركة">
+    <button className="mdp-action-btn" aria-label={t('musicdiscover:sharing')}>
       <span className="mdp-action-icon-box">
         <span className="material-symbols-outlined mdp-action-icon">share</span>
       </span>
-      <span className="mdp-action-label">مشاركة</span>
+      <span className="mdp-action-label">{t('musicdiscover:sharing')}</span>
     </button>
 
     {/* Gift */}
-    <button className="mdp-action-btn" aria-label="إرسال هدية">
+    <button className="mdp-action-btn" aria-label={t('musicdiscover:sendAGift')}>
       <span className="mdp-action-icon-box">
         <span className="material-symbols-outlined mdp-action-icon">card_giftcard</span>
       </span>
-      <span className="mdp-action-label">هدية</span>
+      <span className="mdp-action-label">{t('musicdiscover:gift')}</span>
     </button>
   </div>
 );
@@ -240,15 +244,15 @@ const InfoBlock: React.FC<InfoBlockProps> = ({ item }) => (
     {/* Metadata */}
     <div className="mdp-meta-row">
       <span className="material-symbols-outlined mdp-meta-icon">music_note</span>
-      <span className="mdp-meta-text" dir="rtl">
+      <span className="mdp-meta-text">
         {item.listens} • {item.duration}
       </span>
     </div>
 
     {/* CTA — in flow, always below metadata, never overlaps */}
-    <button className="mdp-cta-btn" aria-label="استمع للمقطوعة كاملة">
+    <button className="mdp-cta-btn" aria-label={t('musicdiscover:listenToTheFullClip')}>
       <span className="material-symbols-outlined mdp-cta-icon">play_arrow</span>
-      <span className="mdp-cta-text">استمع للمقطوعة كاملة</span>
+      <span className="mdp-cta-text">{t('musicdiscover:listenToTheFullClip')}</span>
     </button>
   </div>
 );
@@ -256,7 +260,7 @@ const InfoBlock: React.FC<InfoBlockProps> = ({ item }) => (
 // ─── Main page ──────────────────────────────────────────────────────────────────
 
 const MusicDiscoverPage: React.FC = () => {
-  const [subNav, setSubNav] = useState<SubNavItem>('لك');
+  const [subNav, setSubNav] = useState<SubNavItem>(t('musicdiscover:forYou'));
   const [feedIndex, setFeedIndex] = useState(0);
   const [liked,    setLiked]    = useState(false);
   const [saved,    setSaved]    = useState(false);
@@ -285,7 +289,7 @@ const MusicDiscoverPage: React.FC = () => {
   }, [resetItemState]);
 
   return (
-    <div className="mdp-root" dir="rtl" lang="ar">
+    <div className="mdp-root" lang="ar">
       {/* ── Background media layer ──────────────────────────────────────────── */}
       <div className="mdp-bg">
         <img
@@ -308,7 +312,7 @@ const MusicDiscoverPage: React.FC = () => {
         {/* Discover sub-nav — the ONLY nav element on this page */}
         {/* Visual order: اكتشف | لك | المتابعة | الرائج — pill is dir=ltr */}
         <div className="mdp-subnav-cluster">
-          <div className="mdp-glass-pill" role="tablist" aria-label="تصفية الاكتشاف">
+          <div className="mdp-glass-pill" role="tablist" aria-label={t('musicdiscover:filterDiscovery')}>
             {SUB_NAV_LABELS.map(label => (
               <button
                 key={label}
@@ -346,12 +350,12 @@ const MusicDiscoverPage: React.FC = () => {
       {/* ── Invisible hit-area nav (a11y, swipe prep) ───────────────────────── */}
       <button
         className="mdp-nav-hit mdp-nav-hit--next"
-        aria-label="المقطوعة التالية"
+        aria-label={t('musicdiscover:nextTrack')}
         onClick={goNext}
       />
       <button
         className="mdp-nav-hit mdp-nav-hit--prev"
-        aria-label="المقطوعة السابقة"
+        aria-label={t('musicdiscover:previousTrack')}
         onClick={goPrev}
       />
     </div>

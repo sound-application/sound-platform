@@ -1,0 +1,6 @@
+{
+  "yourBrowserDoesNot": "Your browser does not support audio recording. Try Chrome or Firefox.",
+  "microphonePermissionDeniedPlease": "Microphone permission denied. Please allow access from your browser settings.",
+  "noMicrophoneFoundMake": "No microphone found. Make sure an audio device is connected.",
+  "anErrorOccurredWhile": "An error occurred while starting recording."
+}

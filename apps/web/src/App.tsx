@@ -12,14 +12,21 @@
 import React from 'react';
 import { BrowserRouter } from 'react-router-dom';
 import { AuthProvider } from './contexts/AuthContext';
+import { ConfigProvider } from './contexts/ConfigContext';
 import { AppRouter }   from './router/AppRouter';
+import { useTranslation } from 'react-i18next';
 
 export function App() {
+  const { i18n } = useTranslation();
   return (
-    <BrowserRouter>
-      <AuthProvider>
-        <AppRouter />
-      </AuthProvider>
-    </BrowserRouter>
+    <div key={i18n.language} style={{ display: 'contents' }}>
+      <BrowserRouter>
+        <AuthProvider>
+          <ConfigProvider>
+            <AppRouter />
+          </ConfigProvider>
+        </AuthProvider>
+      </BrowserRouter>
+    </div>
   );
 }

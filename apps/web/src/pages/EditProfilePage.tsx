@@ -44,6 +44,9 @@ import { TFunction } from 'i18next';
 import './EditProfilePage.css';
 import './Page.css';
 
+import i18n from '../i18n';
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 // ─── Privacy Level Normalizer ─────────────────────────────────────────────────
 // The privacy model was upgraded to SectionPrivacy (audiences array) in Phase 5-C-3.
 // EditProfilePage still uses the simpler 3-option PrivacyLevel for its UI controls.
@@ -246,8 +249,7 @@ export function EditProfilePage() {
         <span className="edit-profile__sync-icon">⏱</span>
         <span>
           <Trans i18nKey="syncNotice" t={t}>
-            بعد الحفظ، يُحدَّث الملف الشخصي العام تلقائياً خلال <strong>5–10 ثوان</strong> عبر نظام المزامنة.
-          </Trans>
+            {t('editprofile:afterSavingThePublicProfileIsAutomatical')}<strong>{t('editprofile:510Seconds')}</strong> {t('editprofile:viaSynchronizationSystem')}</Trans>
         </span>
       </div>
 

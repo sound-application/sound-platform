@@ -5,6 +5,10 @@
  */
 import React, { useState, useCallback } from 'react';
 import './RadioDiscoverPage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 interface FeedItem {
   id: string; bgImage: string; bgAlt: string;
@@ -19,51 +23,51 @@ const FEED_ITEMS: FeedItem[] = [
   {
     id: 'r1',
     bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCS9to8gno-KMZxuSeaS_k8y_7LJtdbmqhPIorbh-0dwOcUtpvUJRZpAViIpXYx-6Zs_QVmjGSGJwX2d9GX0mggXxmcX2R5jXMD6FuoOfNqNOM83YACmVlgKKO7f-L_vuAbDqOCytVkDgaLcIOds2yd9HbzNWewiU4a9HUnBLA2fq6IOMOUc9K3rI5nJB2846GFiERAtxdaW2ODqNIBk67HmuHAtL388gEfdLUVOhtPDk9O0EH0zTFQeUwna1NqkIj_iNE6jI039YKX',
-    bgAlt: 'استوديو إذاعي بميكروفون بث وإضاءة حمراء',
-    category: 'أخبار',
-    title: 'نشرة المساء',
-    description: 'تغطية إخبارية شاملة لأبرز أحداث اليوم من كل أنحاء العالم العربي',
-    creatorName: 'إذاعة صوت العرب',
+    bgAlt: t('radiodiscover:radioStudioWithBroadcastMicrophoneAndRed'),
+    category: t('radiodiscover:news'),
+    title: t('radiodiscover:eveningBulletin'),
+    description: t('radiodiscover:comprehensiveNewsCoverageOfTheMostPromin'),
+    creatorName: t('radiodiscover:voiceOfArabsRadio'),
     creatorHandle: '@sawt.alarab',
-    listens: '١٢٨ ألف مستمع',
-    duration: 'على الهواء الآن',
-    likes: '٨.٤ك', comments: '٣٢١',
+    listens: t('radiodiscover:128ThousandListeners'),
+    duration: t('radiodiscover:onAirNow'),
+    likes: t('radiodiscover:key1351'), comments: t('radiodiscover:key34'),
     avatarImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2qHr5C5QGp0Q3uUeRhbgB0lejCNaO4UegUWuNgX2I20h5AgZZsGf2Be0pPxuewxjLmgdTwCJ75tQHfP93LMCgPErSmgAJdUtZzdVPkfFy_x4S84ZuoYMRFBZ9YOLsjiqD2z9DHdU7F2oO94psoCMMas9exXCB4qznISuwGGTjgKX-GradVYn6yHbMHgVPNIDV9Z99OCroyuA5SfN3v5IfoUxXUiqmasiLVw4qW1QewpJYLAnP_1fLeRp_4W6k4eiRYNySPTBGvX2n',
-    avatarAlt: 'شعار إذاعة صوت العرب',
+    avatarAlt: t('radiodiscover:voiceOfArabRadioLogo'),
   },
   {
     id: 'r2',
     bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNK3ytSH36YPuK5Y5uGUD1hNKqL885wssu5FS0uMxxunZi9NEUjnw9yXKcR3o3Cz8dmHiZOkToVNYvbAW-cXuUWhrIPcbLZVBE0Ahx1xzkUJZbCI7NlCCSdAaEBnLXSUKbKqeJ8URgfMjCbQbchqdlRy02ePlq3MK6eFSvjWaEOvomD3nbRcesyvbMkMe3fIicMwvqvdW3Jht44wZAzUkMXJUHttoqhpY0LiGco-L9U81UZBZfR_LSI3rn08Ad9pT1I3x5I3KP8umF',
-    bgAlt: 'مذيع في استوديو إذاعي مع لافتة على الهواء',
-    category: 'حوارات',
-    title: 'ضيف الأسبوع',
-    description: 'حوار موسّع مع شخصية ثقافية بارزة حول مستقبل الإعلام الرقمي في المنطقة',
-    creatorName: 'راديو الشبكة',
+    bgAlt: t('radiodiscover:broadcasterInRadioStudioWithBannerOnAir'),
+    category: t('radiodiscover:dialogues'),
+    title: t('radiodiscover:guestOfTheWeek'),
+    description: t('radiodiscover:anExtensiveDialogueWithAProminentCultura'),
+    creatorName: t('radiodiscover:networkRadio'),
     creatorHandle: '@radio.shabaka',
-    listens: '٧٦ ألف مستمع',
-    duration: 'مدة ١:٣٠',
-    likes: '٥.١ك', comments: '٢٠٧',
+    listens: t('radiodiscover:76ThousandListeners'),
+    duration: t('radiodiscover:duration130'),
+    likes: t('radiodiscover:key7572'), comments: t('radiodiscover:key7189'),
     avatarImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuBNK3ytSH36YPuK5Y5uGUD1hNKqL885wssu5FS0uMxxunZi9NEUjnw9yXKcR3o3Cz8dmHiZOkToVNYvbAW-cXuUWhrIPcbLZVBE0Ahx1xzkUJZbCI7NlCCSdAaEBnLXSUKbKqeJ8URgfMjCbQbchqdlRy02ePlq3MK6eFSvjWaEOvomD3nbRcesyvbMkMe3fIicMwvqvdW3Jht44wZAzUkMXJUHttoqhpY0LiGco-L9U81UZBZfR_LSI3rn08Ad9pT1I3x5I3KP8umF',
-    avatarAlt: 'شعار راديو الشبكة',
+    avatarAlt: t('radiodiscover:networkRadioLogo'),
   },
   {
     id: 'r3',
     bgImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuCS9to8gno-KMZxuSeaS_k8y_7LJtdbmqhPIorbh-0dwOcUtpvUJRZpAViIpXYx-6Zs_QVmjGSGJwX2d9GX0mggXxmcX2R5jXMD6FuoOfNqNOM83YACmVlgKKO7f-L_vuAbDqOCytVkDgaLcIOds2yd9HbzNWewiU4a9HUnBLA2fq6IOMOUc9K3rI5nJB2846GFiERAtxdaW2ODqNIBk67HmuHAtL388gEfdLUVOhtPDk9O0EH0zTFQeUwna1NqkIj_iNE6jI039YKX',
-    bgAlt: 'لوحة تحكم إذاعية مع موجات صوت وأضواء استوديو',
-    category: 'ثقافة',
-    title: 'مساحة الإبداع',
-    description: 'برنامج أسبوعي يستضيف أبرز الأصوات الأدبية والفنية في العالم العربي',
-    creatorName: 'أمواج إف إم',
+    bgAlt: t('radiodiscover:radioConsoleWithSoundWavesAndStudioLight'),
+    category: t('radiodiscover:culture'),
+    title: t('radiodiscover:creativitySpace'),
+    description: t('radiodiscover:aWeeklyProgramHostingTheMostProminentLit'),
+    creatorName: t('radiodiscover:amwajFm'),
     creatorHandle: '@amwaj.fm',
-    listens: '٩٤ ألف مستمع',
-    duration: 'مدة ٠:٥٥',
-    likes: '٦.٩ك', comments: '٢٨٤',
+    listens: t('radiodiscover:94ThousandListeners'),
+    duration: t('radiodiscover:duration055'),
+    likes: t('radiodiscover:key7247'), comments: t('radiodiscover:key6328'),
     avatarImage: 'https://lh3.googleusercontent.com/aida-public/AB6AXuA2qHr5C5QGp0Q3uUeRhbgB0lejCNaO4UegUWuNgX2I20h5AgZZsGf2Be0pPxuewxjLmgdTwCJ75tQHfP93LMCgPErSmgAJdUtZzdVPkfFy_x4S84ZuoYMRFBZ9YOLsjiqD2z9DHdU7F2oO94psoCMMas9exXCB4qznISuwGGTjgKX-GradVYn6yHbMHgVPNIDV9Z99OCroyuA5SfN3v5IfoUxXUiqmasiLVw4qW1QewpJYLAnP_1fLeRp_4W6k4eiRYNySPTBGvX2n',
-    avatarAlt: 'شعار أمواج إف إم',
+    avatarAlt: t('radiodiscover:amwajFmLogo'),
   },
 ];
 
-const SUB_NAV_LABELS = ['اكتشف', 'لك', 'المتابعة', 'الرائج'] as const;
+const SUB_NAV_LABELS = [t('radiodiscover:findOut'), t('radiodiscover:forYou'), t('radiodiscover:followUp'), t('radiodiscover:trending')] as const;
 type SubNavItem = (typeof SUB_NAV_LABELS)[number];
 
 const FeedDots: React.FC<{ total: number; active: number }> = ({ total, active }) => (
@@ -85,7 +89,7 @@ const ActionRail: React.FC<RailProps> = ({ item, liked, saved, followed, onLike,
       <img src={item.avatarImage} alt={item.avatarAlt} className="rdp-avatar" />
       <button
         className={`rdp-follow-btn${followed ? ' rdp-follow-btn--following' : ''}`}
-        aria-label={followed ? 'إلغاء المتابعة' : 'تابع المحطة'}
+        aria-label={followed ? t('radiodiscover:unfollow') : t('radiodiscover:followTheStation')}
         aria-pressed={followed}
         onClick={onFollow}
       >
@@ -95,46 +99,46 @@ const ActionRail: React.FC<RailProps> = ({ item, liked, saved, followed, onLike,
       </button>
     </div>
 
-    <button className="rdp-action-btn" aria-label={liked ? 'إلغاء الإعجاب' : 'إعجاب'} aria-pressed={liked} onClick={onLike}>
+    <button className="rdp-action-btn" aria-label={liked ? t('radiodiscover:unlike') : t('radiodiscover:wonder')} aria-pressed={liked} onClick={onLike}>
       <span className="rdp-action-icon-box">
         <span className={`material-symbols-outlined rdp-action-icon${liked ? ' rdp-action-icon--active' : ''}`}>favorite</span>
       </span>
       <span className="rdp-action-label">{item.likes}</span>
     </button>
 
-    <button className="rdp-action-btn" aria-label="التعليقات">
+    <button className="rdp-action-btn" aria-label={t('radiodiscover:comments')}>
       <span className="rdp-action-icon-box">
         <span className="material-symbols-outlined rdp-action-icon">chat_bubble</span>
       </span>
       <span className="rdp-action-label">{item.comments}</span>
     </button>
 
-    <button className="rdp-action-btn" aria-label={saved ? 'إلغاء الحفظ' : 'حفظ'} aria-pressed={saved} onClick={onSave}>
+    <button className="rdp-action-btn" aria-label={saved ? t('radiodiscover:cancelSaving') : t('radiodiscover:keep')} aria-pressed={saved} onClick={onSave}>
       <span className="rdp-action-icon-box">
         <span className={`material-symbols-outlined rdp-action-icon${saved ? ' rdp-action-icon--active' : ''}`}>bookmark</span>
       </span>
-      <span className="rdp-action-label">حفظ</span>
+      <span className="rdp-action-label">{t('radiodiscover:keep')}</span>
     </button>
 
-    <button className="rdp-action-btn" aria-label="إعادة نشر">
+    <button className="rdp-action-btn" aria-label={t('radiodiscover:repost')}>
       <span className="rdp-action-icon-box">
         <span className="material-symbols-outlined rdp-action-icon">repeat</span>
       </span>
-      <span className="rdp-action-label">إعادة</span>
+      <span className="rdp-action-label">{t('radiodiscover:re')}</span>
     </button>
 
-    <button className="rdp-action-btn" aria-label="مشاركة">
+    <button className="rdp-action-btn" aria-label={t('radiodiscover:sharing')}>
       <span className="rdp-action-icon-box">
         <span className="material-symbols-outlined rdp-action-icon">share</span>
       </span>
-      <span className="rdp-action-label">مشاركة</span>
+      <span className="rdp-action-label">{t('radiodiscover:sharing')}</span>
     </button>
 
-    <button className="rdp-action-btn" aria-label="إرسال هدية">
+    <button className="rdp-action-btn" aria-label={t('radiodiscover:sendAGift')}>
       <span className="rdp-action-icon-box">
         <span className="material-symbols-outlined rdp-action-icon">card_giftcard</span>
       </span>
-      <span className="rdp-action-label">هدية</span>
+      <span className="rdp-action-label">{t('radiodiscover:gift')}</span>
     </button>
   </div>
 );
@@ -150,17 +154,17 @@ const InfoBlock: React.FC<{ item: FeedItem }> = ({ item }) => (
     </div>
     <div className="rdp-meta-row">
       <span className="material-symbols-outlined rdp-meta-icon">radio</span>
-      <span className="rdp-meta-text" dir="rtl">{item.listens} • {item.duration}</span>
+      <span className="rdp-meta-text">{item.listens} • {item.duration}</span>
     </div>
-    <button className="rdp-cta-btn" aria-label="استمع الآن">
+    <button className="rdp-cta-btn" aria-label={t('radiodiscover:listenNow')}>
       <span className="material-symbols-outlined rdp-cta-icon">graphic_eq</span>
-      <span className="rdp-cta-text">استمع الآن</span>
+      <span className="rdp-cta-text">{t('radiodiscover:listenNow')}</span>
     </button>
   </div>
 );
 
 const RadioDiscoverPage: React.FC = () => {
-  const [subNav,    setSubNav]    = useState<SubNavItem>('لك');
+  const [subNav,    setSubNav]    = useState<SubNavItem>(t('radiodiscover:forYou'));
   const [feedIndex, setFeedIndex] = useState(0);
   const [liked,     setLiked]     = useState(false);
   const [saved,     setSaved]     = useState(false);
@@ -185,7 +189,7 @@ const RadioDiscoverPage: React.FC = () => {
   }, [resetItemState]);
 
   return (
-    <div className="rdp-root" dir="rtl" lang="ar">
+    <div className="rdp-root" lang="ar">
       <div className="rdp-bg">
         <img src={currentItem.bgImage} alt={currentItem.bgAlt} className="rdp-bg-image" key={currentItem.id} />
         <div className="rdp-story-gradient" />
@@ -197,7 +201,7 @@ const RadioDiscoverPage: React.FC = () => {
 
       <main className="rdp-main">
         <div className="rdp-subnav-cluster">
-          <div className="rdp-glass-pill" role="tablist" aria-label="تصفية الاكتشاف">
+          <div className="rdp-glass-pill" role="tablist" aria-label={t('radiodiscover:filterDiscovery')}>
             {SUB_NAV_LABELS.map(label => (
               <button
                 key={label} role="tab"
@@ -223,8 +227,8 @@ const RadioDiscoverPage: React.FC = () => {
         onLike={handleLike} onSave={handleSave} onFollow={handleFollow}
       />
 
-      <button className="rdp-nav-hit rdp-nav-hit--next" aria-label="البرنامج التالي" onClick={goNext} />
-      <button className="rdp-nav-hit rdp-nav-hit--prev" aria-label="البرنامج السابق" onClick={goPrev} />
+      <button className="rdp-nav-hit rdp-nav-hit--next" aria-label={t('radiodiscover:nextProgramme')} onClick={goNext} />
+      <button className="rdp-nav-hit rdp-nav-hit--prev" aria-label={t('radiodiscover:previousProgramme')} onClick={goPrev} />
     </div>
   );
 };

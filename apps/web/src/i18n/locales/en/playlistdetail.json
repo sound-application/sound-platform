@@ -1,0 +1,16 @@
+{
+  "thereAreNoClipsInThisListYet": "There are no clips in this list yet.",
+  "clips": "Clips",
+  "user": "user",
+  "minute": "minute",
+  "section": "section",
+  "especially": "especially",
+  "friends": "Friends",
+  "followers": "Followers",
+  "general": "General",
+  "reference": "Reference",
+  "listNotAvailable": "List not available.",
+  "loadingList": "Loading list...",
+  "theListCouldNotBeLoaded": "The list could not be loaded.",
+  "theListDoesNotExistOrHasBeenDeleted": "The list does not exist or has been deleted."
+}

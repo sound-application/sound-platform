@@ -1,70 +1,44 @@
 {
-  "pageLabel": "الرئيسية",
-  "stories": {
-    "sectionLabel": "القصص",
-    "addStory": "إضافة قصة",
-    "userStory": "قصة {{name}}"
-  },
-  "search": {
-    "sectionLabel": "بحث وتصفية",
-    "placeholder": "ابحث عن صوت، قصة، بودكاست...",
-    "browseCategories": "استعراض الأصناف"
-  },
-  "filters": {
-    "contentType": "نوع المحتوى",
-    "all": "الكل",
-    "contentTypeAria": "تصفية حسب نوع المحتوى",
-    "sortOrder": "الترتيب",
-    "sortDefault": "الأحدث",
-    "sortOrderAria": "تصفية حسب الترتيب",
-    "story": "قصص",
-    "podcast": "بودكاست",
-    "poetry": "شعر",
-    "meditation": "تأمل",
-    "music": "موسيقى",
-    "latest": "الأحدث",
-    "popular": "الأكثر استماعاً",
-    "shared": "الأكثر مشاركة",
-    "saved": "الأكثر حفظاً",
-    "comments": "الأكثر تعليقاً",
-    "rising": "الأكثر صعوداً",
-    "nearby": "الأقرب لك",
-    "following": "من تتابعهم",
-    "suggested": "المقترح لك"
-  },
-  "trending": {
-    "title": "الرائج الآن",
-    "seeAll": "عرض كل الرائج"
-  },
-  "topCreators": {
-    "title": "أفضل المبدعين",
-    "seeAll": "عرض كل المبدعين",
-    "profileOf": "ملف {{name}}",
-    "follow": "متابعة",
-    "followAria": "متابعة {{name}}"
-  },
-  "plusBanner": {
-    "sectionLabel": "اشتراك بلس",
-    "eyebrow": "بلس",
-    "headline": "استمتع بتجربة صوتية بلا إعلانات مع اشتراك بلس",
-    "cta": "اشترك الآن",
-    "ctaAria": "اشترك في بلس الآن"
-  },
-  "recommended": {
-    "title": "مقترح لك",
-    "seeAll": "عرض كل المقترحات"
-  },
-  "playlists": {
-    "title": "قوائم التشغيل",
-    "seeAll": "عرض كل القوائم"
-  },
-  "risingCreators": {
-    "title": "مبدعون صاعدون",
-    "seeAll": "عرض كل المبدعين الصاعدين"
-  },
-  "followingCreators": {
-    "title": "مبدعون تتابعهم",
-    "seeAll": "عرض كل من تتابعهم"
-  },
-  "viewAll": "عرض الكل"
+  "relaxation": "استرخاء",
+  "atmosphereOfFocus": "أجواء التركيز",
+  "chosenForYou": "تم اختيارها لك",
+  "bestOfTheWeek": "أفضل ما في الأسبوع",
+  "lastActivityAnHourAgo": "آخر نشاط منذ ساعة",
+  "faresKhalil": "فارس خليل",
+  "newExclusiveContentAvailableNow": "محتوى حصري جديد متاح الآن",
+  "hereIsIbrahim": "هنا إبراهيم",
+  "dina": "دينا",
+  "yasin": "ياسين",
+  "maya": "مايا",
+  "imran": "عمران",
+  "layla": "ليلى",
+  "420kFollowers": "420K متابع",
+  "dinaAli": "دينا علي",
+  "650kFollowers": "650K متابع",
+  "khaledNour": "خالد نور",
+  "12mFollowers": "1.2M متابع",
+  "sarahMalak": "سارة ملك",
+  "980kFollowers": "980K متابع",
+  "ahmedAdel": "أحمد عادل",
+  "shortStories": "قصص قصيرة",
+  "dailyCreativity": "الإبداع اليومي",
+  "technicalReviews": "مراجعات تقنية",
+  "theWorldOfTechnology": "عالم التقنية",
+  "audioDocumentary": "وثائقي صوتي",
+  "storiesFromHistory": "قصص من التاريخ",
+  "meditationPodcast": "بودكاست تأمل",
+  "momentsOfSilence": "لحظات الصمت",
+  "940kListens": "940K استماع",
+  "18mListens": "1.8M استماع",
+  "audioArticles": "مقالات صوتية",
+  "theWorldOfKnowledge": "عالم المعرفة",
+  "24mListens": "2.4M استماع",
+  "weeklyPodcast": "بودكاست أسبوعي",
+  "inspiringStories": "قصص ملهمة",
+  "age": "عمر",
+  "reem": "ريم",
+  "others": "نور",
+  "samer": "سامر",
+  "lena": "لينا",
+  "yourStory": "قصتك"
 }

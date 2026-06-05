@@ -21,6 +21,10 @@
 
 import React, { useState, useCallback } from 'react';
 import './PlusDiscoverPage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -48,62 +52,62 @@ const FEED_ITEMS: FeedItem[] = [
     id: 'p1',
     bgImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCS9to8gno-KMZxuSeaS_k8y_7LJtdbmqhPIorbh-0dwOcUtpvUJRZpAViIpXYx-6Zs_QVmjGSGJwX2d9GX0mggXxmcX2R5jXMD6FuoOfNqNOM83YACmVlgKKO7f-L_vuAbDqOCytVkDgaLcIOds2yd9HbzNWewiU4a9HUnBLA2fq6IOMOUc9K3rI5nJB2846GFiERAtxdaW2ODqNIBk67HmuHAtL388gEfdLUVOhtPDk9O0EH0zTFQeUwna1NqkIj_iNE6jI039YKX',
-    bgAlt: 'ميكروفون استوديو احترافي على خلفية داكنة دافئة',
-    category: 'ثقافة',
-    title: 'أثر الصوت في الذاكرة',
-    description: 'دقيقة عن كيف يترك الصوت بصمة دائمة في الذاكرة البشرية',
-    creatorName: 'منصة إثراء',
+    bgAlt: t('plusdiscover:professionalStudioMicrophoneOnWarmDarkBa'),
+    category: t('plusdiscover:culture'),
+    title: t('plusdiscover:theEffectOfSoundOnMemory'),
+    description: t('plusdiscover:aMinuteAboutHowSoundLeavesALastingImprin'),
+    creatorName: t('plusdiscover:ithraPlatform'),
     creatorHandle: '@ithra.voice',
-    listens: '٢٤٨ ألف استماع',
-    duration: 'مدة ٠:٤٥',
-    likes: '٢٤.٥ك',
-    comments: '٨٤٢',
+    listens: t('plusdiscover:248ThousandListens'),
+    duration: t('plusdiscover:duration045'),
+    likes: t('plusdiscover:key4345'),
+    comments: t('plusdiscover:key7261'),
     avatarImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA2qHr5C5QGp0Q3uUeRhbgB0lejCNaO4UegUWuNgX2I20h5AgZZsGf2Be0pPxuewxjLmgdTwCJ75tQHfP93LMCgPErSmgAJdUtZzdVPkfFy_x4S84ZuoYMRFBZ9YOLsjiqD2z9DHdU7F2oO94psoCMMas9exXCB4qznISuwGGTjgKX-GradVYn6yHbMHgVPNIDV9Z99OCroyuA5SfN3v5IfoUxXUiqmasiLVw4qW1QewpJYLAnP_1fLeRp_4W6k4eiRYNySPTBGvX2n',
-    avatarAlt: 'شعار منصة إثراء',
+    avatarAlt: t('plusdiscover:ithraPlatformLogo'),
   },
   {
     id: 'p2',
     bgImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuBNK3ytSH36YPuK5Y5uGUD1hNKqL885wssu5FS0uMxxunZi9NEUjnw9yXKcR3o3Cz8dmHiZOkToVNYvbAW-cXuUWhrIPcbLZVBE0Ahx1xzkUJZbCI7NlCCSdAaEBnLXSUKbKqeJ8URgfMjCbQbchqdlRy02ePlq3MK6eFSvjWaEOvomD3nbRcesyvbMkMe3fIicMwvqvdW3Jht44wZAzUkMXJUHttoqhpY0LiGco-L9U81UZBZfR_LSI3rn08Ad9pT1I3x5I3KP8umF',
-    bgAlt: 'خلفية داكنة ذهبية لحفل موسيقي',
-    category: 'فن',
-    title: 'مسرح بلا جمهور',
-    description: 'تجربة صوتية حصرية من كواليس المسرح الوطني',
-    creatorName: 'دار الأوبرا',
+    bgAlt: t('plusdiscover:goldenDarkBackgroundForConcert'),
+    category: t('plusdiscover:art'),
+    title: t('plusdiscover:theaterWithoutAnAudience'),
+    description: t('plusdiscover:anExclusiveAudioExperienceFromTheScenesO'),
+    creatorName: t('plusdiscover:operaHouse'),
     creatorHandle: '@opera.house',
-    listens: '١١٥ ألف استماع',
-    duration: 'مدة ١:١٠',
-    likes: '١٨.٢ك',
-    comments: '٦٢٣',
+    listens: t('plusdiscover:115ThousandListens'),
+    duration: t('plusdiscover:duration110'),
+    likes: t('plusdiscover:key3051'),
+    comments: t('plusdiscover:key3408'),
     avatarImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuBNK3ytSH36YPuK5Y5uGUD1hNKqL885wssu5FS0uMxxunZi9NEUjnw9yXKcR3o3Cz8dmHiZOkToVNYvbAW-cXuUWhrIPcbLZVBE0Ahx1xzkUJZbCI7NlCCSdAaEBnLXSUKbKqeJ8URgfMjCbQbchqdlRy02ePlq3MK6eFSvjWaEOvomD3nbRcesyvbMkMe3fIicMwvqvdW3Jht44wZAzUkMXJUHttoqhpY0LiGco-L9U81UZBZfR_LSI3rn08Ad9pT1I3x5I3KP8umF',
-    avatarAlt: 'شعار دار الأوبرا',
+    avatarAlt: t('plusdiscover:operaHouseLogo'),
   },
   {
     id: 'p3',
     bgImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuCS9to8gno-KMZxuSeaS_k8y_7LJtdbmqhPIorbh-0dwOcUtpvUJRZpAViIpXYx-6Zs_QVmjGSGJwX2d9GX0mggXxmcX2R5jXMD6FuoOfNqNOM83YACmVlgKKO7f-L_vuAbDqOCytVkDgaLcIOds2yd9HbzNWewiU4a9HUnBLA2fq6IOMOUc9K3rI5nJB2846GFiERAtxdaW2ODqNIBk67HmuHAtL388gEfdLUVOhtPDk9O0EH0zTFQeUwna1NqkIj_iNE6jI039YKX',
-    bgAlt: 'لقطة فنية داكنة لميكروفون ذهبي',
-    category: 'حوار',
-    title: 'صوت الحكمة',
-    description: 'حلقة خاصة مع أحد أبرز مفكري القرن الواحد والعشرين',
-    creatorName: 'راشد الغامدي',
+    bgAlt: t('plusdiscover:darkArtShotOfAGoldMicrophone'),
+    category: t('plusdiscover:aDialogue'),
+    title: t('plusdiscover:voiceOfWisdom'),
+    description: t('plusdiscover:aSpecialEpisodeWithOneOfTheMostProminent'),
+    creatorName: t('plusdiscover:rashidAlghamdi'),
     creatorHandle: '@rashed.ghamdi',
-    listens: '٨٩ ألف استماع',
-    duration: 'مدة ١:٤٠',
-    likes: '٩.٤ك',
-    comments: '٣١٧',
+    listens: t('plusdiscover:89ThousandListens'),
+    duration: t('plusdiscover:duration140'),
+    likes: t('plusdiscover:key1376'),
+    comments: t('plusdiscover:key2976'),
     avatarImage:
       'https://lh3.googleusercontent.com/aida-public/AB6AXuA2qHr5C5QGp0Q3uUeRhbgB0lejCNaO4UegUWuNgX2I20h5AgZZsGf2Be0pPxuewxjLmgdTwCJ75tQHfP93LMCgPErSmgAJdUtZzdVPkfFy_x4S84ZuoYMRFBZ9YOLsjiqD2z9DHdU7F2oO94psoCMMas9exXCB4qznISuwGGTjgKX-GradVYn6yHbMHgVPNIDV9Z99OCroyuA5SfN3v5IfoUxXUiqmasiLVw4qW1QewpJYLAnP_1fLeRp_4W6k4eiRYNySPTBGvX2n',
-    avatarAlt: 'صورة راشد الغامدي',
+    avatarAlt: t('plusdiscover:aPhotoOfRashidAlghamdi'),
   },
 ];
 
 // ─── Sub-nav ───────────────────────────────────────────────────────────────────
 // Visual order: اكتشف | لك | المتابعة | الرائج
 // pill is dir=ltr so DOM order = visual order.
-const SUB_NAV_LABELS = ['اكتشف', 'لك', 'المتابعة', 'الرائج'] as const;
+const SUB_NAV_LABELS = [t('plusdiscover:findOut'), t('plusdiscover:forYou'), t('plusdiscover:followUp'), t('plusdiscover:trending')] as const;
 type SubNavItem = (typeof SUB_NAV_LABELS)[number];
 
 // ─── Progress dots ─────────────────────────────────────────────────────────────
@@ -139,7 +143,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
       <img src={item.avatarImage} alt={item.avatarAlt} className="pdp-avatar" />
       <button
         className={`pdp-follow-btn${followed ? ' pdp-follow-btn--following' : ''}`}
-        aria-label={followed ? 'إلغاء المتابعة' : 'متابعة المبدع'}
+        aria-label={followed ? t('plusdiscover:unfollow') : t('plusdiscover:followTheCreator')}
         aria-pressed={followed}
         onClick={onFollow}
       >
@@ -152,17 +156,17 @@ const ActionRail: React.FC<ActionRailProps> = ({
     </div>
 
     {/* دعم */}
-    <button className="pdp-action-btn" aria-label="دعم">
+    <button className="pdp-action-btn" aria-label={t('plusdiscover:toSupport')}>
       <span className="pdp-action-icon-box">
         <span className="material-symbols-outlined pdp-action-icon">volunteer_activism</span>
       </span>
-      <span className="pdp-action-label">دعم</span>
+      <span className="pdp-action-label">{t('plusdiscover:toSupport')}</span>
     </button>
 
     {/* Like */}
     <button
       className="pdp-action-btn"
-      aria-label={liked ? 'إلغاء الإعجاب' : 'إعجاب'}
+      aria-label={liked ? t('plusdiscover:unlike') : t('plusdiscover:wonder')}
       aria-pressed={liked}
       onClick={onLike}
     >
@@ -175,7 +179,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
     </button>
 
     {/* Comments */}
-    <button className="pdp-action-btn" aria-label="التعليقات">
+    <button className="pdp-action-btn" aria-label={t('plusdiscover:comments')}>
       <span className="pdp-action-icon-box">
         <span className="material-symbols-outlined pdp-action-icon">chat_bubble</span>
       </span>
@@ -185,7 +189,7 @@ const ActionRail: React.FC<ActionRailProps> = ({
     {/* Save */}
     <button
       className="pdp-action-btn"
-      aria-label={saved ? 'إلغاء الحفظ' : 'حفظ'}
+      aria-label={saved ? t('plusdiscover:cancelSaving') : t('plusdiscover:keep')}
       aria-pressed={saved}
       onClick={onSave}
     >
@@ -194,15 +198,15 @@ const ActionRail: React.FC<ActionRailProps> = ({
           bookmark
         </span>
       </span>
-      <span className="pdp-action-label">حفظ</span>
+      <span className="pdp-action-label">{t('plusdiscover:keep')}</span>
     </button>
 
     {/* Share */}
-    <button className="pdp-action-btn" aria-label="مشاركة">
+    <button className="pdp-action-btn" aria-label={t('plusdiscover:sharing')}>
       <span className="pdp-action-icon-box">
         <span className="material-symbols-outlined pdp-action-icon">share</span>
       </span>
-      <span className="pdp-action-label">مشاركة</span>
+      <span className="pdp-action-label">{t('plusdiscover:sharing')}</span>
     </button>
   </div>
 );
@@ -233,20 +237,20 @@ const InfoBlock: React.FC<InfoBlockProps> = ({ item }) => (
     {/* Metadata */}
     <div className="pdp-meta-row">
       <span className="material-symbols-outlined pdp-meta-icon">headphones</span>
-      <span className="pdp-meta-text" dir="rtl">
+      <span className="pdp-meta-text">
         {item.listens} • {item.duration}
       </span>
     </div>
 
     {/* Hashtags */}
     <div className="pdp-meta-row">
-      <span className="pdp-meta-text">{`#صوت #ثقافة`}</span>
+      <span className="pdp-meta-text">{t('plusdiscover:voiceCulture')}</span>
     </div>
 
     {/* CTA */}
-    <button className="pdp-cta-btn" aria-label="استمع للعمل الكامل">
+    <button className="pdp-cta-btn" aria-label={t('plusdiscover:listenToTheFullWork')}>
       <span className="material-symbols-outlined pdp-cta-icon">play_arrow</span>
-      <span className="pdp-cta-text">استمع للعمل الكامل</span>
+      <span className="pdp-cta-text">{t('plusdiscover:listenToTheFullWork')}</span>
     </button>
   </div>
 );
@@ -254,7 +258,7 @@ const InfoBlock: React.FC<InfoBlockProps> = ({ item }) => (
 // ─── Main page ─────────────────────────────────────────────────────────────────
 
 const PlusDiscoverPage: React.FC = () => {
-  const [subNav, setSubNav] = useState<SubNavItem>('لك');
+  const [subNav, setSubNav] = useState<SubNavItem>(t('plusdiscover:forYou'));
   const [feedIndex, setFeedIndex] = useState(0);
   const [liked,    setLiked]    = useState(false);
   const [saved,    setSaved]    = useState(false);
@@ -283,7 +287,7 @@ const PlusDiscoverPage: React.FC = () => {
   }, [resetItemState]);
 
   return (
-    <div className="pdp-root" dir="rtl" lang="ar">
+    <div className="pdp-root" lang="ar">
       {/* ── Background media layer ──────────────────────────────────────────── */}
       <div className="pdp-bg">
         <img
@@ -306,7 +310,7 @@ const PlusDiscoverPage: React.FC = () => {
 
         {/* Discover sub-nav */}
         <div className="pdp-subnav-cluster">
-          <div className="pdp-glass-pill" role="tablist" aria-label="تصفية الاكتشاف">
+          <div className="pdp-glass-pill" role="tablist" aria-label={t('plusdiscover:filterDiscovery')}>
             {SUB_NAV_LABELS.map(label => (
               <button
                 key={label}
@@ -344,12 +348,12 @@ const PlusDiscoverPage: React.FC = () => {
       {/* ── Invisible hit-area nav (swipe prep) ─────────────────────────────── */}
       <button
         className="pdp-nav-hit pdp-nav-hit--next"
-        aria-label="العنصر التالي في الموجز"
+        aria-label={t('plusdiscover:nextItemInTheSummary')}
         onClick={goNext}
       />
       <button
         className="pdp-nav-hit pdp-nav-hit--prev"
-        aria-label="العنصر السابق في الموجز"
+        aria-label={t('plusdiscover:previousItemInSummary')}
         onClick={goPrev}
       />
     </div>

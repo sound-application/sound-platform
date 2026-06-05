@@ -16,13 +16,14 @@
  *         ├─ <main> Outlet   ← receives active page component
  *         └─ BottomNav        ← uses useWorldNav() for tab active state
  */
-
 import React from 'react';
-import { Outlet, useLocation } from 'react-router-dom';
+import { useLocation, Outlet } from 'react-router-dom';
 import { WorldNavProvider, useWorldNav } from '../contexts/WorldNavContext';
 import { ConnectivityBanner } from '../components/ConnectivityBanner';
 import { BottomNav }          from '../components/BottomNav';
 import { AppHeader }          from '../components/AppHeader';
+import { PlayerProvider, usePlayer } from '../contexts/PlayerContext';
+import { GlobalPlayer }       from '../components/GlobalPlayer';
 import './AppLayout.css';
 
 /**
@@ -48,6 +49,7 @@ function AppShell() {
           <Outlet />
         </div>
       </main>
+      <GlobalPlayer />
       <BottomNav />
     </div>
   );
@@ -56,7 +58,9 @@ function AppShell() {
 export function AppLayout() {
   return (
     <WorldNavProvider>
-      <AppShell />
+      <PlayerProvider>
+        <AppShell />
+      </PlayerProvider>
     </WorldNavProvider>
   );
 }

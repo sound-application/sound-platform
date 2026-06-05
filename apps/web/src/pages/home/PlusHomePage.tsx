@@ -15,6 +15,7 @@
 import React, { useState } from 'react';
 import './PlusHomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../../components/FilterDropdown';
+import { useTranslation } from 'react-i18next';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
 
@@ -32,87 +33,7 @@ interface CreatorItem {
 interface RoomItem   { id: string; title: string; host: string; listeners: string; live?: boolean; }
 interface PlaylistItem { id: string; title: string; tag: string; trackCount?: string; }
 
-// ─── Static Data ──────────────────────────────────────────────────────────────
 
-const STORY_ITEMS: StoryItem[] = [
-  { uid: 'self', displayName: 'قصتك', isSelf: true },
-  { uid: 'ps1',  displayName: 'نادين' },
-  { uid: 'ps2',  displayName: 'كريم'  },
-  { uid: 'ps3',  displayName: 'لمى'   },
-  { uid: 'ps4',  displayName: 'فهد'   },
-  { uid: 'ps5',  displayName: 'رنا'   },
-];
-
-const EXCLUSIVE_ITEMS: ContentItem[] = [
-  { id: 'pe1', title: 'أسرار النجاح',       meta: 'حصري بلس',     playCount: '3.1M', countryFlag: '🇸🇦', tag: 'حصري',   exclusive: true },
-  { id: 'pe2', title: 'مع المبدعين',        meta: 'بودكاست أسبوعي', playCount: '1.9M', countryFlag: '🇦🇪', tag: 'جديد',   exclusive: true },
-  { id: 'pe3', title: 'ليالي الشعر',        meta: 'قراءة شعرية',   playCount: '870K', countryFlag: '🇸🇦', exclusive: true },
-  { id: 'pe4', title: 'رحلة التأمل اليومي', meta: 'تأمل صوتي',     playCount: '620K', countryFlag: '🇪🇬', tag: 'رائج',   exclusive: true },
-];
-
-const TRENDING_ITEMS: ContentItem[] = [
-  { id: 'pt1', title: 'قصص ملهمة',    meta: 'بودكاست أسبوعي', playCount: '2.4M', countryFlag: '🇸🇦', tag: 'رائج' },
-  { id: 'pt2', title: 'عالم المعرفة', meta: 'مقالات صوتية',   playCount: '1.8M', countryFlag: '🇦🇪' },
-  { id: 'pt3', title: 'شعر الليل',    meta: 'قراءة شعرية',   playCount: '730K', countryFlag: '🇸🇦', tag: 'جديد' },
-];
-
-const TOP_CREATORS: CreatorItem[] = [
-  { uid: 'pc1', displayName: 'أحمد عادل', handle: '@aadel',  followerLabel: '980K متابع', specialty: 'بودكاست حصري', countryFlag: '🇸🇦', plusVerified: true },
-  { uid: 'pc2', displayName: 'سارة ملك',  handle: '@smalek', followerLabel: '1.2M متابع', specialty: 'قصص بلس',      countryFlag: '🇦🇪', plusVerified: true },
-  { uid: 'pc3', displayName: 'خالد نور',  handle: '@knour',  followerLabel: '650K متابع', specialty: 'تأمل',          countryFlag: '🇸🇦', plusVerified: true },
-];
-
-const EXCLUSIVE_ROOMS: RoomItem[] = [
-  { id: 'pr1', title: 'غرفة المبدعين — بلس', host: 'أحمد عادل', listeners: '1.4K', live: true  },
-  { id: 'pr2', title: 'قراءة جماعية مباشرة', host: 'سارة ملك',  listeners: '890',  live: true  },
-  { id: 'pr3', title: 'جلسة تأمل صباحية',    host: 'خالد نور',  listeners: '2.1K', live: false },
-];
-
-const PLAYLISTS: PlaylistItem[] = [
-  { id: 'pp1', title: 'أفضل بلس هذا الأسبوع', tag: 'حصري بلس', trackCount: '14 قطعة' },
-  { id: 'pp2', title: 'أجواء التركيز — بلس',  tag: 'استرخاء',  trackCount: '9 قطع'  },
-];
-
-const FOLLOWING: CreatorItem[] = [
-  { uid: 'pf1', displayName: 'نادين حسن', followerLabel: 'نشرت محتوى حصراً للمشتركين' },
-  { uid: 'pf2', displayName: 'فارس خليل', followerLabel: 'آخر نشاط منذ ساعة' },
-];
-
-// ─── Filter Options ───────────────────────────────────────────────────────────
-
-const STATUS_OPTIONS: FilterOption[] = [
-  { value: 'new',       label: 'جديد'       },
-  { value: 'trending',  label: 'رائج'       },
-  { value: 'exclusive', label: 'حصري'       },
-  { value: 'saved',     label: 'محفوظ'      },
-  { value: 'unplayed',  label: 'لم يُشغَّل' },
-];
-
-const CATEGORY_OPTIONS: FilterOption[] = [
-  { value: 'podcast',    label: 'بودكاست' },
-  { value: 'story',      label: 'قصص'     },
-  { value: 'poetry',     label: 'شعر'     },
-  { value: 'meditation', label: 'تأمل'    },
-  { value: 'interview',  label: 'حوارات'  },
-  { value: 'comedy',     label: 'كوميديا' },
-];
-
-const COUNTRY_OPTIONS: FilterOption[] = [
-  { value: 'sa', label: '🇸🇦 السعودية' },
-  { value: 'ae', label: '🇦🇪 الإمارات' },
-  { value: 'eg', label: '🇪🇬 مصر'      },
-  { value: 'kw', label: '🇰🇼 الكويت'   },
-  { value: 'jo', label: '🇯🇴 الأردن'   },
-  { value: 'ma', label: '🇲🇦 المغرب'   },
-];
-
-const SORT_OPTIONS: FilterOption[] = [
-  { value: 'latest',    label: 'الأحدث'          },
-  { value: 'popular',   label: 'الأكثر استماعاً' },
-  { value: 'exclusive', label: 'الحصري أولاً'    },
-  { value: 'following', label: 'من تتابعهم'      },
-  { value: 'suggested', label: 'المقترح لك'      },
-];
 
 // ─── Micro Icons ──────────────────────────────────────────────────────────────
 
@@ -157,6 +78,90 @@ function CoverFallback({ height = 120 }: { height?: number }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function PlusHomePage() {
+  const { t } = useTranslation();
+
+  // ─── Static Data ──────────────────────────────────────────────────────────────
+
+  const STORY_ITEMS: StoryItem[] = [
+    { uid: 'self', displayName: t('plushome:yourStory'), isSelf: true },
+    { uid: 'ps1',  displayName: t('plushome:nadine') },
+    { uid: 'ps2',  displayName: t('plushome:generous')  },
+    { uid: 'ps3',  displayName: t('plushome:lama')   },
+    { uid: 'ps4',  displayName: t('plushome:fahad')   },
+    { uid: 'ps5',  displayName: t('plushome:rana')   },
+  ];
+
+  const EXCLUSIVE_ITEMS: ContentItem[] = [
+    { id: 'pe1', title: t('plushome:secretsOfSuccess'),       meta: t('plushome:exclusivePlus'),     playCount: '3.1M', countryFlag: '🇸🇦', tag: t('plushome:exclusive'),   exclusive: true },
+    { id: 'pe2', title: t('plushome:withTheCreators'),        meta: t('plushome:weeklyPodcast'), playCount: '1.9M', countryFlag: '🇦🇪', tag: t('plushome:new'),   exclusive: true },
+    { id: 'pe3', title: t('plushome:poetryNights'),        meta: t('plushome:poetryReading'),   playCount: '870K', countryFlag: '🇸🇦', exclusive: true },
+    { id: 'pe4', title: t('plushome:dailyMeditationJourney'), meta: t('plushome:audioMeditation'),     playCount: '620K', countryFlag: '🇪🇬', tag: t('plushome:common'),   exclusive: true },
+  ];
+
+  const TRENDING_ITEMS: ContentItem[] = [
+    { id: 'pt1', title: t('plushome:inspiringStories'),    meta: t('plushome:weeklyPodcast'), playCount: '2.4M', countryFlag: '🇸🇦', tag: t('plushome:common') },
+    { id: 'pt2', title: t('plushome:theWorldOfKnowledge'), meta: t('plushome:audioArticles'),   playCount: '1.8M', countryFlag: '🇦🇪' },
+    { id: 'pt3', title: t('plushome:nightPoetry'),    meta: t('plushome:poetryReading'),   playCount: '730K', countryFlag: '🇸🇦', tag: t('plushome:new') },
+  ];
+
+  const TOP_CREATORS: CreatorItem[] = [
+    { uid: 'pc1', displayName: t('plushome:ahmedAdel'), handle: '@aadel',  followerLabel: t('plushome:980kFollowers'), specialty: t('plushome:exclusivePodcast'), countryFlag: '🇸🇦', plusVerified: true },
+    { uid: 'pc2', displayName: t('plushome:sarahMalak'),  handle: '@smalek', followerLabel: t('plushome:12mFollowers'), specialty: t('plushome:storiesPlus'),      countryFlag: '🇦🇪', plusVerified: true },
+    { uid: 'pc3', displayName: t('plushome:khaledNour'),  handle: '@knour',  followerLabel: t('plushome:650kFollowers'), specialty: t('plushome:contemplation'),          countryFlag: '🇸🇦', plusVerified: true },
+  ];
+
+  const EXCLUSIVE_ROOMS: RoomItem[] = [
+    { id: 'pr1', title: t('plushome:creatorsRoomPlus'), host: t('plushome:ahmedAdel'), listeners: '1.4K', live: true  },
+    { id: 'pr2', title: t('plushome:liveGroupReading'), host: t('plushome:sarahMalak'),  listeners: '890',  live: true  },
+    { id: 'pr3', title: t('plushome:morningMeditationSession'),    host: t('plushome:khaledNour'),  listeners: '2.1K', live: false },
+  ];
+
+  const PLAYLISTS: PlaylistItem[] = [
+    { id: 'pp1', title: t('plushome:bestPlusThisWeek'), tag: t('plushome:exclusivePlus'), trackCount: t('plushome:14Pieces') },
+    { id: 'pp2', title: t('plushome:atmosphereOfFocusPlus'),  tag: t('plushome:relaxation'),  trackCount: t('plushome:9Pieces')  },
+  ];
+
+  const FOLLOWING: CreatorItem[] = [
+    { uid: 'pf1', displayName: t('plushome:nadineHassan'), followerLabel: t('plushome:publishedContentExclusivelyForSubscriber') },
+    { uid: 'pf2', displayName: t('plushome:faresKhalil'), followerLabel: t('plushome:lastActivityAnHourAgo') },
+  ];
+
+  // ─── Filter Options ───────────────────────────────────────────────────────────
+
+  const STATUS_OPTIONS: FilterOption[] = [
+    { value: 'new',       label: t('plushome:new')       },
+    { value: 'trending',  label: t('plushome:common')       },
+    { value: 'exclusive', label: t('plushome:exclusive')       },
+    { value: 'saved',     label: t('plushome:safe')      },
+    { value: 'unplayed',  label: t('plushome:notTurnedOn') },
+  ];
+
+  const CATEGORY_OPTIONS: FilterOption[] = [
+    { value: 'podcast',    label: t('plushome:itsAPodcast') },
+    { value: 'story',      label: t('plushome:stories')     },
+    { value: 'poetry',     label: t('plushome:poetry')     },
+    { value: 'meditation', label: t('plushome:contemplation')    },
+    { value: 'interview',  label: t('plushome:dialogues')  },
+    { value: 'comedy',     label: t('plushome:comedy') },
+  ];
+
+  const COUNTRY_OPTIONS: FilterOption[] = [
+    { value: 'sa', label: t('plushome:saudiArabia') },
+    { value: 'ae', label: t('plushome:emirates') },
+    { value: 'eg', label: t('plushome:egypt')      },
+    { value: 'kw', label: t('plushome:kuwait')   },
+    { value: 'jo', label: t('plushome:jordan')   },
+    { value: 'ma', label: t('plushome:morocco')   },
+  ];
+
+  const SORT_OPTIONS: FilterOption[] = [
+    { value: 'latest',    label: t('plushome:latest')          },
+    { value: 'popular',   label: t('plushome:mostListenedTo') },
+    { value: 'exclusive', label: t('plushome:exclusiveFirst')    },
+    { value: 'following', label: t('plushome:whoDoYouFollow')      },
+    { value: 'suggested', label: t('plushome:suggestedForYou')      },
+  ];
+
   const [statuses,   setStatuses]   = useState<string[]>([]);
   const [categories, setCategories] = useState<string[]>([]);
   const [countries,  setCountries]  = useState<string[]>([]);
@@ -168,14 +173,14 @@ export function PlusHomePage() {
   }
 
   return (
-    <main className="php" aria-label="الرئيسية — بلس">
+    <main className="php" aria-label={t('plushome:homePlus')}>
 
       {/* ── Stories ──────────────────────────────────────────────────────────── */}
-      <section aria-label="القصص السريعة">
+      <section aria-label={t('plushome:quickStories')}>
         <div className="php-story-row">
           {STORY_ITEMS.map(item => (
             <button key={item.uid} className="php-story-item"
-                    aria-label={item.isSelf ? 'إضافة قصة' : `قصة ${item.displayName}`}>
+                    aria-label={item.isSelf ? t('plushome:addAStory') : `قصة ${item.displayName}`}>
               {item.isSelf ? (
                 <div className="php-story-ring php-story-ring--self">
                   <AvatarFallback name={item.displayName} size={52} />
@@ -195,42 +200,41 @@ export function PlusHomePage() {
       </section>
 
       {/* ── Plus Hero CTA ────────────────────────────────────────────────────── */}
-      <section aria-label="اشتراك بلس">
+      <section aria-label={t('plushome:plusSubscription')}>
         <div className="php-hero">
           <div className="php-hero__glow" aria-hidden="true" />
           <div>
             <p className="php-hero__eyebrow">SOUND PLUS</p>
-            <p className="php-hero__headline">محتوى حصري بلا حدود — بلا إعلانات</p>
-            <p className="php-hero__sub">آلاف الساعات الصوتية الحصرية من أبرز المبدعين</p>
+            <p className="php-hero__headline">{t('plushome:unlimitedExclusiveContentNoAds')}</p>
+            <p className="php-hero__sub">{t('plushome:thousandsOfHoursOfExclusiveAudioFromLead')}</p>
           </div>
-          <button className="php-hero__cta" aria-label="اشترك في بلس الآن">
-            اشترك الآن
-          </button>
+          <button className="php-hero__cta" aria-label={t('plushome:subscribeToPlusNow')}>
+            {t('plushome:subscribeNow')}</button>
         </div>
       </section>
 
       {/* ── Search + Smart Filters ───────────────────────────────────────────── */}
-      <section aria-label="بحث وتصفية">
+      <section aria-label={t('plushome:searchAndFilter')}>
         <div className="php-search">
           <input id="php-search-input" className="php-search__input"
-                 type="search" placeholder="ابحث في محتوى بلس..."
+                 type="search" placeholder={t('plushome:searchPlusContent')}
                  autoComplete="off" dir="rtl" />
           <span className="php-search__icon"><IconSearch /></span>
         </div>
 
         <div className="php-filters" style={{ marginTop: 'var(--space-3)' }}>
-          <FilterDropdown label="الحالة"   options={STATUS_OPTIONS}   values={statuses}
+          <FilterDropdown label={t('plushome:theCondition')}   options={STATUS_OPTIONS}   values={statuses}
             onToggle={toggle(setStatuses)}   onClear={() => setStatuses([])}
-            defaultLabel="الكل" ariaLabel="تصفية حسب الحالة" />
-          <FilterDropdown label="التصنيف"  options={CATEGORY_OPTIONS} values={categories}
+            defaultLabel={t('plushome:everyone')} ariaLabel={t('plushome:filterByStatus')} />
+          <FilterDropdown label={t('plushome:classification')}  options={CATEGORY_OPTIONS} values={categories}
             onToggle={toggle(setCategories)} onClear={() => setCategories([])}
-            defaultLabel="الكل" ariaLabel="تصفية حسب التصنيف" />
-          <FilterDropdown label="البلد"    options={COUNTRY_OPTIONS}  values={countries}
+            defaultLabel={t('plushome:everyone')} ariaLabel={t('plushome:filterByCategory')} />
+          <FilterDropdown label={t('plushome:country')}    options={COUNTRY_OPTIONS}  values={countries}
             onToggle={toggle(setCountries)}  onClear={() => setCountries([])}
-            defaultLabel="الكل" ariaLabel="تصفية حسب البلد" />
-          <FilterDropdown label="الترتيب" options={SORT_OPTIONS}     values={sortOrders}
+            defaultLabel={t('plushome:everyone')} ariaLabel={t('plushome:filterByCountry')} />
+          <FilterDropdown label={t('plushome:ranking')} options={SORT_OPTIONS}     values={sortOrders}
             onToggle={toggle(setSortOrders)} onClear={() => setSortOrders([])}
-            defaultLabel="الأحدث" ariaLabel="تصفية حسب الترتيب" />
+            defaultLabel={t('plushome:latest')} ariaLabel={t('plushome:filterBySort')} />
         </div>
 
         <SelectedChips groups={[
@@ -240,8 +244,8 @@ export function PlusHomePage() {
           { filterId: 'sortOrder', options: SORT_OPTIONS,     values: sortOrders, onRemove: toggle(setSortOrders) },
         ]} />
 
-        <button className="php-subpage-btn" type="button" aria-label="استعراض أصناف بلس">
-          <span>استعراض الأصناف</span>
+        <button className="php-subpage-btn" type="button" aria-label={t('plushome:plusItemsReview')}>
+          <span>{t('plushome:browseItems')}</span>
           <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
             <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V10M10 2h4m0 0v4m0-4L7 9"
                   stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round" />
@@ -253,10 +257,10 @@ export function PlusHomePage() {
       <section aria-labelledby="php-exclusive-heading">
         <div className="php-section__header">
           <h2 id="php-exclusive-heading" className="php-section__title">
-            محتوى حصري
+            {t('plushome:exclusiveContent')}
             <span className="php-section__title-badge">PLUS</span>
           </h2>
-          <button className="php-section__see-all" aria-label="عرض كل المحتوى الحصري">عرض الكل</button>
+          <button className="php-section__see-all" aria-label={t('plushome:viewAllExclusiveContent')}>{t('plushome:viewAll')}</button>
         </div>
         <div className="php-h-scroll">
           {EXCLUSIVE_ITEMS.map(item => (
@@ -266,7 +270,7 @@ export function PlusHomePage() {
                 <CoverFallback height={118} />
                 <div className="php-content-card__cover-overlay" />
                 {item.tag && <span className="php-content-card__tag">{item.tag}</span>}
-                {item.exclusive && <span className="php-content-card__lock" aria-label="محتوى حصري">🔒</span>}
+                {item.exclusive && <span className="php-content-card__lock" aria-label={t('plushome:exclusiveContent')}>🔒</span>}
                 {item.playCount && (
                   <div className="php-content-card__play-stat">
                     <IconPlay /><span>{item.playCount}</span>
@@ -289,10 +293,10 @@ export function PlusHomePage() {
       <section aria-labelledby="php-creators-heading">
         <div className="php-section__header">
           <h2 id="php-creators-heading" className="php-section__title">
-            مبدعو بلس
+            {t('plushome:innovatorsPlus')}
             <span className="php-section__title-badge">PLUS</span>
           </h2>
-          <button className="php-section__see-all" aria-label="عرض كل مبدعي بلس">عرض الكل</button>
+          <button className="php-section__see-all" aria-label={t('plushome:viewAllCreatorsPlus')}>{t('plushome:viewAll')}</button>
         </div>
         <div className="php-creator-grid">
           {TOP_CREATORS.map(creator => (
@@ -306,7 +310,7 @@ export function PlusHomePage() {
                     {creator.countryFlag && <span aria-hidden="true">{creator.countryFlag}</span>}
                     {creator.displayName}
                     {creator.plusVerified && (
-                      <span className="php-plus-badge" aria-label="مبدع بلس">✦ PLUS</span>
+                      <span className="php-plus-badge" aria-label={t('plushome:creativePlus')}>✦ PLUS</span>
                     )}
                   </p>
                   {creator.followerLabel && (
@@ -319,7 +323,7 @@ export function PlusHomePage() {
               </div>
               <button className="php-creator-card__follow-btn"
                       aria-label={`متابعة ${creator.displayName}`}>
-                متابعة
+                {t('plushome:tracking')}
               </button>
             </article>
           ))}
@@ -329,8 +333,8 @@ export function PlusHomePage() {
       {/* ── Exclusive Rooms ───────────────────────────────────────────────────── */}
       <section aria-labelledby="php-rooms-heading">
         <div className="php-section__header">
-          <h2 id="php-rooms-heading" className="php-section__title">غرف بلس الحصرية</h2>
-          <button className="php-section__see-all" aria-label="عرض كل الغرف">عرض الكل</button>
+          <h2 id="php-rooms-heading" className="php-section__title">{t('plushome:exclusivePlusRooms')}</h2>
+          <button className="php-section__see-all" aria-label={t('plushome:viewAllRooms')}>{t('plushome:viewAll')}</button>
         </div>
         <div className="php-h-scroll">
           {EXCLUSIVE_ROOMS.map(room => (
@@ -338,11 +342,11 @@ export function PlusHomePage() {
               <p className="php-room-card__title">{room.title}</p>
               <div className="php-room-card__meta">
                 {room.live && <span className="php-room-card__live-dot" aria-hidden="true" />}
-                <span>{room.host} · {room.listeners} مستمع</span>
+                <span>{room.host} · {room.listeners} {t('plushome:theListener')}</span>
               </div>
               <button className="php-room-card__join"
                       aria-label={`انضم إلى ${room.title}`}>
-                {room.live ? 'انضم الآن ←' : 'استمع ←'}
+                {room.live ? t('plushome:joinNow') : t('plushome:listen')}
               </button>
             </div>
           ))}
@@ -350,23 +354,23 @@ export function PlusHomePage() {
       </section>
 
       {/* ── Sponsor / Ad Block ───────────────────────────────────────────────── */}
-      <section aria-label="إعلان">
+      <section aria-label={t('plushome:advertisement')}>
         <div className="php-sponsor">
-          <span className="php-sponsor__label">إعلان</span>
+          <span className="php-sponsor__label">{t('plushome:advertisement')}</span>
           <div className="php-sponsor__logo" aria-hidden="true">🎙</div>
           <div className="php-sponsor__body">
-            <p className="php-sponsor__name">استوديو الصوت المحترف</p>
-            <p className="php-sponsor__tagline">معدات تسجيل للمبدعين — توصيل سريع</p>
+            <p className="php-sponsor__name">{t('plushome:professionalAudioStudio')}</p>
+            <p className="php-sponsor__tagline">{t('plushome:recordingEquipmentForCreativesFastDelive')}</p>
           </div>
-          <button className="php-sponsor__cta" aria-label="تسوق الآن">تسوق الآن</button>
+          <button className="php-sponsor__cta" aria-label={t('plushome:shopNow')}>{t('plushome:shopNow')}</button>
         </div>
       </section>
 
       {/* ── Trending (non-exclusive) ──────────────────────────────────────────── */}
       <section aria-labelledby="php-trending-heading">
         <div className="php-section__header">
-          <h2 id="php-trending-heading" className="php-section__title">الرائج الآن</h2>
-          <button className="php-section__see-all" aria-label="عرض كل الرائج">عرض الكل</button>
+          <h2 id="php-trending-heading" className="php-section__title">{t('plushome:popularNow')}</h2>
+          <button className="php-section__see-all" aria-label={t('plushome:viewAllTrending')}>{t('plushome:viewAll')}</button>
         </div>
         <div className="php-h-scroll">
           {TRENDING_ITEMS.map(item => (
@@ -396,8 +400,8 @@ export function PlusHomePage() {
       {/* ── Playlists ────────────────────────────────────────────────────────── */}
       <section aria-labelledby="php-playlists-heading">
         <div className="php-section__header">
-          <h2 id="php-playlists-heading" className="php-section__title">قوائم التشغيل</h2>
-          <button className="php-section__see-all" aria-label="عرض كل القوائم">عرض الكل</button>
+          <h2 id="php-playlists-heading" className="php-section__title">{t('plushome:playlists')}</h2>
+          <button className="php-section__see-all" aria-label={t('plushome:viewAllListings')}>{t('plushome:viewAll')}</button>
         </div>
         <div className="php-playlist-grid">
           {PLAYLISTS.map(pl => (
@@ -416,8 +420,8 @@ export function PlusHomePage() {
       {/* ── Following Activity ────────────────────────────────────────────────── */}
       <section aria-labelledby="php-following-heading">
         <div className="php-section__header">
-          <h2 id="php-following-heading" className="php-section__title">مبدعون تتابعهم</h2>
-          <button className="php-section__see-all" aria-label="عرض من تتابعهم">عرض الكل</button>
+          <h2 id="php-following-heading" className="php-section__title">{t('plushome:creatorsYouFollow')}</h2>
+          <button className="php-section__see-all" aria-label={t('plushome:showWhoYouFollow')}>{t('plushome:viewAll')}</button>
         </div>
         <div className="php-follow-list">
           {FOLLOWING.map(creator => (

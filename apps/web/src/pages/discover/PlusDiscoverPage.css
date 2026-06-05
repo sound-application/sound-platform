@@ -48,7 +48,7 @@
   );
 
   /* Layout */
-  direction:   rtl;
+  
   font-family: 'Alexandria', 'Cairo', sans-serif;
   position:    relative;
   overflow:    hidden;
@@ -189,7 +189,7 @@
   position:        absolute;
   top:             50%;
   transform:       translateY(-50%);
-  right:           12px;
+  inset-inline-end:           12px;
   direction:       ltr;
   display:         flex;
   flex-direction:  column;
@@ -220,8 +220,7 @@
 .pdp-follow-btn {
   position:        absolute;
   bottom:          -8px;
-  left:            50%;
-  transform:       translateX(-50%);
+  left: 50%; transform: translateX(-50%);
   width:           22px;
   height:          22px;
   border-radius:   50%;
@@ -438,7 +437,7 @@
   backdrop-filter:         blur(12px);
   -webkit-backdrop-filter: blur(12px);
   transition:              all 0.2s ease;
-  direction:               rtl;
+  
   white-space:             nowrap;
   min-width:               180px;
   font-weight:             700;
@@ -470,7 +469,7 @@
 /* ─── Feed progress dots (left edge, vertical) ───────────────────────────────── */
 .pdp-progress {
   position:       absolute;
-  left:           10px;
+  inset-inline-start:           10px;
   top:            50%;
   transform:      translateY(-50%);
   z-index:        35;
@@ -506,5 +505,5 @@
   cursor:     pointer;
 }
 
-.pdp-nav-hit--next { right: 0; }
-.pdp-nav-hit--prev { left:  0; }
+.pdp-nav-hit--next { inset-inline-end: 0; }
+.pdp-nav-hit--prev { inset-inline-start:  0; }

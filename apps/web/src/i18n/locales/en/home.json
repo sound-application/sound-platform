@@ -1,70 +1,44 @@
 {
-  "pageLabel": "Home",
-  "stories": {
-    "sectionLabel": "Stories",
-    "addStory": "Add story",
-    "userStory": "{{name}}'s story"
-  },
-  "search": {
-    "sectionLabel": "Search and Filter",
-    "placeholder": "Search for a sound, story, podcast...",
-    "browseCategories": "Browse Categories"
-  },
-  "filters": {
-    "contentType": "Content Type",
-    "all": "All",
-    "contentTypeAria": "Filter by content type",
-    "sortOrder": "Sort",
-    "sortDefault": "Latest",
-    "sortOrderAria": "Filter by sort order",
-    "story": "Stories",
-    "podcast": "Podcasts",
-    "poetry": "Poetry",
-    "meditation": "Meditation",
-    "music": "Music",
-    "latest": "Latest",
-    "popular": "Most Listened",
-    "shared": "Most Shared",
-    "saved": "Most Saved",
-    "comments": "Most Commented",
-    "rising": "Trending Up",
-    "nearby": "Nearby",
-    "following": "From Following",
-    "suggested": "Suggested for You"
-  },
-  "trending": {
-    "title": "Trending Now",
-    "seeAll": "View All Trending"
-  },
-  "topCreators": {
-    "title": "Top Creators",
-    "seeAll": "View All Creators",
-    "profileOf": "{{name}}'s Profile",
-    "follow": "Follow",
-    "followAria": "Follow {{name}}"
-  },
-  "plusBanner": {
-    "sectionLabel": "Plus Subscription",
-    "eyebrow": "Plus",
-    "headline": "Enjoy an ad-free audio experience with Plus subscription",
-    "cta": "Subscribe Now",
-    "ctaAria": "Subscribe to Plus now"
-  },
-  "recommended": {
-    "title": "Recommended for You",
-    "seeAll": "View All Recommended"
-  },
-  "playlists": {
-    "title": "Playlists",
-    "seeAll": "View All Playlists"
-  },
-  "risingCreators": {
-    "title": "Rising Creators",
-    "seeAll": "View All Rising Creators"
-  },
-  "followingCreators": {
-    "title": "Creators You Follow",
-    "seeAll": "View All Following"
-  },
-  "viewAll": "View All"
+  "relaxation": "relaxation",
+  "atmosphereOfFocus": "Atmosphere of focus",
+  "chosenForYou": "Chosen for you",
+  "bestOfTheWeek": "Best of the week",
+  "lastActivityAnHourAgo": "Last activity an hour ago",
+  "faresKhalil": "Fares Khalil",
+  "newExclusiveContentAvailableNow": "New exclusive content available now",
+  "hereIsIbrahim": "Here is Ibrahim",
+  "dina": "Dina",
+  "yasin": "Yasin",
+  "maya": "Maya",
+  "imran": "Imran",
+  "layla": "Layla",
+  "420kFollowers": "420K followers",
+  "dinaAli": "Dina Ali",
+  "650kFollowers": "650K followers",
+  "khaledNour": "Khaled Nour",
+  "12mFollowers": "1.2M followers",
+  "sarahMalak": "Sarah Malak",
+  "980kFollowers": "980K followers",
+  "ahmedAdel": "Ahmed Adel",
+  "shortStories": "Short stories",
+  "dailyCreativity": "Daily creativity",
+  "technicalReviews": "Technical reviews",
+  "theWorldOfTechnology": "The world of technology",
+  "audioDocumentary": "Audio documentary",
+  "storiesFromHistory": "Stories from history",
+  "meditationPodcast": "Meditation podcast",
+  "momentsOfSilence": "Moments of silence",
+  "940kListens": "940K listens",
+  "18mListens": "1.8M listens",
+  "audioArticles": "Audio articles",
+  "theWorldOfKnowledge": "The world of knowledge",
+  "24mListens": "2.4M listens",
+  "weeklyPodcast": "Weekly podcast",
+  "inspiringStories": "Inspiring stories",
+  "age": "age",
+  "reem": "Reem",
+  "others": "others",
+  "samer": "Samer",
+  "lena": "Lena",
+  "yourStory": "Your story"
 }

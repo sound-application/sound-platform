@@ -43,6 +43,9 @@ import { EmptyState } from '../components/EmptyState';
 import './ProfilePage.css';
 import './Page.css';
 
+import i18n from '../i18n';
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 // ─── Tab Definition ───────────────────────────────────────────────────────────
 // Tabs are computed from publicProfiles data, not a fixed static list.
 // Each tab has a visibility rule checked at render time.

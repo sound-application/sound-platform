@@ -1,6 +1,10 @@
 import React, { useState } from 'react';
 import './TournamentsHomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../../components/FilterDropdown';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ── Types ─────────────────────────────────────────────────────────────────────
 type CompStatus = 'open' | 'vote' | 'judge' | 'results' | 'ended';
@@ -11,50 +15,50 @@ interface LbEntry    { id:string; pos:number; name:string; avatar:string; comp:s
 
 // ── Data ──────────────────────────────────────────────────────────────────────
 const HEROES: HeroComp[] = [
-  { id:'h1', title:'جائزة الصوت العربي للإبداع', icon:'🏆', organizer:'Sound Platform', country:'السعودية', flag:'🇸🇦', category:'غناء', status:'vote', participants:'4,820', prize:'250,000 ريال', deadline:'3 أيام', desc:'أكبر مسابقة غناء عربية على الإنترنت — صوّت على أفضل المشتركين واختر المتأهلين للنهائي.' },
-  { id:'h2', title:'مسابقة الشعر الخليجي', icon:'📜', organizer:'اتحاد الشعراء', country:'الكويت', flag:'🇰🇼', category:'شعر', status:'open', participants:'1,340', prize:'50,000 ريال', deadline:'12 يوم', desc:'سجّل وشارك بقصيدتك في أبرز مسابقة شعر خليجي لعام 2025.' },
-  { id:'h3', title:'أفضل بودكاست ناشئ', icon:'🎙️', organizer:'Sound Studio', country:'مصر', flag:'🇪🇬', category:'بودكاست', status:'judge', participants:'980', prize:'20,000 جنيه', deadline:'التحكيم', desc:'هيئة تحكيم متخصصة تراجع الأعمال المقدمة — النتائج تُعلن قريباً.' },
-  { id:'h4', title:'مسابقة الموسيقى التصويرية', icon:'🎼', organizer:'دار النغم', country:'لبنان', flag:'🇱🇧', category:'موسيقى', status:'results', participants:'620', prize:'15,000 دولار', deadline:'النتائج', desc:'أُعلنت نتائج المسابقة — اكتشف الفائزين والأعمال الحائزة على الجوائز.' },
+  { id:'h1', title:t('tournamentshome:arabVoiceAwardForCreativity'), icon:'🏆', organizer:'Sound Platform', country:t('tournamentshome:saudiArabia1'), flag:'🇸🇦', category:t('tournamentshome:singing'), status:'vote', participants:'4,820', prize:t('tournamentshome:250000Riyals'), deadline:t('tournamentshome:3Days'), desc:t('tournamentshome:theLargestOnlineArabicSingingCompetition') },
+  { id:'h2', title:t('tournamentshome:gulfPoetryCompetition'), icon:'📜', organizer:t('tournamentshome:unionOfPoets'), country:t('tournamentshome:kuwait1'), flag:'🇰🇼', category:t('tournamentshome:poetry'), status:'open', participants:'1,340', prize:t('tournamentshome:50000Riyals1'), deadline:t('tournamentshome:12Days'), desc:t('tournamentshome:registerAndParticipateWithYourPoemInTheM') },
+  { id:'h3', title:t('tournamentshome:bestEmergingPodcast'), icon:'🎙️', organizer:'Sound Studio', country:t('tournamentshome:egypt1'), flag:'🇪🇬', category:t('tournamentshome:itsAPodcast'), status:'judge', participants:'980', prize:t('tournamentshome:20000Pounds'), deadline:t('tournamentshome:arbitration'), desc:t('tournamentshome:aSpecializedJuryReviewsTheSubmittedWorks') },
+  { id:'h4', title:t('tournamentshome:soundtrackCompetition'), icon:'🎼', organizer:t('tournamentshome:darAlNagham'), country:t('tournamentshome:lebanon1'), flag:'🇱🇧', category:t('tournamentshome:music'), status:'results', participants:'620', prize:t('tournamentshome:15000'), deadline:t('tournamentshome:results'), desc:t('tournamentshome:contestResultsAnnouncedDiscoverTheWinner') },
 ];
 
 const ACTIVE: ActiveComp[] = [
-  { id:'a1', title:'جائزة الصوت العربي للإبداع', icon:'🏆', organizer:'Sound Platform', flag:'🇸🇦', category:'غناء', status:'vote', participants:'4,820', prize:'250,000 ريال', deadline:'3 أيام', highlight:true },
-  { id:'a2', title:'مسابقة الشعر الخليجي', icon:'📜', organizer:'اتحاد الشعراء', flag:'🇰🇼', category:'شعر', status:'open', participants:'1,340', prize:'50,000 ريال', deadline:'12 يوم' },
-  { id:'a3', title:'أفضل بودكاست ناشئ', icon:'🎙️', organizer:'Sound Studio', flag:'🇪🇬', category:'بودكاست', status:'judge', participants:'980', prize:'20,000 جنيه', deadline:'التحكيم' },
-  { id:'a4', title:'مسابقة الكوميديا الصوتية', icon:'😂', organizer:'صوت الضحك', flag:'🇦🇪', category:'كوميديا', status:'open', participants:'561', prize:'10,000 درهم', deadline:'8 أيام' },
-  { id:'a5', title:'بطل الإلقاء', icon:'🎤', organizer:'أكاديمية الخطابة', flag:'🇯🇴', category:'خطابة', status:'vote', participants:'2,100', prize:'30,000 دينار', deadline:'5 أيام' },
+  { id:'a1', title:t('tournamentshome:arabVoiceAwardForCreativity'), icon:'🏆', organizer:'Sound Platform', flag:'🇸🇦', category:t('tournamentshome:singing'), status:'vote', participants:'4,820', prize:t('tournamentshome:250000Riyals'), deadline:t('tournamentshome:3Days'), highlight:true },
+  { id:'a2', title:t('tournamentshome:gulfPoetryCompetition'), icon:'📜', organizer:t('tournamentshome:unionOfPoets'), flag:'🇰🇼', category:t('tournamentshome:poetry'), status:'open', participants:'1,340', prize:t('tournamentshome:50000Riyals1'), deadline:t('tournamentshome:12Days') },
+  { id:'a3', title:t('tournamentshome:bestEmergingPodcast'), icon:'🎙️', organizer:'Sound Studio', flag:'🇪🇬', category:t('tournamentshome:itsAPodcast'), status:'judge', participants:'980', prize:t('tournamentshome:20000Pounds'), deadline:t('tournamentshome:arbitration') },
+  { id:'a4', title:t('tournamentshome:audioComedyCompetition'), icon:'😂', organizer:t('tournamentshome:theSoundOfLaughter'), flag:'🇦🇪', category:t('tournamentshome:comedy'), status:'open', participants:'561', prize:t('tournamentshome:10000Dirhams'), deadline:t('tournamentshome:8Days') },
+  { id:'a5', title:t('tournamentshome:speakingChampion'), icon:'🎤', organizer:t('tournamentshome:academyOfPublicSpeaking'), flag:'🇯🇴', category:t('tournamentshome:oratory'), status:'vote', participants:'2,100', prize:t('tournamentshome:30000Dinars'), deadline:t('tournamentshome:5Days') },
 ];
 
 const VOTING: VoteEntry[] = [
-  { id:'v1', rank:1, name:'نوى الحربي',     avatar:'ن', comp:'جائزة الصوت العربي', votes:48200, maxVotes:60000 },
-  { id:'v2', rank:2, name:'سامي المرزوق',  avatar:'س', comp:'جائزة الصوت العربي', votes:41800, maxVotes:60000 },
-  { id:'v3', rank:3, name:'رنا الأحمدي',   avatar:'ر', comp:'جائزة الصوت العربي', votes:35500, maxVotes:60000 },
-  { id:'v4', rank:4, name:'خالد الشمري',   avatar:'خ', comp:'بطل الإلقاء',         votes:29000, maxVotes:60000 },
+  { id:'v1', rank:1, name:t('tournamentshome:nawaAlharbi'),     avatar:t('tournamentshome:n'), comp:t('tournamentshome:arabVoiceAward'), votes:48200, maxVotes:60000 },
+  { id:'v2', rank:2, name:t('tournamentshome:samiAlMarzouq'),  avatar:t('tournamentshome:q'), comp:t('tournamentshome:arabVoiceAward'), votes:41800, maxVotes:60000 },
+  { id:'v3', rank:3, name:t('tournamentshome:ranaAlahmadi'),   avatar:t('tournamentshome:r'), comp:t('tournamentshome:arabVoiceAward'), votes:35500, maxVotes:60000 },
+  { id:'v4', rank:4, name:t('tournamentshome:khaledAlshammari'),   avatar:t('tournamentshome:kh'), comp:t('tournamentshome:speakingChampion'),         votes:29000, maxVotes:60000 },
 ];
 
 const LEADERBOARD: LbEntry[] = [
-  { id:'l1', pos:1, name:'نوى الحربي',    avatar:'ن', comp:'جائزة الصوت 2024', score:'9,842', prize:'🥇 100,000 ريال', medal:'🥇' },
-  { id:'l2', pos:2, name:'سامي المرزوق', avatar:'س', comp:'جائزة الصوت 2024', score:'9,211', prize:'🥈 50,000 ريال',  medal:'🥈' },
-  { id:'l3', pos:3, name:'رنا الأحمدي',  avatar:'ر', comp:'جائزة الصوت 2024', score:'8,774', prize:'🥉 25,000 ريال', medal:'🥉' },
-  { id:'l4', pos:4, name:'ليلى الجابر',  avatar:'ل', comp:'جائزة الصوت 2024', score:'7,950', prize:'',               medal:'' },
-  { id:'l5', pos:5, name:'عمر الزيد',    avatar:'ع', comp:'مسابقة الشعر 2024', score:'7,400', prize:'',              medal:'' },
+  { id:'l1', pos:1, name:t('tournamentshome:nawaAlharbi'),    avatar:t('tournamentshome:n'), comp:t('tournamentshome:theVoiceAward2024'), score:'9,842', prize:t('tournamentshome:100000Riyals'), medal:'🥇' },
+  { id:'l2', pos:2, name:t('tournamentshome:samiAlMarzouq'), avatar:t('tournamentshome:q'), comp:t('tournamentshome:theVoiceAward2024'), score:'9,211', prize:t('tournamentshome:50000Riyals'),  medal:'🥈' },
+  { id:'l3', pos:3, name:t('tournamentshome:ranaAlahmadi'),  avatar:t('tournamentshome:r'), comp:t('tournamentshome:theVoiceAward2024'), score:'8,774', prize:t('tournamentshome:25000Riyals'), medal:'🥉' },
+  { id:'l4', pos:4, name:t('tournamentshome:lailaAlJaber'),  avatar:t('tournamentshome:to'), comp:t('tournamentshome:theVoiceAward2024'), score:'7,950', prize:'',               medal:'' },
+  { id:'l5', pos:5, name:t('tournamentshome:omarAlzaid'),    avatar:t('tournamentshome:a'), comp:t('tournamentshome:poetryCompetition2024'), score:'7,400', prize:'',              medal:'' },
 ];
 
 // ── Filter Options ──────────────────────────────────────────────────────────────
-const STATUS_OPTS: FilterOption[]   = [{value:'open',label:'التسجيل مفتوح'},{value:'vote',label:'التصويت الآن'},{value:'judge',label:'التحكيم'},{value:'results',label:'النتائج'},{value:'ended',label:'انتهت'}];
-const CATEGORY_OPTS: FilterOption[] = [{value:'singing',label:'غناء'},{value:'poetry',label:'شعر'},{value:'podcast',label:'بودكاست'},{value:'music',label:'موسيقى'},{value:'comedy',label:'كوميديا'},{value:'khitaba',label:'خطابة'},{value:'rap',label:'راب'},{value:'nasheed',label:'نشيد'}];
-const COUNTRY_OPTS: FilterOption[]  = [{value:'sa',label:'🇸🇦 السعودية'},{value:'ae',label:'🇦🇪 الإمارات'},{value:'eg',label:'🇪🇬 مصر'},{value:'lb',label:'🇱🇧 لبنان'},{value:'kw',label:'🇰🇼 الكويت'},{value:'jo',label:'🇯🇴 الأردن'},{value:'int',label:'🌐 دولي'}];
-const SORT_OPTS: FilterOption[]     = [{value:'latest',label:'الأحدث'},{value:'popular',label:'الأكثر مشاركة'},{value:'deadline',label:'ينتهي قريباً'},{value:'prize',label:'أعلى جائزة'}];
+const STATUS_OPTS: FilterOption[]   = [{value:'open',label:t('tournamentshome:registrationIsOpen')},{value:'vote',label:t('tournamentshome:voteNow')},{value:'judge',label:t('tournamentshome:arbitration')},{value:'results',label:t('tournamentshome:results')},{value:'ended',label:t('tournamentshome:itsOver')}];
+const CATEGORY_OPTS: FilterOption[] = [{value:'singing',label:t('tournamentshome:singing')},{value:'poetry',label:t('tournamentshome:poetry')},{value:'podcast',label:t('tournamentshome:itsAPodcast')},{value:'music',label:t('tournamentshome:music')},{value:'comedy',label:t('tournamentshome:comedy')},{value:'khitaba',label:t('tournamentshome:oratory')},{value:'rap',label:t('tournamentshome:rap')},{value:'nasheed',label:t('tournamentshome:anthem')}];
+const COUNTRY_OPTS: FilterOption[]  = [{value:'sa',label:t('tournamentshome:saudiArabia')},{value:'ae',label:t('tournamentshome:emirates')},{value:'eg',label:t('tournamentshome:egypt')},{value:'lb',label:t('tournamentshome:lebanon')},{value:'kw',label:t('tournamentshome:kuwait')},{value:'jo',label:t('tournamentshome:jordan')},{value:'int',label:t('tournamentshome:international')}];
+const SORT_OPTS: FilterOption[]     = [{value:'latest',label:t('tournamentshome:latest')},{value:'popular',label:t('tournamentshome:mostShared')},{value:'deadline',label:t('tournamentshome:endsSoon')},{value:'prize',label:t('tournamentshome:highestAward')}];
 
 // ── Status helpers ─────────────────────────────────────────────────────────────
 function statusLabel(s: CompStatus): string {
-  return { open:'التسجيل مفتوح', vote:'التصويت الآن', judge:'التحكيم', results:'النتائج', ended:'انتهت' }[s];
+  return { open:t('tournamentshome:registrationIsOpen'), vote:t('tournamentshome:voteNow'), judge:t('tournamentshome:arbitration'), results:t('tournamentshome:results'), ended:t('tournamentshome:itsOver') }[s];
 }
 function statusClass(s: CompStatus): string {
   return { open:'thp-badge--open', vote:'thp-badge--vote', judge:'thp-badge--judge', results:'thp-badge--results', ended:'thp-badge--ended' }[s];
 }
 function ctaLabel(s: CompStatus): string {
-  return { open:'سجّل الآن', vote:'صوّت الآن', judge:'عرض الأعمال', results:'النتائج', ended:'الأرشيف' }[s];
+  return { open:t('tournamentshome:registerNow'), vote:t('tournamentshome:voteNow1'), judge:t('tournamentshome:showBusiness'), results:t('tournamentshome:results'), ended:t('tournamentshome:archives') }[s];
 }
 
 // ── Icons ──────────────────────────────────────────────────────────────────────
@@ -66,7 +70,7 @@ function HeroCarousel() {
   const [active, setActive] = useState(0);
   const card = HEROES[active] ?? HEROES[0]!;
   return (
-    <section className="thp-hero" aria-label="مسابقات مميزة">
+    <section className="thp-hero" aria-label={t('tournamentshome:featuredCompetitions')}>
       <div className="thp-hero__card">
         <div className="thp-hero__card-bg"/>
         <div className="thp-hero__card-body">
@@ -85,18 +89,18 @@ function HeroCarousel() {
             </div>
           </div>
           <div className="thp-hero__stats">
-            <div className="thp-hero__stat"><span className="thp-hero__stat-val">{card.participants}</span><span className="thp-hero__stat-label">مشارك</span></div>
-            <div className="thp-hero__stat"><span className="thp-hero__stat-val">{card.prize}</span><span className="thp-hero__stat-label">الجائزة</span></div>
-            <div className="thp-hero__stat"><span className="thp-hero__stat-val">{card.deadline}</span><span className="thp-hero__stat-label">متبقي</span></div>
+            <div className="thp-hero__stat"><span className="thp-hero__stat-val">{card.participants}</span><span className="thp-hero__stat-label">{t('tournamentshome:participant')}</span></div>
+            <div className="thp-hero__stat"><span className="thp-hero__stat-val">{card.prize}</span><span className="thp-hero__stat-label">{t('tournamentshome:thePrize')}</span></div>
+            <div className="thp-hero__stat"><span className="thp-hero__stat-val">{card.deadline}</span><span className="thp-hero__stat-label">{t('tournamentshome:remaining1')}</span></div>
           </div>
           <p className="thp-hero__desc">{card.desc}</p>
           <div className="thp-hero__actions">
             <button className="thp-hero__cta-btn" aria-label={ctaLabel(card.status)}>{ctaLabel(card.status)}</button>
-            <button className="thp-hero__sec-btn" aria-label="مشاركة">مشاركة</button>
+            <button className="thp-hero__sec-btn" aria-label={t('tournamentshome:sharing')}>{t('tournamentshome:sharing')}</button>
           </div>
         </div>
       </div>
-      <div className="thp-hero__dots" role="tablist" aria-label="اختر مسابقة">
+      <div className="thp-hero__dots" role="tablist" aria-label={t('tournamentshome:chooseAContest')}>
         {HEROES.map((h,i) => (
           <button key={h.id} className={`thp-hero__dot${i===active?' thp-hero__dot--active':''}`}
             role="tab" aria-selected={i===active} aria-label={h.title} onClick={() => setActive(i)}/>
@@ -127,13 +131,13 @@ export function TournamentsHomePage() {
   }
 
   return (
-    <main className="thp" dir="rtl" aria-label="الرئيسية — مسابقات">
+    <main className="thp" aria-label={t('tournamentshome:homeCompetitions')}>
 
       {/* Stories */}
-      <section aria-label="قصص المتسابقين">
+      <section aria-label={t('tournamentshome:contestantsStories')}>
         <div className="thp-story-row">
-          {['قصتك','نوى','سامي','رنا','خالد','دانا','ليلى','عمر'].map((n,i) => (
-            <button key={i} className="thp-story-item" aria-label={i===0?'إضافة قصة':`قصة ${n}`}>
+          {[t('tournamentshome:yourStory'),t('tournamentshome:ninety'),t('tournamentshome:sami'),t('tournamentshome:rana'),t('tournamentshome:immortal'),t('tournamentshome:wise'),t('tournamentshome:layla'),t('tournamentshome:age')].map((n,i) => (
+            <button key={i} className="thp-story-item" aria-label={i===0?t('tournamentshome:addAStory'):`قصة ${n}`}>
               <div className={`thp-story-ring${i===0?' thp-story-ring--self':''}`}>
                 <div className="thp-story-ring__inner">
                   <div className="thp-avatar" style={{width:52,height:52,fontSize:20}}>{n.charAt(0)}</div>
@@ -147,17 +151,17 @@ export function TournamentsHomePage() {
       </section>
 
       {/* Search + Filters */}
-      <section aria-label="بحث وتصفية">
+      <section aria-label={t('tournamentshome:searchAndFilter')}>
         <div className="thp-search">
           <input id="thp-search-input" className="thp-search__input" type="search"
-            placeholder="ابحث عن مسابقة، فنان، تصنيف..." autoComplete="off" dir="rtl"/>
+            placeholder={t('tournamentshome:searchForCompetitionArtistCategory')} autoComplete="off"/>
           <span className="thp-search__icon"><IcoSearch/></span>
         </div>
         <div className="thp-filters" style={{marginTop:'var(--space-3)'}}>
-          <FilterDropdown label="الحالة"   options={STATUS_OPTS}   values={statuses}   onToggle={toggle(setStatuses)}   onClear={()=>setStatuses([])}   defaultLabel="الكل"    ariaLabel="تصفية حسب الحالة"/>
-          <FilterDropdown label="التصنيف"  options={CATEGORY_OPTS} values={categories} onToggle={toggle(setCategories)} onClear={()=>setCategories([])} defaultLabel="الكل"    ariaLabel="تصفية حسب التصنيف"/>
-          <FilterDropdown label="البلد"    options={COUNTRY_OPTS}  values={countries}  onToggle={toggle(setCountries)}  onClear={()=>setCountries([])}  defaultLabel="الكل"    ariaLabel="تصفية حسب البلد"/>
-          <FilterDropdown label="الترتيب" options={SORT_OPTS}     values={sortOrders} onToggle={toggle(setSortOrders)} onClear={()=>setSortOrders([])} defaultLabel="الأحدث" ariaLabel="تصفية حسب الترتيب"/>
+          <FilterDropdown label={t('tournamentshome:theCondition')}   options={STATUS_OPTS}   values={statuses}   onToggle={toggle(setStatuses)}   onClear={()=>setStatuses([])}   defaultLabel={t('tournamentshome:everyone')}    ariaLabel={t('tournamentshome:filterByStatus')}/>
+          <FilterDropdown label={t('tournamentshome:classification')}  options={CATEGORY_OPTS} values={categories} onToggle={toggle(setCategories)} onClear={()=>setCategories([])} defaultLabel={t('tournamentshome:everyone')}    ariaLabel={t('tournamentshome:filterByCategory')}/>
+          <FilterDropdown label={t('tournamentshome:country')}    options={COUNTRY_OPTS}  values={countries}  onToggle={toggle(setCountries)}  onClear={()=>setCountries([])}  defaultLabel={t('tournamentshome:everyone')}    ariaLabel={t('tournamentshome:filterByCountry')}/>
+          <FilterDropdown label={t('tournamentshome:ranking')} options={SORT_OPTS}     values={sortOrders} onToggle={toggle(setSortOrders)} onClear={()=>setSortOrders([])} defaultLabel={t('tournamentshome:latest')} ariaLabel={t('tournamentshome:filterBySort')}/>
         </div>
         <SelectedChips groups={[
           { filterId:'status',   options:STATUS_OPTS,   values:statuses,   onRemove:toggle(setStatuses)   },
@@ -165,9 +169,8 @@ export function TournamentsHomePage() {
           { filterId:'country',  options:COUNTRY_OPTS,  values:countries,  onRemove:toggle(setCountries)  },
           { filterId:'sort',     options:SORT_OPTS,     values:sortOrders, onRemove:toggle(setSortOrders) },
         ]}/>
-        <button className="thp-subpage-btn" type="button" aria-label="استعراض تصنيفات المسابقات">
-          استعراض الأصناف
-          <svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
+        <button className="thp-subpage-btn" type="button" aria-label={t('tournamentshome:reviewCompetitionRankings')}>
+          {t('tournamentshome:browseItems')}<svg viewBox="0 0 16 16" fill="none" width="11" height="11" aria-hidden="true">
             <path d="M6 3H3a1 1 0 00-1 1v9a1 1 0 001 1h9a1 1 0 001-1V10M10 2h4m0 0v4m0-4L7 9" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
           </svg>
         </button>
@@ -179,8 +182,8 @@ export function TournamentsHomePage() {
       {/* المسابقات النشطة */}
       <section aria-labelledby="thp-active-h">
         <div className="thp-section__header">
-          <h2 id="thp-active-h" className="thp-section__title">المسابقات النشطة</h2>
-          <button className="thp-section__see-all" aria-label="عرض كل المسابقات">عرض الكل</button>
+          <h2 id="thp-active-h" className="thp-section__title">{t('tournamentshome:activeCompetitions')}</h2>
+          <button className="thp-section__see-all" aria-label={t('tournamentshome:viewAllCompetitions')}>{t('tournamentshome:viewAll')}</button>
         </div>
         <div className="thp-comp-list">
           {ACTIVE.map(c => (
@@ -200,13 +203,13 @@ export function TournamentsHomePage() {
                 </div>
               </div>
               <div className="thp-comp-card__meta">
-                <div className="thp-comp-card__meta-item"><span className="thp-comp-card__meta-val">{c.participants}</span><span className="thp-comp-card__meta-label">مشارك</span></div>
-                <div className="thp-comp-card__meta-item"><span className="thp-comp-card__meta-val">{c.prize}</span><span className="thp-comp-card__meta-label">الجائزة</span></div>
+                <div className="thp-comp-card__meta-item"><span className="thp-comp-card__meta-val">{c.participants}</span><span className="thp-comp-card__meta-label">{t('tournamentshome:participant')}</span></div>
+                <div className="thp-comp-card__meta-item"><span className="thp-comp-card__meta-val">{c.prize}</span><span className="thp-comp-card__meta-label">{t('tournamentshome:thePrize')}</span></div>
               </div>
               <div className="thp-comp-card__footer">
-                <span className="thp-comp-card__timer">⏳ متبقي: {c.deadline}</span>
+                <span className="thp-comp-card__timer">{t('tournamentshome:remaining')}{c.deadline}</span>
                 <div className="thp-comp-card__actions">
-                  <button className="thp-btn-ghost" aria-label={`تفاصيل ${c.title}`}>تفاصيل</button>
+                  <button className="thp-btn-ghost" aria-label={`تفاصيل ${c.title}`}>{t('tournamentshome:details')}</button>
                   <button className="thp-btn-primary" aria-label={ctaLabel(c.status)}>{ctaLabel(c.status)}</button>
                 </div>
               </div>
@@ -218,8 +221,8 @@ export function TournamentsHomePage() {
       {/* التصويت الآن */}
       <section aria-labelledby="thp-vote-h">
         <div className="thp-section__header">
-          <h2 id="thp-vote-h" className="thp-section__title">التصويت الآن</h2>
-          <button className="thp-section__see-all" aria-label="عرض كل المتسابقين">عرض الكل</button>
+          <h2 id="thp-vote-h" className="thp-section__title">{t('tournamentshome:voteNow')}</h2>
+          <button className="thp-section__see-all" aria-label={t('tournamentshome:viewAllContestants')}>{t('tournamentshome:viewAll')}</button>
         </div>
         <div className="thp-vote-list">
           {VOTING.map(v => (
@@ -236,7 +239,7 @@ export function TournamentsHomePage() {
                 </div>
               </div>
               <span className="thp-vote-card__votes">{(v.votes/1000).toFixed(1)}K</span>
-              <button className="thp-vote-card__vote-btn" aria-label={`صوّت لـ ${v.name}`}>صوّت</button>
+              <button className="thp-vote-card__vote-btn" aria-label={`صوّت لـ ${v.name}`}>{t('tournamentshome:voice')}</button>
             </div>
           ))}
         </div>
@@ -245,8 +248,8 @@ export function TournamentsHomePage() {
       {/* نتائج ولوحة الشرف */}
       <section aria-labelledby="thp-lb-h">
         <div className="thp-section__header">
-          <h2 id="thp-lb-h" className="thp-section__title">لوحة الشرف</h2>
-          <button className="thp-section__see-all" aria-label="عرض كل الفائزين">عرض الكل</button>
+          <h2 id="thp-lb-h" className="thp-section__title">{t('tournamentshome:honorBoard')}</h2>
+          <button className="thp-section__see-all" aria-label={t('tournamentshome:viewAllWinners')}>{t('tournamentshome:viewAll')}</button>
         </div>
         <div className="thp-leaderboard">
           {LEADERBOARD.map(r => (
@@ -267,27 +270,27 @@ export function TournamentsHomePage() {
       </section>
 
       {/* Sponsor */}
-      <section aria-label="إعلان">
+      <section aria-label={t('tournamentshome:advertisement')}>
         <div className="thp-sponsor">
-          <span className="thp-sponsor__label">إعلان</span>
+          <span className="thp-sponsor__label">{t('tournamentshome:advertisement')}</span>
           <div className="thp-sponsor__logo" aria-hidden="true">🏅</div>
           <div className="thp-sponsor__body">
-            <p className="thp-sponsor__name">stc — شريك المسابقات الرسمي</p>
-            <p className="thp-sponsor__tagline">ادعم المواهب العربية وتابع مسابقاتك المفضلة باشتراك stc الحصري</p>
+            <p className="thp-sponsor__name">{t('tournamentshome:stcTheOfficialCompetitionsPartner')}</p>
+            <p className="thp-sponsor__tagline">{t('tournamentshome:supportArabTalentAndFollowYourFavoriteCo')}</p>
           </div>
-          <button className="thp-sponsor__cta" aria-label="اشترك الآن">اشترك</button>
+          <button className="thp-sponsor__cta" aria-label={t('tournamentshome:subscribeNow')}>{t('tournamentshome:subscribe')}</button>
         </div>
       </section>
 
       {/* Create CTA */}
-      <section aria-label="إنشاء مسابقة">
+      <section aria-label={t('tournamentshome:createAContest')}>
         <div className="thp-cta">
           <div className="thp-cta__icon" aria-hidden="true">🎯</div>
           <div className="thp-cta__body">
-            <p className="thp-cta__title">أنشئ مسابقتك الخاصة</p>
-            <p className="thp-cta__desc">اكتشف مواهب جديدة وابنِ مجتمعك بمسابقة مميزة</p>
+            <p className="thp-cta__title">{t('tournamentshome:createYourOwnContest')}</p>
+            <p className="thp-cta__desc">{t('tournamentshome:discoverNewTalentsAndBuildYourCommunityW')}</p>
           </div>
-          <button className="thp-cta__btn" aria-label="إنشاء مسابقة جديدة">ابدأ الآن</button>
+          <button className="thp-cta__btn" aria-label={t('tournamentshome:createANewContest')}>{t('tournamentshome:startNow')}</button>
         </div>
       </section>
 

@@ -326,8 +326,8 @@ export const updateAudioDraft = functions
           // Validate cuts
           const cuts: Array<{ id: string; startMs: number; endMs: number; label?: string }> = [];
           if (ec.cuts && Array.isArray(ec.cuts)) {
-            if (ec.cuts.length > 1) {
-              throw new functions.https.HttpsError('invalid-argument', 'Max 1 cut segment for Phase 8-L.');
+            if (ec.cuts.length > 50) {
+              throw new functions.https.HttpsError('invalid-argument', 'Max 50 cut segments allowed.');
             }
             for (const cut of ec.cuts) {
               const cStart = Math.round(Math.min(3600000, Math.max(0, Number(cut.startMs) || 0)));
@@ -400,16 +400,23 @@ export const updateAudioDraft = functions
       // ── Phase 8-L.1: Preview invalidation ────────────────────────────────────
       // When draft configs change, mark downstream stage previews as dirty.
       const dirtyStages: PreviewStage[] = [];
-      if (data.audioAsset !== undefined) {
+      
+      const isDifferent = (updateVal: any, existingVal: any) => {
+        if (updateVal === undefined) return false;
+        if (updateVal instanceof admin.firestore.FieldValue) return existingVal !== undefined && existingVal !== null;
+        return JSON.stringify(updateVal) !== JSON.stringify(existingVal);
+      };
+
+      if (isDifferent(update.audioAsset, existing.audioAsset)) {
         dirtyStages.push('edit', 'effects', 'mixing', 'final');
       }
-      if (data.editConfig !== undefined) {
+      if (isDifferent(update.editConfig, existing.editConfig)) {
         dirtyStages.push('edit', 'effects', 'mixing', 'final');
       }
-      if (data.effectsConfig !== undefined) {
+      if (isDifferent(update.effectsConfig, existing.effectsConfig)) {
         dirtyStages.push('effects', 'mixing', 'final');
       }
-      if (data.mixingConfig !== undefined) {
+      if (isDifferent(update.mixingConfig, existing.mixingConfig)) {
         dirtyStages.push('mixing', 'final');
       }
       const uniqueDirty = [...new Set(dirtyStages)];

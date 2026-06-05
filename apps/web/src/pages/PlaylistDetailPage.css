@@ -199,7 +199,7 @@
   border-radius: 5px;
   cursor: pointer;
   transition: background 0.12s, border-color 0.12s;
-  text-align: right;
+  text-align: start;
   font-family: inherit;
   color: inherit;
 }

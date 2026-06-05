@@ -44,6 +44,9 @@ import { migratePrivacyLevel } from '@sound/shared';
 import './PrivacySettingsPage.css';
 import './Page.css';
 
+import i18n from '../i18n';
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 
 type SaveState = 'idle' | 'saving' | 'saved' | 'error';
@@ -326,7 +329,7 @@ export function PrivacySettingsPage() {
       </div>
 
       {/* ── Audience legend ──────────────────────────────────────────────────── */}
-      <div className="privacy-settings__legend" aria-label="توضيح خيارات الجمهور">
+      <div className="privacy-settings__legend" aria-label={t('privacysettings:clarifyingAudienceChoices')}>
         {AUDIENCES.map(a => (
           <div key={a.value} className={`privacy-settings__legend-item ${a.colorClass}`}>
             <span className="privacy-settings__legend-icon">{a.icon}</span>
@@ -454,7 +457,7 @@ function AudienceChips({
   onToggle: (aud: PrivacyAudience) => void;
 }) {
   return (
-    <div className="audience-chips" role="group" aria-label="اختيار الجمهور" id={id}>
+    <div className="audience-chips" role="group" aria-label={t('privacysettings:audienceChoice')} id={id}>
       {AUDIENCES.map(def => {
         const active = value.audiences.includes(def.value);
         return (

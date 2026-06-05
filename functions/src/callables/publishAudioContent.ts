@@ -367,12 +367,27 @@ export const publishAudioContent = functions
 
       const contentDoc = createAudioContentFromDraft(draft, owner, contentId, now);
 
-      // Phase 8-L.1: Attach final preview path for pipeline to use as source
+      // Phase 8-L.1: If we have an approved preview, instantly promote it to the final master
       const latestPreview = draft.previewAssets?.mixing
         ?? draft.previewAssets?.effects
         ?? draft.previewAssets?.edit;
       if (latestPreview?.status === 'ready' && latestPreview.storagePath) {
-        (contentDoc as unknown as Record<string, unknown>).finalPreviewStoragePath = latestPreview.storagePath;
+        const destPath = `audioProcessed/${uid}/${contentId}/master/master.m4a`;
+        await admin.storage().bucket().file(latestPreview.storagePath).copy(destPath);
+        
+        const [meta] = await admin.storage().bucket().file(latestPreview.storagePath).getMetadata();
+        
+        contentDoc.contentProcessingStatus = 'ready';
+        contentDoc.processedAudio = {
+          storagePath: destPath,
+          mimeType: latestPreview.mimeType || 'audio/mp4',
+          durationMs: latestPreview.durationMs || 0,
+          sizeBytes: meta.size ? Number(meta.size) : 0,
+          createdAt: now,
+          sourceOriginalPath: draft.audioAsset?.storagePath || '',
+        };
+        
+        functions.logger.info(`[publishAudioContent] Instantly published using preview ${latestPreview.storagePath}`, { contentId });
       }
 
       // ── 8. Write content + optionally delete draft (batch) ─────────────────

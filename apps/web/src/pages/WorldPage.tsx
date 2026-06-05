@@ -16,6 +16,10 @@ import { useParams } from 'react-router-dom';
 import { EmptyState } from '../components/EmptyState';
 import { LOCKED_WORLDS, type LockedWorldKey } from '../constants/lockedLabels';
 import './Page.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // Type guard: narrows string → LockedWorldKey so WORLD_META can be indexed safely.
 function isLockedWorldKey(id: string): id is LockedWorldKey {
@@ -24,11 +28,11 @@ function isLockedWorldKey(id: string): id is LockedWorldKey {
 
 // Keys must match LockedWorldKey — TypeScript will error if they drift from lockedLabels.ts.
 const WORLD_META: Record<LockedWorldKey, { label: string; icon: string; color: string; description: string }> = {
-  general:     { label: 'عالم عام',         icon: '🌍', color: 'var(--color-world-general)',     description: 'محتوى عام مفتوح للجميع' },
-  plus:        { label: 'عالم بلس',         icon: '⭐', color: 'var(--color-world-plus)',        description: 'محتوى بلس — مفتوح للمشاهدة لجميع المستخدمين' },
-  music:       { label: 'عالم الموسيقى',    icon: '🎵', color: 'var(--color-world-music)',       description: 'محتوى موسيقي منشور' },
-  radio:       { label: 'عالم الراديو',     icon: '📻', color: 'var(--color-world-radio)',       description: 'إذاعات ومحطات راديو مجدولة' },
-  tournaments: { label: 'عالم المسابقات',   icon: '',   color: 'var(--color-world-tournaments)', description: 'مسابقات صوتية وتحديات إبداعية' },
+  general:     { label: t('world:publicScientist'),         icon: '🌍', color: 'var(--color-world-general)',     description: t('world:publicContentIsOpenToEveryone') },
+  plus:        { label: t('world:worldPlus'),         icon: '⭐', color: 'var(--color-world-plus)',        description: t('world:plusContentOpenForViewingByAllUsers') },
+  music:       { label: t('world:theWorldOfMusic'),    icon: '🎵', color: 'var(--color-world-music)',       description: t('world:publishedMusicContent') },
+  radio:       { label: t('world:radioWorld'),     icon: '📻', color: 'var(--color-world-radio)',       description: t('world:scheduledBroadcastsAndRadioStations') },
+  tournaments: { label: t('world:worldOfCompetitions'),   icon: '',   color: 'var(--color-world-tournaments)', description: t('world:vocalCompetitionsAndCreativeChallenges') },
 };
 
 export function WorldPage() {
@@ -38,7 +42,7 @@ export function WorldPage() {
   if (!meta) {
     return (
       <div className="page">
-        <EmptyState icon="❓" title="عالم غير معروف" />
+        <EmptyState icon="❓" title={t('world:unknownWorld')} />
       </div>
     );
   }
@@ -58,8 +62,8 @@ export function WorldPage() {
       </div>
       <EmptyState
         icon={meta.icon}
-        title="لا يوجد محتوى بعد"
-        description="سيظهر المحتوى المنشور هنا عند توفره"
+        title={t('world:thereIsNoContentYet')}
+        description={t('world:publishedContentWillAppearHereWhenAvaila')}
       />
     </div>
   );

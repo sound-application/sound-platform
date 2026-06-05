@@ -22,6 +22,10 @@
 
 import React, { useState, useCallback, useRef, useMemo } from 'react';
 import { useTranslation } from 'react-i18next';
+import i18n from 'i18next';
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 import { TFunction } from 'i18next';
 import { useWorldNav } from '../contexts/WorldNavContext';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../components/FilterDropdown';
@@ -82,23 +86,23 @@ const getGenSortOptions = (t: TFunction): FilterOption[] => [
   { value: 'suggested',   label: t('filters.sort.suggested') },
 ];
 
-const GENERAL_ROOMS: LiveRoom[] = [
-  { id: 'g1', title: 'حديث المساء', host: 'نورة منصور', category: 'ثقافة', categoryId: 'culture', speakers: 6, listeners: '8.4K', isFollowed: true, isGuestOpen: true, isFeatured: true, avatarInitials: 'نم', avatarColor: '#7c3aed' },
-  { id: 'g2', title: 'شعر على الهواء', host: 'بدر المطيري', category: 'شعر', categoryId: 'poetry', speakers: 5, listeners: '1.2K', isFollowed: true, isGuestOpen: false, isFeatured: true, avatarInitials: 'بم', avatarColor: '#0891b2' },
-  { id: 'g3', title: 'أسئلة عن صناعة الصوت', host: 'رهف علي', category: 'بودكاست', categoryId: 'podcast', speakers: 8, listeners: '2.1K', isFollowed: false, isGuestOpen: true, isFeatured: true, avatarInitials: 'رع', avatarColor: '#059669' },
-  { id: 'g4', title: 'مساحة مبدعين صاعدين', host: 'فيصل كمال', category: 'تطوير', categoryId: 'dev', speakers: 3, listeners: '450', isFollowed: false, isGuestOpen: false, isFeatured: true, avatarInitials: 'فك', avatarColor: '#d97706' },
-  { id: 'g5', title: 'حكايات من الماضي', host: 'فهد الراوي', category: 'قصص', categoryId: 'stories', speakers: 2, listeners: '900', isFollowed: true, isGuestOpen: false, avatarInitials: 'فر', avatarColor: '#be185d' },
-  { id: 'g6', title: 'بودكاست الفن الرقمي', host: 'ياسين فهد', category: 'بودكاست', categoryId: 'podcast', speakers: 2, listeners: '670', isFollowed: false, isGuestOpen: true, avatarInitials: 'يف', avatarColor: '#1d4ed8' },
+const getGENERAL_ROOMS = (t: any): LiveRoom[]  => [
+  { id: 'g1', title: t('live:eveningTalk'), host: t('live:nouraMansour'), category: t('live:culture'), categoryId: 'culture', speakers: 6, listeners: '8.4K', isFollowed: true, isGuestOpen: true, isFeatured: true, avatarInitials: t('live:damp'), avatarColor: '#7c3aed' },
+  { id: 'g2', title: t('live:hairOnTheAir'), host: t('live:badrAlmutairi'), category: t('live:filters.category.poetry'), categoryId: 'poetry', speakers: 5, listeners: '1.2K', isFollowed: true, isGuestOpen: false, isFeatured: true, avatarInitials: t('live:theBomb'), avatarColor: '#0891b2' },
+  { id: 'g3', title: t('live:questionsAboutTheAudioIndustry'), host: t('live:rahafAli'), category: t('live:filters.category.podcast'), categoryId: 'podcast', speakers: 8, listeners: '2.1K', isFollowed: false, isGuestOpen: true, isFeatured: true, avatarInitials: t('live:ra'), avatarColor: '#059669' },
+  { id: 'g4', title: t('live:aSpaceForEmergingCreatives'), host: t('live:faisalKamal'), category: t('live:development'), categoryId: 'dev', speakers: 3, listeners: '450', isFollowed: false, isGuestOpen: false, isFeatured: true, avatarInitials: t('live:unscrew'), avatarColor: '#d97706' },
+  { id: 'g5', title: t('live:talesFromThePast'), host: t('live:fahdAlrawi'), category: t('live:filters.category.stories'), categoryId: 'stories', speakers: 2, listeners: '900', isFollowed: true, isGuestOpen: false, avatarInitials: t('live:oven'), avatarColor: '#be185d' },
+  { id: 'g6', title: t('live:digitalArtPodcast'), host: t('live:yassinFahd'), category: t('live:filters.category.podcast'), categoryId: 'podcast', speakers: 2, listeners: '670', isFollowed: false, isGuestOpen: true, avatarInitials: t('live:yf'), avatarColor: '#1d4ed8' },
 ];
 
 // Plus rooms
-const PLUS_ROOMS: LiveRoom[] = [
-  { id: 'p1', title: 'جلسة المبدعين المتقدمة', host: 'سارة الأحمدي', category: 'إبداع', categoryId: 'creative', speakers: 8, listeners: '12.3K', isFollowed: true, isGuestOpen: true, isFeatured: true, avatarInitials: 'سأ', avatarColor: '#b45309' },
-  { id: 'p2', title: 'حوار الكُتَّاب الحصري', host: 'عمر الفيصل', category: 'أدب', categoryId: 'literature', speakers: 5, listeners: '4.7K', isFollowed: false, isGuestOpen: false, isFeatured: true, avatarInitials: 'عف', avatarColor: '#7c3aed' },
-  { id: 'p3', title: 'ورشة التسجيل الصوتي', host: 'لمى الجاسر', category: 'تقنية', categoryId: 'tech', speakers: 3, listeners: '2.9K', isFollowed: true, isGuestOpen: true, isFeatured: true, avatarInitials: 'لج', avatarColor: '#0891b2' },
-  { id: 'p4', title: 'نقاش فلسفي عميق', host: 'كريم نصر', category: 'فكر', categoryId: 'philosophy', speakers: 6, listeners: '1.8K', isFollowed: false, isGuestOpen: true, avatarInitials: 'كن', avatarColor: '#059669' },
-  { id: 'p5', title: 'ليلة الشعر الكلاسيكي', host: 'ريم السلطان', category: 'شعر', categoryId: 'poetry', speakers: 4, listeners: '3.2K', isFollowed: true, isGuestOpen: false, avatarInitials: 'رس', avatarColor: '#be185d' },
-  { id: 'p6', title: 'استوديو بلس — التسجيل المباشر', host: 'فارس العتيبي', category: 'موسيقى', categoryId: 'music', speakers: 2, listeners: '5.1K', isFollowed: false, isGuestOpen: false, avatarInitials: 'فع', avatarColor: '#d97706' },
+const getPLUS_ROOMS = (t: any): LiveRoom[]  => [
+  { id: 'p1', title: t('live:advancedCreatorsSession'), host: t('live:sarahAlahmadi'), category: t('live:creativity'), categoryId: 'creative', speakers: 8, listeners: '12.3K', isFollowed: true, isGuestOpen: true, isFeatured: true, avatarInitials: t('live:iWill'), avatarColor: '#b45309' },
+  { id: 'p2', title: t('live:exclusiveWritersInterview'), host: t('live:omarAlfaisal'), category: t('live:literature'), categoryId: 'literature', speakers: 5, listeners: '4.7K', isFollowed: false, isGuestOpen: false, isFeatured: true, avatarInitials: t('live:pardon'), avatarColor: '#7c3aed' },
+  { id: 'p3', title: t('live:audioRecordingWorkshop'), host: t('live:lamaAljasser'), category: t('live:technique'), categoryId: 'tech', speakers: 3, listeners: '2.9K', isFollowed: true, isGuestOpen: true, isFeatured: true, avatarInitials: t('live:lodge'), avatarColor: '#0891b2' },
+  { id: 'p4', title: t('live:deepPhilosophicalDiscussion'), host: t('live:karimNasr'), category: t('live:toThink'), categoryId: 'philosophy', speakers: 6, listeners: '1.8K', isFollowed: false, isGuestOpen: true, avatarInitials: t('live:be'), avatarColor: '#059669' },
+  { id: 'p5', title: t('live:classicPoetryNight'), host: t('live:reemAlsultan'), category: t('live:filters.category.poetry'), categoryId: 'poetry', speakers: 4, listeners: '3.2K', isFollowed: true, isGuestOpen: false, avatarInitials: t('live:juice'), avatarColor: '#be185d' },
+  { id: 'p6', title: t('live:studioPlusLiveRecording'), host: t('live:faresAlotaibi'), category: t('live:filters.category.music'), categoryId: 'music', speakers: 2, listeners: '5.1K', isFollowed: false, isGuestOpen: false, avatarInitials: t('live:fa'), avatarColor: '#d97706' },
 ];
 
 const getPlusStatusOptions = (t: TFunction): FilterOption[] => [
@@ -190,15 +194,15 @@ const getRadioSortOptions = (t: TFunction): FilterOption[] => [
   { value: 'upcoming',      label: t('filters.sort.upcoming') },
 ];
 
-const RADIO_STATIONS: RadioStation[] = [
-  { id: 'r1', name: 'إذاعة صوت العرب', program: 'مساء الحكايات', category: 'ثقافة', categoryId: 'culture', country: 'مصر', countryId: 'eg', listeners: '18K', isLive: true, isSaved: true, isFollowed: true, avatarInitials: 'صع', avatarColor: '#7c3aed', onAirStatus: 'live', nextProgram: 'أخبار المساء', nextTime: '21:00' },
-  { id: 'r2', name: 'إذاعة القرآن الكريم', program: 'تلاوات الصباح', category: 'قرآن', categoryId: 'quran', country: 'السعودية', countryId: 'sa', listeners: '120K', isLive: true, isSaved: false, isFollowed: true, avatarInitials: 'قك', avatarColor: '#059669', onAirStatus: 'live', nextProgram: 'درس الفقه', nextTime: '08:00' },
-  { id: 'r3', name: 'موجة الرياض', program: 'تحليل الدوري', category: 'رياضة', categoryId: 'sports', country: 'السعودية', countryId: 'sa', listeners: '42K', isLive: false, isSaved: false, isFollowed: false, avatarInitials: 'مر', avatarColor: '#0891b2', onAirStatus: 'recorded', nextProgram: 'أخبار الرياضة', nextTime: '18:00' },
-  { id: 'r4', name: 'راديو الحكايات', program: 'ألف ليلة وليلة', category: 'حكايات', categoryId: 'stories', country: 'الأردن', countryId: 'jo', listeners: '5.2K', isLive: false, isSaved: true, isFollowed: false, avatarInitials: 'رح', avatarColor: '#be185d', onAirStatus: 'recorded' },
-  { id: 'r5', name: 'ليالي الطرب', program: 'كلثوميات', category: 'موسيقى', categoryId: 'music', country: 'مصر', countryId: 'eg', listeners: '15K', isLive: true, isSaved: false, isFollowed: true, avatarInitials: 'لط', avatarColor: '#d97706', onAirStatus: 'live', nextProgram: 'فيروزيات', nextTime: '22:00' },
-  { id: 'r6', name: 'راديو الطريق', program: 'حالة المرور', category: 'أخبار', categoryId: 'news', country: 'الإمارات', countryId: 'ae', listeners: '25K', isLive: true, isSaved: false, isFollowed: false, avatarInitials: 'رط', avatarColor: '#1d4ed8', onAirStatus: 'live' },
-  { id: 'r7', name: 'أطفال FM', program: 'حواديت الصغار', category: 'أطفال', categoryId: 'kids', country: 'السعودية', countryId: 'sa', listeners: '8K', isLive: false, isSaved: false, isFollowed: false, avatarInitials: 'أف', avatarColor: '#9333ea', onAirStatus: 'upcoming', nextProgram: 'حواديت الصغار', nextTime: '16:00' },
-  { id: 'r8', name: 'حديث المساء', program: 'حوار مفتوح', category: 'ثقافة', categoryId: 'culture', country: 'الكويت', countryId: 'kw', listeners: '3.5K', isLive: false, isSaved: true, isFollowed: true, avatarInitials: 'حم', avatarColor: '#0891b2', onAirStatus: 'recorded' },
+const getRADIO_STATIONS = (t: any): RadioStation[]  => [
+  { id: 'r1', name: t('live:voiceOfArabsRadio'), program: t('live:eveningStories'), category: t('live:culture'), categoryId: 'culture', country: t('live:egypt'), countryId: 'eg', listeners: '18K', isLive: true, isSaved: true, isFollowed: true, avatarInitials: t('live:saa'), avatarColor: '#7c3aed', onAirStatus: 'live', nextProgram: t('live:eveningNews'), nextTime: '21:00' },
+  { id: 'r2', name: t('live:holyQuranRadio'), program: t('live:morningRecitations'), category: t('live:theQuran'), categoryId: 'quran', country: t('live:saudiArabia'), countryId: 'sa', listeners: '120K', isLive: true, isSaved: false, isFollowed: true, avatarInitials: t('live:cc'), avatarColor: '#059669', onAirStatus: 'live', nextProgram: t('live:heStudiedJurisprudence'), nextTime: '08:00' },
+  { id: 'r3', name: t('live:riyadhWave'), program: t('live:periodicAnalysis'), category: t('live:sports'), categoryId: 'sports', country: t('live:saudiArabia'), countryId: 'sa', listeners: '42K', isLive: false, isSaved: false, isFollowed: false, avatarInitials: t('live:die'), avatarColor: '#0891b2', onAirStatus: 'recorded', nextProgram: t('live:sportsNews'), nextTime: '18:00' },
+  { id: 'r4', name: t('live:radioStories'), program: t('live:oneThousandAndOneNights'), category: t('live:tales'), categoryId: 'stories', country: t('live:jordan'), countryId: 'jo', listeners: '5.2K', isLive: false, isSaved: true, isFollowed: false, avatarInitials: t('live:reh'), avatarColor: '#be185d', onAirStatus: 'recorded' },
+  { id: 'r5', name: t('live:nightsOfRapture'), program: t('live:calthosomes'), category: t('live:filters.category.music'), categoryId: 'music', country: t('live:egypt'), countryId: 'eg', listeners: '15K', isLive: true, isSaved: false, isFollowed: true, avatarInitials: t('live:lat'), avatarColor: '#d97706', onAirStatus: 'live', nextProgram: t('live:fayrouziyat'), nextTime: '22:00' },
+  { id: 'r6', name: t('live:roadRadio'), program: t('live:trafficCondition'), category: t('live:news'), categoryId: 'news', country: t('live:theUae'), countryId: 'ae', listeners: '25K', isLive: true, isSaved: false, isFollowed: false, avatarInitials: t('live:blood'), avatarColor: '#1d4ed8', onAirStatus: 'live' },
+  { id: 'r7', name: t('live:kidsFm'), program: t('live:littleStories'), category: t('live:children'), categoryId: 'kids', country: t('live:saudiArabia'), countryId: 'sa', listeners: '8K', isLive: false, isSaved: false, isFollowed: false, avatarInitials: t('live:af'), avatarColor: '#9333ea', onAirStatus: 'upcoming', nextProgram: t('live:littleStories'), nextTime: '16:00' },
+  { id: 'r8', name: t('live:eveningTalk'), program: t('live:openDialogue'), category: t('live:culture'), categoryId: 'culture', country: t('live:kuwait'), countryId: 'kw', listeners: '3.5K', isLive: false, isSaved: true, isFollowed: true, avatarInitials: t('live:fatherinlaw'), avatarColor: '#0891b2', onAirStatus: 'recorded' },
 ];
 
 // ─── Avatar (initials-based, no emoji) ───────────────────────────────────────
@@ -398,7 +402,7 @@ function GeneralLive({ t }: { t: TFunction }) {
 
   // Derived lists
   const q = searchQuery.trim().toLowerCase();
-  const rooms = GENERAL_ROOMS.filter((r) => {
+  const rooms = getGENERAL_ROOMS(t).filter((r) => {
     const statOk   = selStatuses.length === 0   || (selStatuses.includes('live_now') && true) || (selStatuses.includes('guest_open') ? r.isGuestOpen : false) || (selStatuses.includes('following') ? r.isFollowed : false);
     const catOk    = selCategories.length === 0 || selCategories.includes(r.categoryId);
     const searchOk = !q ||
@@ -431,7 +435,7 @@ function GeneralLive({ t }: { t: TFunction }) {
             id="live-search-input"
             className="live-search__input"
             type="search"
-            dir="rtl"
+           
             placeholder={t('search.general.placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -661,7 +665,7 @@ function PlusLive({ t }: { t: TFunction }) {
   const plusSortOptions = useMemo(() => getPlusSortOptions(t), [t]);
 
   const q = searchQuery.trim().toLowerCase();
-  const rooms = PLUS_ROOMS.filter((r) => {
+  const rooms = getPLUS_ROOMS(t).filter((r) => {
     const statOk   = selStatuses.length === 0 || selStatuses.some(s =>
       s === 'live_now'   ? true :
       s === 'guest_open' ? r.isGuestOpen :
@@ -694,7 +698,7 @@ function PlusLive({ t }: { t: TFunction }) {
             id="plus-live-search-input"
             className="live-search__input"
             type="search"
-            dir="rtl"
+           
             placeholder={t('search.plus.placeholder')}
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -928,7 +932,7 @@ function RadioLive({ t }: { t: TFunction }) {
   ], [t]);
 
   const q = searchQuery.trim().toLowerCase();
-  const filtered = RADIO_STATIONS.filter(s => {
+  const filtered = getRADIO_STATIONS(t).filter(s => {
     const catOk    = selCategories.length === 0 || selCategories.includes(s.categoryId);
     const ctryOk   = selCountries.length === 0  || selCountries.includes(s.countryId);
     const statOk   = selStatuses.length === 0   || selStatuses.includes(s.onAirStatus);
@@ -940,7 +944,7 @@ function RadioLive({ t }: { t: TFunction }) {
   const otherStations = filtered.filter(s => !s.isLive);
 
   // My-stations derived list
-  const myStations = RADIO_STATIONS.filter(s =>
+  const myStations = getRADIO_STATIONS(t).filter(s =>
     myTab === 'saved'    ? s.isSaved :
     myTab === 'followed' ? s.isFollowed :
     true
@@ -961,7 +965,7 @@ function RadioLive({ t }: { t: TFunction }) {
           <input
             id="radio-live-search"
             className="live-search__input"
-            type="search" dir="rtl"
+            type="search"
             placeholder={t('search.radio.placeholder')}
             value={searchQuery}
             onChange={e => setSearchQuery(e.target.value)}
@@ -1094,9 +1098,8 @@ function RadioLive({ t }: { t: TFunction }) {
 
 // ─── Page ─────────────────────────────────────────────────────────────────────
 
-export function LivePage() {
-  const { world } = useWorldNav();
-  const { t } = useTranslation('live');
+export function LivePage() {  const { world } = useWorldNav();
+  const { t } = useTranslation(['live', 'home']);
 
   const metaMap: Record<string, { title: string; subtitle: string }> = {
     general:     { title: t('worldMeta.general.title'),       subtitle: t('worldMeta.general.subtitle') },
@@ -1109,7 +1112,7 @@ export function LivePage() {
   const meta = (metaMap[world] ?? metaMap['general'])!;
 
   return (
-    <main className="live-page" aria-label={meta.title} dir="rtl">
+    <main className="live-page" aria-label={meta.title}>
       <header className="live-page__header">
         <div>
           <h1 className="live-page__title">{meta.title}</h1>

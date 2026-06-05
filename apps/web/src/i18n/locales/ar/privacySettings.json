@@ -93,5 +93,7 @@
     "viewPublic": "عرض الملف العام",
     "saving": "جاري الحفظ...",
     "saveChanges": "حفظ التغييرات"
-  }
+  },
+  "audienceChoice": "اختيار الجمهور",
+  "clarifyingAudienceChoices": "توضيح خيارات الجمهور"
 }

@@ -86,7 +86,7 @@
 .php-hero__glow {
   position: absolute;
   top: -40px;
-  right: -40px;
+  inset-inline-end: -40px;
   width: 200px;
   height: 200px;
   background: radial-gradient(circle, rgba(245,158,11,0.15) 0%, transparent 70%);
@@ -150,7 +150,7 @@
   font-family: var(--font-sans);
   color: var(--color-text-primary);
   transition: border-color var(--transition-fast), background var(--transition-fast);
-  text-align: right;
+  text-align: end;
 }
 .php-search__input::placeholder { color: var(--color-text-muted); }
 .php-search__input:focus {
@@ -162,7 +162,7 @@
 .php-search__icon {
   position: absolute;
   top: 50%;
-  left: var(--space-3);
+  inset-inline-start: var(--space-3);
   transform: translateY(-50%);
   color: var(--color-text-muted);
   pointer-events: none;
@@ -255,7 +255,7 @@
 .php-story-ring__add {
   position: absolute;
   bottom: -2px;
-  left: -2px;
+  inset-inline-start: -2px;
   width: 18px;
   height: 18px;
   border-radius: 50%;
@@ -350,7 +350,7 @@
 .php-content-card__tag {
   position: absolute;
   top: var(--space-2);
-  right: var(--space-2);
+  inset-inline-end: var(--space-2);
   font-size: 9px;
   font-weight: 700;
   color: #f59e0b;
@@ -363,7 +363,7 @@
 .php-content-card__lock {
   position: absolute;
   top: var(--space-2);
-  left: var(--space-2);
+  inset-inline-start: var(--space-2);
   font-size: 12px;
   opacity: 0.75;
 }
@@ -371,7 +371,7 @@
 .php-content-card__play-stat {
   position: absolute;
   bottom: var(--space-2);
-  left: var(--space-2);
+  inset-inline-start: var(--space-2);
   display: flex;
   align-items: center;
   gap: var(--space-1);
@@ -493,7 +493,7 @@
 .php-sponsor__label {
   position: absolute;
   top: var(--space-2);
-  left: var(--space-3);
+  inset-inline-start: var(--space-3);
   font-size: 9px;
   font-weight: 500;
   color: var(--color-text-muted);

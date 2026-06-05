@@ -28,6 +28,9 @@ import { TFunction } from 'i18next';
 import './GeneralHomePage.css';
 import { FilterDropdown, SelectedChips, type FilterOption } from '../components/FilterDropdown';
 
+import i18n from '../i18n';
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 // ─── Types ────────────────────────────────────────────────────────────────────
 // Shapes mirror intended Firestore document projections.
 
@@ -65,56 +68,7 @@ interface PlaylistItem {
 }
 
 // ─── Static Representative Data ───────────────────────────────────────────────
-// Replace with useGeneralHomeFeed() or equivalent when backend is ready.
-
-const STORY_ITEMS: StoryItem[] = [
-  { uid: 'self',  displayName: 'قصتك',   isSelf: true },
-  { uid: 'su1',   displayName: 'لينا'   },
-  { uid: 'su2',   displayName: 'سامر'   },
-  { uid: 'su3',   displayName: 'نور'    },
-  { uid: 'su4',   displayName: 'ريم'    },
-  { uid: 'su5',   displayName: 'عمر'    },
-  { uid: 'su6',   displayName: 'هنا'    },
-];
-
-const TRENDING_ITEMS: ContentItem[] = [
-  { id: 'gt1', title: 'قصص ملهمة',       meta: 'بودكاست أسبوعي',   playCount: '2.4M',  countryFlag: '🇸🇦', tag: 'رائج' },
-  { id: 'gt2', title: 'عالم المعرفة',     meta: 'مقالات صوتية',     playCount: '1.8M',  countryFlag: '🇦🇪', tag: 'رائج' },
-  { id: 'gt3', title: 'لحظات الصمت',     meta: 'بودكاست تأمل',     playCount: '940K',  countryFlag: '🇪🇬' },
-  { id: 'gt4', title: 'شعر الليل',        meta: 'قراءة شعرية',      playCount: '730K',  countryFlag: '🇸🇦', tag: 'جديد' },
-];
-
-const RECOMMENDED_ITEMS: ContentItem[] = [
-  { id: 'gr1', title: 'لحظات الصمت',     meta: 'بودكاست تأمل',     durationLabel: '18 دقيقة' },
-  { id: 'gr2', title: 'قصص من التاريخ',  meta: 'وثائقي صوتي',      durationLabel: '31 دقيقة' },
-  { id: 'gr3', title: 'عالم التقنية',    meta: 'مراجعات تقنية',    durationLabel: '22 دقيقة' },
-  { id: 'gr4', title: 'الإبداع اليومي', meta: 'قصص قصيرة',         durationLabel: '9 دقائق'  },
-];
-
-const TOP_CREATORS: CreatorItem[] = [
-  { uid: 'gc1', displayName: 'أحمد عادل',   handle: '@aadel',   followerLabel: '980K متابع',  specialty: 'بودكاست', countryFlag: '🇸🇦' },
-  { uid: 'gc2', displayName: 'سارة ملك',    handle: '@smalek',  followerLabel: '1.2M متابع',  specialty: 'قصص',     countryFlag: '🇦🇪' },
-  { uid: 'gc3', displayName: 'خالد نور',    handle: '@knour',   followerLabel: '650K متابع',  specialty: 'تأمل',    countryFlag: '🇸🇦' },
-  { uid: 'gc4', displayName: 'دينا علي',    handle: '@dali',    followerLabel: '420K متابع',  specialty: 'شعر',     countryFlag: '🇪🇬' },
-];
-
-const RISING_CREATORS: CreatorItem[] = [
-  { uid: 'grc1', displayName: 'ليلى'   },
-  { uid: 'grc2', displayName: 'عمران'  },
-  { uid: 'grc3', displayName: 'مايا'   },
-  { uid: 'grc4', displayName: 'ياسين'  },
-  { uid: 'grc5', displayName: 'دينا'   },
-];
-
-const FOLLOWING_CREATORS: CreatorItem[] = [
-  { uid: 'gf1', displayName: 'هنا إبراهيم', handle: '@hana',  followerLabel: 'محتوى حصري جديد متاح الآن' },
-  { uid: 'gf2', displayName: 'فارس خليل',   handle: '@fares', followerLabel: 'آخر نشاط منذ ساعة'         },
-];
-
-const PLAYLISTS: PlaylistItem[] = [
-  { id: 'gp1', title: 'أفضل ما في الأسبوع',   tag: 'مختارة لك',   trackCount: '12 قطعة'  },
-  { id: 'gp2', title: 'أجواء التركيز',          tag: 'استرخاء',     trackCount: '8 قطع'   },
-];
+// Will be moved inside the component to use the reactive t() function
 
 // ─── Filter Options — الحالة | التصنيف | البلد | الترتيب ─────────────────────
 // Axis order is locked by UX spec: do not reorder.
@@ -138,13 +92,13 @@ const getCategoryOptions = (t: TFunction): FilterOption[] => [
 ];
 
 const getCountryOptions = (t: TFunction): FilterOption[] => [
-  { value: 'sa',   label: '🇸🇦 السعودية'     }, // Keep as is or translate if needed. Assuming emojis and Arabic names.
-  { value: 'ae',   label: '🇦🇪 الإمارات'     },
-  { value: 'eg',   label: '🇪🇬 مصر'          },
-  { value: 'kw',   label: '🇰🇼 الكويت'       },
-  { value: 'jo',   label: '🇯🇴 الأردن'        },
-  { value: 'ma',   label: '🇲🇦 المغرب'        },
-  { value: 'dz',   label: '🇩🇿 الجزائر'      },
+  { value: 'sa',   label: t('saudiArabia')     }, // Keep as is or translate if needed. Assuming emojis and Arabic names.
+  { value: 'ae',   label: t('emirates')     },
+  { value: 'eg',   label: t('egypt')          },
+  { value: 'kw',   label: t('kuwait')       },
+  { value: 'jo',   label: t('jordan')        },
+  { value: 'ma',   label: t('morocco')        },
+  { value: 'dz',   label: t('algeria')      },
 ];
 
 const getSortOptions = (t: TFunction): FilterOption[] => [
@@ -209,8 +163,57 @@ function CoverFallback({ height = 120 }: { height?: number }) {
 // ─── Main Component ───────────────────────────────────────────────────────────
 
 export function GeneralHomePage() {
-  const { t } = useTranslation('generalHome');
+  const { t } = useTranslation('generalhome');
   
+  const STORY_ITEMS: StoryItem[] = useMemo(() => [
+    { uid: 'self',  displayName: t('yourStory'),   isSelf: true },
+    { uid: 'su1',   displayName: t('lena')   },
+    { uid: 'su2',   displayName: t('samer')   },
+    { uid: 'su3',   displayName: t('others')    },
+    { uid: 'su4',   displayName: t('reem')    },
+    { uid: 'su5',   displayName: t('age')    },
+    { uid: 'su6',   displayName: t('here')    },
+  ], [t]);
+
+  const TRENDING_ITEMS: ContentItem[] = useMemo(() => [
+    { id: 'gt1', title: t('inspiringStories'),       meta: t('weeklyPodcast'),   playCount: '2.4M',  countryFlag: '🇸🇦', tag: t('common') },
+    { id: 'gt2', title: t('theWorldOfKnowledge'),     meta: t('audioArticles'),     playCount: '1.8M',  countryFlag: '🇦🇪', tag: t('common') },
+    { id: 'gt3', title: t('momentsOfSilence'),     meta: t('meditationPodcast'),     playCount: '940K',  countryFlag: '🇪🇬' },
+    { id: 'gt4', title: t('nightPoetry'),        meta: t('poetryReading'),      playCount: '730K',  countryFlag: '🇸🇦', tag: t('new') },
+  ], [t]);
+
+  const RECOMMENDED_ITEMS: ContentItem[] = useMemo(() => [
+    { id: 'gr1', title: t('momentsOfSilence'),     meta: t('meditationPodcast'),     durationLabel: t('18Minutes') },
+    { id: 'gr2', title: t('storiesFromHistory'),  meta: t('audioDocumentary'),      durationLabel: t('31Minutes') },
+    { id: 'gr3', title: t('theWorldOfTechnology'),    meta: t('technicalReviews'),    durationLabel: t('22Minutes') },
+    { id: 'gr4', title: t('dailyCreativity'), meta: t('shortStories'),         durationLabel: t('9Minutes')  },
+  ], [t]);
+
+  const TOP_CREATORS: CreatorItem[] = useMemo(() => [
+    { uid: 'gc1', displayName: t('ahmedAdel'),   handle: '@aadel',   followerLabel: t('980kFollowers'),  specialty: t('itsAPodcast'), countryFlag: '🇸🇦' },
+    { uid: 'gc2', displayName: t('sarahMalak'),    handle: '@smalek',  followerLabel: t('12mFollowers'),  specialty: t('stories'),     countryFlag: '🇦🇪' },
+    { uid: 'gc3', displayName: t('khaledNour'),    handle: '@knour',   followerLabel: t('650kFollowers'),  specialty: t('contemplation'),    countryFlag: '🇸🇦' },
+    { uid: 'gc4', displayName: t('dinaAli'),    handle: '@dali',    followerLabel: t('420kFollowers'),  specialty: t('poetry'),     countryFlag: '🇪🇬' },
+  ], [t]);
+
+  const RISING_CREATORS: CreatorItem[] = useMemo(() => [
+    { uid: 'grc1', displayName: t('layla')   },
+    { uid: 'grc2', displayName: t('imran')  },
+    { uid: 'grc3', displayName: t('maya')   },
+    { uid: 'grc4', displayName: t('yasin')  },
+    { uid: 'grc5', displayName: t('dina')   },
+  ], [t]);
+
+  const FOLLOWING_CREATORS: CreatorItem[] = useMemo(() => [
+    { uid: 'gf1', displayName: t('hereIsIbrahim'), handle: '@hana',  followerLabel: t('newExclusiveContentAvailableNow') },
+    { uid: 'gf2', displayName: t('faresKhalil'),   handle: '@fares', followerLabel: t('lastActivityAnHourAgo')         },
+  ], [t]);
+
+  const PLAYLISTS: PlaylistItem[] = useMemo(() => [
+    { id: 'gp1', title: t('bestOfTheWeek'),   tag: t('selectedForYou'),   trackCount: t('12Pieces')  },
+    { id: 'gp2', title: t('atmosphereOfFocus'),          tag: t('relaxation'),     trackCount: t('8Pieces')   },
+  ], [t]);
+
   // Filter state — each axis is independent multi-select
   const [statuses,    setStatuses]    = useState<string[]>([]);
   const [categories,  setCategories]  = useState<string[]>([]);
@@ -237,7 +240,7 @@ export function GeneralHomePage() {
   const sortOptions = useMemo(() => getSortOptions(t), [t]);
 
   return (
-    <main className="ghp" aria-label="الرئيسية — عام">
+    <main className="ghp" aria-label={t('homeGeneral')}>
 
       {/* ── Stories / Quick Circles ──────────────────────────────────────────── */}
       {hasStories && (
@@ -282,7 +285,6 @@ export function GeneralHomePage() {
             type="search"
             placeholder={t('actions.searchPlaceholder')}
             autoComplete="off"
-            dir="auto"
           />
           <span className="ghp-search__icon">
             <IconSearch />

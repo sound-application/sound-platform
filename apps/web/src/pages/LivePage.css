@@ -81,8 +81,8 @@
   font-family: 'Cairo', sans-serif;
   font-size: 0.875rem;
   color: var(--color-on-surface, #ebe2d0);
-  text-align: right;
-  direction: rtl;
+  text-align: start;
+  
   min-width: 0;
 }
 
@@ -118,7 +118,7 @@
   max-width: 640px;
   width: 100%;
   box-sizing: border-box;
-  direction: rtl;
+  
 }
 
 /* ─── Filter row ─────────────────────────────────────────────────────────── */
@@ -217,7 +217,7 @@
 .live-hero__category {
   position: absolute;
   top: 1.25rem;
-  left: 1.25rem;
+  inset-inline-end: 1.25rem;
   background: rgba(8, 145, 178, 0.18);
   border: 1px solid rgba(8, 145, 178, 0.35);
   color: #67e8f9;
@@ -369,7 +369,7 @@
   gap: 0.75rem;
   padding: 0.75rem 1rem 1.25rem;
   /* extra end padding lets next card peek without clipping */
-  padding-inline-end: 2rem;
+  padding-inline-start: 2rem;
   overflow-x: auto;
   scroll-snap-type: x mandatory;
   -webkit-overflow-scrolling: touch;
@@ -422,7 +422,7 @@
 .live-sponsor__tag {
   position: absolute;
   top: 0.28rem;
-  left: 0.5rem;
+  inset-inline-end: 0.5rem;
   font-family: 'Cairo', sans-serif;
   font-size: 0.6rem;
   color: rgba(255, 204, 21, 0.45);
@@ -446,7 +446,7 @@
 .live-sponsor__text {
   flex: 1;
   min-width: 0;
-  text-align: right;
+  text-align: start;
 }
 
 .live-sponsor__name {
@@ -517,7 +517,7 @@
 .room-avatar__waveform {
   position: absolute;
   bottom: -10px;
-  left: -2px;
+  inset-inline-end: -2px;
   display: flex;
   align-items: flex-end;
   gap: 2px;
@@ -565,7 +565,7 @@
 .room-row__info {
   flex: 1;
   min-width: 0;
-  text-align: right;
+  text-align: start;
 }
 
 .room-row__title {
@@ -662,7 +662,7 @@
 
 .live-create-cta__text {
   flex: 1;
-  text-align: right;
+  text-align: start;
 }
 
 .live-create-cta__label {
@@ -848,7 +848,7 @@
 .live-section__plus-badge {
   display: inline-flex;
   align-items: center;
-  margin-inline-start: 0.45rem;
+  margin-inline-end: 0.45rem;
   padding: 0.1rem 0.45rem;
   background: rgba(180, 83, 9, 0.18);
   border: 1px solid rgba(251, 191, 36, 0.3);
@@ -926,7 +926,7 @@
   width: 8px; height: 8px;
   border-radius: 50%;
   background: #ef4444;
-  margin-right: 6px;
+  margin-inline-start: 6px;
   animation: live-pulse 1.4s ease-in-out infinite;
   vertical-align: middle;
 }
@@ -985,7 +985,7 @@
   display: flex; align-items: center; gap: .75rem;
   padding: .75rem 1rem; border-radius: 3px;
   background: rgba(255,255,255,.03); border: 1px solid transparent;
-  transition: background .15s, border-color .15s; direction: rtl; text-align: right;
+  transition: background .15s, border-color .15s;  text-align: start;
 }
 .radio-station-row:hover { background: rgba(255,255,255,.06); border-color: rgba(255,255,255,.07); }
 .radio-station-row__logo {
@@ -995,7 +995,7 @@
 }
 .radio-station-row__initials { font-size: .78rem; font-weight: 800; color: #fff; font-family: 'Cairo',sans-serif; }
 .radio-station-row__live-dot {
-  position: absolute; bottom: 2px; left: 2px;
+  position: absolute; bottom: 2px; inset-inline-end: 2px;
   width: 10px; height: 10px; border-radius: 50%;
   background: #22c55e; border: 2px solid #0d0d0d;
   animation: live-pulse 1.4s ease-in-out infinite;
@@ -1043,7 +1043,7 @@
 .radio-request-cta {
   margin: 1.5rem 1rem; padding: 1.1rem 1.25rem; border-radius: 3px;
   background: rgba(124,58,237,.07); border: 1px solid rgba(124,58,237,.2);
-  display: flex; align-items: center; gap: 1rem; direction: rtl; text-align: right;
+  display: flex; align-items: center; gap: 1rem;  text-align: start;
 }
 .radio-request-cta__icon { flex-shrink: 0; color: #a78bfa; opacity: .8; }
 .radio-request-cta__text { flex: 1; display: flex; flex-direction: column; gap: 2px; }

@@ -1,3 +1,5 @@
+import i18n from '../i18n';
+const tWrapper = (key: any, options?: any) => i18n.t(key, options) as any as string;
 /**
  * Sound Platform — useFollowState hook
  * ========================================
@@ -121,7 +123,7 @@ export function useFollowState(
       // Optimistic update is not needed — onSnapshot will update isFollowing
     } catch (err: unknown) {
       console.error('[useFollowState] toggle error:', err);
-      const msg = err instanceof Error ? err.message : 'حدث خطأ أثناء المتابعة';
+      const msg = err instanceof Error ? err.message : tWrapper('usefollowstate:anErrorOccurredWhile');
       setError(msg);
     } finally {
       setIsSaving(false);

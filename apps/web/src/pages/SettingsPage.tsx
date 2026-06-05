@@ -76,7 +76,7 @@ export function SettingsPage() {
       <div className="settings-page__header">
         <h1 className="settings-page__title">{t('title')}</h1>
         {currentUser?.email && (
-          <p className="settings-page__account" dir="ltr">
+          <p className="settings-page__account">
             {currentUser.email}
           </p>
         )}
@@ -122,7 +122,7 @@ export function SettingsPage() {
             {item.badge ? (
               <span className="settings-page__badge">{item.badge}</span>
             ) : (
-              <span className="settings-page__item-arrow" aria-hidden="true">←</span>
+              <span className="material-symbols-outlined settings-page__item-arrow" aria-hidden="true">chevron_left</span>
             )}
           </button>
         ))}

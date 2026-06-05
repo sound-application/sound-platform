@@ -27,6 +27,10 @@ import { EmptyState } from '../../components/EmptyState';
 import { FilterDropdown, type FilterOption } from '../../components/FilterDropdown';
 import type { PublicProfileDoc } from '@sound/shared';
 import './GeneralMePage.css';
+import i18n from "i18next";
+
+const t = (key: any, options?: any) => i18n.t(key, options) as any as string;
+
 
 // ─── Tab Definition ────────────────────────────────────────────────────────────
 
@@ -61,84 +65,84 @@ function opts(labels: string[]): FilterOption[] {
 
 const ME_TABS: MeTabDef[] = [
   {
-    id: 'content', label: 'المحتوى',
+    id: 'content', label: t('generalme:content'),
     filters: [
-      { key: 'type',     label: 'نوع المحتوى', options: opts(['بودكاست','مقال صوتي','مقابلة','تسجيل','قصيرة']) },
-      { key: 'status',   label: 'الحالة',       options: opts(['منشور','مسودة','مؤرشف']) },
-      { key: 'category', label: 'التصنيف',      options: opts(['ثقافة','تقنية','رياضة','ترفيه','أخبار']) },
-      { key: 'sort',     label: 'الترتيب',      options: opts(['الأحدث','الأقدم','الأكثر استماعاً','الأكثر إعجاباً']) },
+      { key: 'type',     label: t('generalme:contentType'), options: opts([t('generalme:itsAPodcast'),t('generalme:audioEssay'),t('generalme:interview'),t('generalme:registration'),t('generalme:short')]) },
+      { key: 'status',   label: t('generalme:theCondition'),       options: opts([t('generalme:manifesto'),t('generalme:draft'),t('generalme:archived')]) },
+      { key: 'category', label: t('generalme:classification'),      options: opts([t('generalme:culture'),t('generalme:technique'),t('generalme:sports'),t('generalme:entertainment'),t('generalme:news')]) },
+      { key: 'sort',     label: t('generalme:ranking'),      options: opts([t('generalme:latest'),t('generalme:oldest'),t('generalme:mostListenedTo'),t('generalme:mostLiked')]) },
     ],
   },
   {
-    id: 'podcast', label: 'بودكاست',
+    id: 'podcast', label: t('generalme:itsAPodcast'),
     filters: [
-      { key: 'status',   label: 'الحالة',   options: opts(['منشور','مسودة','مؤرشف']) },
-      { key: 'category', label: 'التصنيف', options: opts(['ثقافة','تقنية','رياضة','ترفيه','أخبار']) },
-      { key: 'sort',     label: 'الترتيب', options: opts(['الأحدث','الأقدم','الأكثر استماعاً']) },
+      { key: 'status',   label: t('generalme:theCondition'),   options: opts([t('generalme:manifesto'),t('generalme:draft'),t('generalme:archived')]) },
+      { key: 'category', label: t('generalme:classification'), options: opts([t('generalme:culture'),t('generalme:technique'),t('generalme:sports'),t('generalme:entertainment'),t('generalme:news')]) },
+      { key: 'sort',     label: t('generalme:ranking'), options: opts([t('generalme:latest'),t('generalme:oldest'),t('generalme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'trends', label: 'ترنداتي',
+    id: 'trends', label: t('generalme:myTrends'),
     filters: [
-      { key: 'period', label: 'الفترة',      options: opts(['اليوم','هذا الأسبوع','هذا الشهر']) },
-      { key: 'type',   label: 'نوع المحتوى', options: opts(['بودكاست','قصيرة','مقالات']) },
-      { key: 'sort',   label: 'الترتيب',     options: opts(['الأكثر استماعاً','الأكثر إعجاباً','الأكثر مشاركة']) },
+      { key: 'period', label: t('generalme:period'),      options: opts([t('generalme:today'),t('generalme:thisWeek'),t('generalme:thisMonth')]) },
+      { key: 'type',   label: t('generalme:contentType'), options: opts([t('generalme:itsAPodcast'),t('generalme:short'),t('generalme:articles')]) },
+      { key: 'sort',   label: t('generalme:ranking'),     options: opts([t('generalme:mostListenedTo'),t('generalme:mostLiked'),t('generalme:mostShared')]) },
     ],
   },
   {
-    id: 'mood', label: 'مزاجي',
+    id: 'mood', label: t('generalme:myMood'),
     filters: [
-      { key: 'mood',   label: 'المزاج / الغرض', options: opts(['هادئ','نشيط','مركّز','مرح','حزين']) },
-      { key: 'type',   label: 'نوع المحتوى',     options: opts(['موسيقى','بودكاست','صوتيات']) },
-      { key: 'source', label: 'المصدر / العالم', options: opts(['عام','بلس','موسيقى','راديو']) },
-      { key: 'sort',   label: 'الترتيب',         options: opts(['الأحدث','الأكثر استماعاً']) },
+      { key: 'mood',   label: t('generalme:moodpurpose'), options: opts([t('generalme:calm'),t('generalme:active1'),t('generalme:center'),t('generalme:cheerful'),t('generalme:sad')]) },
+      { key: 'type',   label: t('generalme:contentType'),     options: opts([t('generalme:music'),t('generalme:itsAPodcast'),t('generalme:phonetics')]) },
+      { key: 'source', label: t('generalme:sourceworld'), options: opts([t('generalme:general'),t('generalme:plus'),t('generalme:music'),t('generalme:radio')]) },
+      { key: 'sort',   label: t('generalme:ranking'),         options: opts([t('generalme:latest'),t('generalme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'saved', label: 'المحفوظات',
+    id: 'saved', label: t('generalme:archives'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','راديو','مقالات']) },
-      { key: 'cat',  label: 'التصنيف',     options: opts(['ثقافة','تقنية','ترفيه']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('generalme:contentType'), options: opts([t('generalme:itsAPodcast'),t('generalme:music'),t('generalme:radio'),t('generalme:articles')]) },
+      { key: 'cat',  label: t('generalme:classification'),     options: opts([t('generalme:culture'),t('generalme:technique'),t('generalme:entertainment')]) },
+      { key: 'sort', label: t('generalme:ranking'),     options: opts([t('generalme:latest'),t('generalme:oldest')]) },
     ],
   },
   {
-    id: 'reposts', label: 'الإعادات',
+    id: 'reposts', label: t('generalme:replays'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','مقالات']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('generalme:contentType'), options: opts([t('generalme:itsAPodcast'),t('generalme:music'),t('generalme:articles')]) },
+      { key: 'sort', label: t('generalme:ranking'),     options: opts([t('generalme:latest'),t('generalme:oldest')]) },
     ],
   },
   {
-    id: 'journeys', label: 'الرحلات / الجلسات',
+    id: 'journeys', label: t('generalme:tripssessions'),
     filters: [
-      { key: 'type', label: 'نوع الرحلة', options: opts(['على الطريق','جلسة استماع','مختلطة']) },
-      { key: 'date', label: 'التاريخ',    options: opts(['اليوم','هذا الأسبوع','هذا الشهر','أقدم']) },
-      { key: 'sort', label: 'الترتيب',   options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('generalme:tripType'), options: opts([t('generalme:onTheRoad'),t('generalme:hearing'),t('generalme:mixed')]) },
+      { key: 'date', label: t('generalme:theDate'),    options: opts([t('generalme:today'),t('generalme:thisWeek'),t('generalme:thisMonth'),t('generalme:oldest1')]) },
+      { key: 'sort', label: t('generalme:ranking'),   options: opts([t('generalme:latest'),t('generalme:oldest')]) },
     ],
   },
   {
-    id: 'liked', label: 'المفضلة',
+    id: 'liked', label: t('generalme:favorites'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','راديو','صوتيات']) },
-      { key: 'cat',  label: 'التصنيف',     options: opts(['ثقافة','تقنية','ترفيه','رياضة']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم','الأكثر استماعاً']) },
+      { key: 'type', label: t('generalme:contentType'), options: opts([t('generalme:itsAPodcast'),t('generalme:music'),t('generalme:radio'),t('generalme:phonetics')]) },
+      { key: 'cat',  label: t('generalme:classification'),     options: opts([t('generalme:culture'),t('generalme:technique'),t('generalme:entertainment'),t('generalme:sports')]) },
+      { key: 'sort', label: t('generalme:ranking'),     options: opts([t('generalme:latest'),t('generalme:oldest'),t('generalme:mostListenedTo')]) },
     ],
   },
   {
-    id: 'history', label: 'السجل',
+    id: 'history', label: t('generalme:record'),
     filters: [
-      { key: 'type', label: 'نوع المحتوى', options: opts(['بودكاست','موسيقى','راديو']) },
-      { key: 'date', label: 'التاريخ',     options: opts(['اليوم','هذا الأسبوع','هذا الشهر','أقدم']) },
-      { key: 'sort', label: 'الترتيب',     options: opts(['الأحدث','الأقدم']) },
+      { key: 'type', label: t('generalme:contentType'), options: opts([t('generalme:itsAPodcast'),t('generalme:music'),t('generalme:radio')]) },
+      { key: 'date', label: t('generalme:theDate'),     options: opts([t('generalme:today'),t('generalme:thisWeek'),t('generalme:thisMonth'),t('generalme:oldest1')]) },
+      { key: 'sort', label: t('generalme:ranking'),     options: opts([t('generalme:latest'),t('generalme:oldest')]) },
     ],
   },
   {
-    id: 'subscriptions', label: 'الاشتراكات',
+    id: 'subscriptions', label: t('generalme:subscriptions'),
     filters: [
-      { key: 'subType', label: 'نوع الاشتراك', options: opts(['شهري','سنوي','مدى الحياة']) },
-      { key: 'status',  label: 'الحالة',        options: opts(['نشط','منتهي','مُلغى']) },
-      { key: 'sort',    label: 'الترتيب',       options: opts(['الأحدث','الأقدم','تاريخ الانتهاء']) },
+      { key: 'subType', label: t('generalme:subscriptionType'), options: opts([t('generalme:citizen'),t('generalme:annual'),t('generalme:lifelong')]) },
+      { key: 'status',  label: t('generalme:theCondition'),        options: opts([t('generalme:active'),t('generalme:theEnd'),t('generalme:canceled')]) },
+      { key: 'sort',    label: t('generalme:ranking'),       options: opts([t('generalme:latest'),t('generalme:oldest'),t('generalme:endDate')]) },
     ],
   },
 ];
@@ -172,13 +176,13 @@ export function GeneralMePage() {
   const profileState    = usePublicProfile(currentUser?.uid ?? null);
 
   if (profileState.status === 'loading') {
-    return <LoadingScreen message="جاري تحميل ملفك الشخصي..." />;
+    return <LoadingScreen message={t('generalme:loadingYourProfile')} />;
   }
 
   if (profileState.status === 'error') {
     return (
       <div className="gme-page">
-        <EmptyState icon="⚠️" title="حدث خطأ" description={profileState.message} />
+        <EmptyState icon="⚠️" title={t('generalme:anErrorOccurred')} description={profileState.message} />
       </div>
     );
   }
@@ -188,8 +192,8 @@ export function GeneralMePage() {
       <div className="gme-page">
         <EmptyState
           icon="👤"
-          title="ملفك الشخصي ليس جاهزاً بعد"
-          description="سيتم إنشاء ملفك الشخصي العام تلقائياً"
+          title={t('generalme:yourProfileIsNotReadyYet')}
+          description={t('generalme:yourPublicProfileWillBeCreatedAutomatica')}
         />
       </div>
     );
@@ -235,7 +239,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
   }, [activeTab]);
 
   const general     = profile.generalProfile;
-  const displayName = general?.displayName ?? 'مستخدم Sound';
+  const displayName = general?.displayName ?? t('generalme:soundUser');
   const username    = general?.username    ?? null;
   const bio         = general?.bio         ?? null;
   const avatarUrl   = general?.avatarUrl   ?? null;
@@ -263,10 +267,9 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           {isVerified && (
             <span className="gme-badge gme-badge--verified">
               <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
-              موثق
-            </span>
+              {t('generalme:reliable')}</span>
           )}
-          <span className="gme-badge gme-badge--world">عام</span>
+          <span className="gme-badge gme-badge--world">{t('generalme:general')}</span>
         </div>
 
         {/* Controls — left side (RTL end) */}
@@ -274,7 +277,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="gme-settings-btn"
             className="gme-hdr-btn"
-            aria-label="الإعدادات"
+            aria-label={t('generalme:settings')}
             type="button"
             onClick={() => navigate('/settings')}
           >
@@ -283,7 +286,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="gme-notifications-btn"
             className="gme-hdr-btn"
-            aria-label="الإشعارات"
+            aria-label={t('generalme:notifications')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">notifications</span>
@@ -291,7 +294,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <button
             id="gme-inbox-btn"
             className="gme-hdr-btn"
-            aria-label="الرسائل"
+            aria-label={t('generalme:messages')}
             type="button"
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">mail</span>
@@ -323,7 +326,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           <div className="gme-identity__name-row">
             <h1 className="gme-display-name">{displayName}</h1>
             {isVerified && (
-              <span className="gme-verified-icon" aria-label="موثق">
+              <span className="gme-verified-icon" aria-label={t('generalme:reliable')}>
                 <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">verified</span>
               </span>
             )}
@@ -342,16 +345,16 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
             id="gme-status-btn"
             className="gme-status-pill"
             type="button"
-            aria-label="تحديث الحالة"
+            aria-label={t('generalme:statusUpdate')}
           >
             <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit_note</span>
-            <span className="gme-status-pill__text">أضف تحديثاً للحالة…</span>
+            <span className="gme-status-pill__text">{t('generalme:addAStatusUpdate')}</span>
           </button>
 
           {/* Listening-now presence */}
-          <div className="gme-listening-now" aria-label="أستمع الآن">
+          <div className="gme-listening-now" aria-label={t('generalme:listenNow')}>
             <span className="gme-listening-dot" aria-hidden="true" />
-            <span className="gme-listening-label">أستمع الآن</span>
+            <span className="gme-listening-label">{t('generalme:listenNow')}</span>
             <span className="gme-listening-track">—</span>
           </div>
 
@@ -361,10 +364,10 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       {/* ── Stats ──────────────────────────────────────────────────────── */}
       <div className="gme-stats">
         {[
-          { value: followers, label: 'متابعون'  },
-          { value: following, label: 'يتابع'    },
-          { value: listens,   label: 'استماع'   },
-          { value: likes,     label: 'إعجاب'    },
+          { value: followers, label: t('generalme:followers')  },
+          { value: following, label: t('generalme:heContinues')    },
+          { value: listens,   label: t('generalme:toListen')   },
+          { value: likes,     label: t('generalme:wonder')    },
         ].map((s) => (
           <div key={s.label} className="gme-stat">
             <span className="gme-stat__value">{s.value}</span>
@@ -382,13 +385,12 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
           onClick={() => navigate('/settings/edit-profile')}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">edit</span>
-          تعديل الملف الشخصي
-        </button>
+          {t('generalme:editProfile')}</button>
         <button
           id="gme-share-btn"
           className="gme-btn gme-btn--ghost"
           type="button"
-          aria-label="مشاركة الملف"
+          aria-label={t('generalme:shareFile')}
         >
           <span className="material-symbols-outlined" aria-hidden="true" dir="ltr">share</span>
         </button>
@@ -413,7 +415,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
             );
           })
         ) : (
-          <span className="gme-social__hint">أضف روابطك في تعديل الملف الشخصي</span>
+          <span className="gme-social__hint">{t('generalme:addYourLinksInEditProfile')}</span>
         )}
       </div>
 
@@ -421,7 +423,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
       <nav
         className="gme-tabs"
         role="tablist"
-        aria-label="محتوى الملف الشخصي"
+        aria-label={t('generalme:profileContent')}
       >
         {ME_TABS.map((t) => (
           <button
@@ -440,7 +442,7 @@ function GeneralMeLoaded({ profile }: { profile: PublicProfileDoc }) {
 
       {/* ── Smart Filter Dropdowns ────────────────────────────────────────── */}
       {currentTabDef.filters.length > 0 && (
-        <div className="gme-filters" role="group" aria-label="فلاتر المحتوى">
+        <div className="gme-filters" role="group" aria-label={t('generalme:contentFilters')}>
           {currentTabDef.filters.map((f) => (
             <FilterDropdown
               key={`${activeTab}-${f.key}`}
@@ -482,82 +484,82 @@ function MeTabPanel({
       return (
         <EmptyState
           icon="🎙️"
-          title="لم تنشر أي محتوى بعد"
-          description="ابدأ بنشر تسجيلاتك الصوتية"
-          action={{ label: 'إنشاء محتوى', onClick: () => navigate('/general/create') }}
+          title={t('generalme:youHaventPostedAnyContentYet')}
+          description={t('generalme:startPostingYourAudioRecordings')}
+          action={{ label: t('generalme:createContent'), onClick: () => navigate('/general/create') }}
         />
       );
     case 'podcast':
       return (
         <EmptyState
           icon="🎧"
-          title="لا توجد حلقات بودكاست بعد"
-          description="انشر أول حلقة بودكاست"
-          action={{ label: 'إنشاء بودكاست', onClick: () => navigate('/general/create') }}
+          title={t('generalme:thereAreNoPodcastEpisodesYet')}
+          description={t('generalme:publishYourFirstPodcastEpisode')}
+          action={{ label: t('generalme:createAPodcast'), onClick: () => navigate('/general/create') }}
         />
       );
     case 'trends':
       return (
         <EmptyState
           icon="📈"
-          title="لا توجد ترندات بعد"
-          description="محتواك الرائج سيظهر هنا"
+          title={t('generalme:thereAreNoTrendsYet')}
+          description={t('generalme:yourPopularContentWillAppearHere')}
         />
       );
     case 'mood':
       return (
         <EmptyState
           icon="🎭"
-          title="لا توجد قوائم مزاجية بعد"
-          description="أنشئ قوائم تعبر عن مزاجك وأفكارك"
+          title={t('generalme:noMoodListsYet')}
+          description={t('generalme:createListsThatExpressYourMoodAndThought')}
         />
       );
     case 'saved':
       return (
         <EmptyState
           icon="🔖"
-          title="لا يوجد محفوظات"
-          description="احفظ المحتوى الذي تريد الرجوع إليه"
+          title={t('generalme:noHistory')}
+          description={t('generalme:saveTheContentYouWantToReturnTo')}
         />
       );
     case 'reposts':
       return (
         <EmptyState
           icon="🔄"
-          title="لا توجد إعادات"
-          description="المحتوى الذي تعيد نشره سيظهر هنا"
+          title={t('generalme:thereAreNoReplays')}
+          description={t('generalme:theContentYouRepostWillAppearHere')}
         />
       );
     case 'journeys':
       return (
         <EmptyState
           icon="🚗"
-          title="لا توجد رحلات أو جلسات بعد"
-          description="جلسات الاستماع على الطريق ستظهر هنا"
+          title={t('generalme:noTripsOrSessionsYet')}
+          description={t('generalme:hearingsOnTheRoadWillAppearHere')}
         />
       );
     case 'liked':
       return (
         <EmptyState
           icon="❤️"
-          title="لا يوجد مفضلة بعد"
-          description="المحتوى الذي أعجبك سيظهر هنا"
+          title={t('generalme:thereAreNoFavoritesYet')}
+          description={t('generalme:contentYouLikedWillAppearHere')}
         />
       );
     case 'history':
       return (
         <EmptyState
           icon="🕐"
-          title="سجل الاستماع فارغ"
-          description="المحتوى الذي استمعت إليه سيظهر هنا"
+          title={t('generalme:theListeningRecordIsEmpty')}
+          description={t('generalme:theContentYouListenedToWillAppearHere')}
         />
       );
     case 'subscriptions':
       return (
         <EmptyState
           icon="⭐"
-          title="لا توجد اشتراكات بعد"
-          description="اشتراكاتك وعضوياتك ستظهر هنا"
+          title={t('generalme:thereAreNoSubscriptionsYet')}
+          description={t('generalme:yourSubscriptionsAndMembershipsWillAppea')}
         />
       );
     default:

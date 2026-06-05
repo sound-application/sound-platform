@@ -22,6 +22,7 @@
 import React, { createContext, useContext, useCallback } from 'react';
 import { useNavigate, useLocation } from 'react-router-dom';
 import { WORLD_ORDER, type LockedWorldKey } from '../constants/lockedLabels';
+import { useAppConfig } from './ConfigContext';
 
 // ─── Types ─────────────────────────────────────────────────────────────────────
 
@@ -96,12 +97,23 @@ export function WorldNavProvider({ children }: { children: React.ReactNode }) {
   const tabSegment = pathSegments[1] ?? '';
   const tab: WorldTab = isValidTab(tabSegment) ? tabSegment : DEFAULT_TAB;
 
+  const { isWorldEnabled, isLoading } = useAppConfig();
+
   const nav = useCallback(
     (w: LockedWorldKey, t: WorldTab) => {
       routerNavigate(`/${w}/${t}`);
     },
     [routerNavigate],
   );
+
+  // Redirect to DEFAULT_WORLD if the current world is disabled
+  React.useEffect(() => {
+    if (!isLoading && !isWorldEnabled(world)) {
+      console.warn(`[WorldNavContext] World "${world}" is currently disabled by Admin. Redirecting to "${DEFAULT_WORLD}".`);
+      // NOTE: In a real app we might show a Toast notification here.
+      nav(DEFAULT_WORLD, tab);
+    }
+  }, [world, tab, isWorldEnabled, isLoading, nav]);
 
   const switchWorld = useCallback(
     (newWorld: LockedWorldKey) => nav(newWorld, tab),
